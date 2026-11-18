@@ -123,7 +123,24 @@ function goAdmin() { router.push('/fe-prompt/prompts') }
 </script>
 
 <style>
-/* 复用模型广场卡片体系（model-grid / model-card / type-tab 等与 fe-models 同款） */
+/* 卡片网格（与 fe-models 模型广场同款体系） */
+.model-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+.model-card {
+  background: #fff; border: 1px solid var(--border-light); border-radius: 12px;
+  padding: 16px; cursor: pointer; transition: box-shadow .15s, transform .15s;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.model-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,0.08); transform: translateY(-2px); }
+.model-card-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.model-card-head .tag { white-space: nowrap; flex-shrink: 0; }
+.model-card-name { font-size: 15px; }
+.model-card-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.model-card-desc {
+  font-size: 13px; color: var(--text-muted, #6b7280); line-height: 1.55;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  min-height: 40px;
+}
+.model-card-foot { display: flex; align-items: center; justify-content: space-between; margin-top: auto; }
 .detail-sec-title {
   font-size: 12px; font-weight: 600; color: var(--text-muted, #6b7280);
   margin-bottom: 8px; padding-left: 8px;

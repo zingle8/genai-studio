@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>资源监控 · AI Workbench</title>
+  <link rel="stylesheet" href="assets/css/workbench.css" />
+</head>
+<body>
+  <div id="wb-header-root"></div>
+
+  <div class="wb-main">
+    <div class="wb-page-head">
+      <div>
+        <div class="wb-page-title">资源监控</div>
+        <div class="wb-page-sub">个人工作区的计算资源用量 · 最近 60 分钟 · 每 10 秒刷新（演示为静态数据）</div>
+      </div>
+      <div class="flex gap-8">
+        <button class="wb-btn" onclick="wbToast('演示环境：数据为静态快照','ok')">刷新数据</button>
+        <button class="wb-btn" onclick="wbToast('已导出 CSV（演示）','ok')">导出报告</button>
+      </div>
+    </div>
+
+    <!-- 配额概览 -->
+    <div class="grid-4">
+      <div class="wb-card"><div class="wb-card-body" id="q1"></div></div>
+      <div class="wb-card"><div class="wb-card-body" id="q2"></div></div>
+      <div class="wb-card"><div class="wb-card-body" id="q3"></div></div>
+      <div class="wb-card"><div class="wb-card-body" id="q4"></div></div>
+    </div>
+
+    <!-- 曲线 -->
+    <div class="grid-3 mt-24">
+      <div class="wb-card">
+        <div class="wb-card-head"><div class="wb-card-title">CPU 利用率</div><span class="wb-tag info" id="vCpu"></span></div>
+        <div class="chart-box" id="chartCpu"></div>
+      </div>
+      <div class="wb-card">
+        <div class="wb-card-head"><div class="wb-card-title">内存占用</div><span class="wb-tag info" id="vMem"></span></div>
+        <div class="chart-box" id="chartMem"></div>
+      </div>
+      <div class="wb-card">
+        <div class="wb-card-head"><div class="wb-card-title">GPU 利用率（共享池）</div><span class="wb-tag warn" id="vGpu"></span></div>
+        <div class="chart-box" id="chartGpu"></div>
+      </div>
+    </div>
+
+    <!-- 进程表 -->
+    <div class="wb-card mt-24">
+      <div class="wb-card-head">
+        <div>
+          <div class="wb-card-title">运行中的进程</div>
+          <div class="wb-card-sub">由 kernelspec 派生的进程及其子进程</div>
+        </div>
+        <span class="wb-tag" id="procCount"></span>
+      </div>
+      <div class="wb-card-body no-pad">
+        <div class="wb-table-wrap">
+          <table class="wb-table">
+            <thead><tr><th>PID</th><th>进程</th><th>用户</th><th>CPU</th><th>内存</th><th>状态</th><th>启动时间</th><th>操作</th></tr></thead>
+            <tbody id="procBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/wb.js"></script>
+  <script>
+    initWb('resources');
+
+    /* ==================== 配额卡 ==================== */
+    var quotas = [
+      { id: 'q1', icon: 'cpu', color: 'var(--accent)', bg: 'var(--accent-soft)', label: 'vCPU', used: '12.4', total: '16 核', pct: 77 },
+      { id: 'q2', icon: 'server', color: 'var(--blue)', bg: 'var(--blue-soft)', label: '内存', used: '46.2', total: '64 GB', pct: 72 },
+      { id: 'q3', icon: 'gpu', color: 'var(--purple)', bg: 'var(--purple-soft)', label: 'GPU', used: '0.82', total: '1 卡', pct: 82 },
+      { id: 'q4', icon: 'chart', color: 'var(--green)', bg: 'var(--green-soft)', label: '磁盘', used: '320', total: '500 GB', pct: 64 }
+    ];
+    quotas.forEach(function (q) {
+      document.getElementById(q.id).innerHTML =
+        '<div class="flex" style="justify-content:space-between; margin-bottom:14px;">' +
+          '<span style="width:38px;height:38px;border-radius:10px;background:' + q.bg + ';color:' + q.color + ';display:flex;align-items:center;justify-content:center;">' + wbIcon(q.icon, 18) + '</span>' +
+          '<span class="text-sm muted">' + q.label + '</span></div>' +
+        '<div class="flex" style="justify-content:space-between; align-items:baseline;">' +
+          '<span style="font-size:22px;font-weight:750;">' + q.used + '</span>' +
+          '<span class="muted text-sm">/ ' + q.total + '</span></div>' +
+        '<div class="wb-bar mt-8" style="margin-top:10px;"><i style="width:' + q.pct + '%;background:' + q.color + ';"></i></div>';
+    });
+
+    /* ==================== SVG 折线图 ==================== */
+    function lineChart(values, color, fill) {
+      var W = 340, H = 150, L = 30, R = 8, T = 10, B = 20;
+      var n = values.length, lo = Math.min.apply(null, values), hi = Math.max.apply(null, values);
+      var pad = (hi - lo) * 0.15 || 1; lo -= pad; hi += pad;
+      var X = function (i) { return L + (W - L - R) * (i / (n - 1)); };
+      var Y = function (v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); };
+      var pts = values.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ');
+      var grid = '';
+      for (var g = 0; g <= 2; g++) {
+        var gy = T + (H - T - B) * g / 2, gv = (hi - (hi - lo) * g / 2).toFixed(0);
+        grid += '<line x1="' + L + '" y1="' + gy + '" x2="' + (W - R) + '" y2="' + gy + '" stroke="#ECEDEF"/>' +
+                '<text x="' + (L - 6) + '" y="' + (gy + 3.5) + '" font-size="9.5" fill="#9BA1AD" text-anchor="end">' + gv + '</text>';
+      }
+      return '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '">' + grid +
+        '<polygon points="' + L + ',' + (H - B) + ' ' + pts + ' ' + (W - R) + ',' + (H - B) + '" fill="' + fill + '"/>' +
+        '<polyline points="' + pts + '" fill="none" stroke="' + color + '" stroke-width="2"/>' +
+        '<circle cx="' + X(n - 1) + '" cy="' + Y(values[n - 1]) + '" r="3" fill="' + color + '"/>' +
+        '<text x="' + L + '" y="' + (H - 6) + '" font-size="9.5" fill="#9BA1AD">-60min</text>' +
+        '<text x="' + (W - R) + '" y="' + (H - 6) + '" font-size="9.5" fill="#9BA1AD" text-anchor="end">now</text></svg>';
+    }
+
+    function seed(s) { return function () { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+    function series(n, base, amp, s) {
+      var rnd = seed(s), out = [];
+      for (var i = 0; i < n; i++) {
+        var v = base + Math.sin(i / 4) * amp * 0.5 + rnd() * amp;
+        out.push(+Math.max(4, Math.min(97, v)).toFixed(1));
+      }
+      return out;
+    }
+
+    var cpuData = series(36, 62, 24, 7);
+    var memData = series(36, 70, 9, 13);
+    var gpuData = series(36, 88, 14, 29);
+
+    document.getElementById('chartCpu').innerHTML = lineChart(cpuData, '#E8590C', 'rgba(232,89,12,0.08)');
+    document.getElementById('chartMem').innerHTML = lineChart(memData, '#3178C6', 'rgba(49,120,198,0.08)');
+    document.getElementById('chartGpu').innerHTML = lineChart(gpuData, '#7B5CC4', 'rgba(123,92,196,0.08)');
+
+    document.getElementById('vCpu').textContent = '当前 ' + cpuData[cpuData.length - 1] + '%';
+    document.getElementById('vMem').textContent = '当前 ' + memData[memData.length - 1] + '%';
+    document.getElementById('vGpu').textContent = '当前 ' + gpuData[gpuData.length - 1] + '%';
+
+    /* ==================== 进程表 ==================== */
+    var procs = [
+      { pid: 4721, cmd: 'python finetune-llm.py --lora', user: 'admin', cpu: '96.2%', mem: '23.4 GB', st: 'running', t: '09:15' },
+      { pid: 3812, cmd: 'ipykernel_launcher -f …02-模型训练.json', user: 'admin', cpu: '18.4%', mem: '1.8 GB', st: 'running', t: '11:08' },
+      { pid: 3940, cmd: 'ipykernel_launcher -f …01-数据探索.json', user: 'admin', cpu: '2.1%', mem: '640 MB', st: 'sleeping', t: '12:05' },
+      { pid: 4103, cmd: 'ipykernel_launcher -f …03-模型评估.json', user: 'admin', cpu: '0.9%', mem: '312 MB', st: 'idle', t: '19:20' },
+      { pid: 4210, cmd: 'bash --persistent', user: 'admin', cpu: '0.2%', mem: '36 MB', st: 'sleeping', t: '13:40' },
+      { pid: 4211, cmd: 'tail -f logs/train.log', user: 'admin', cpu: '0.1%', mem: '24 MB', st: 'sleeping', t: '14:32' },
+      { pid: 1024, cmd: 'jupyter-server --port 8888', user: 'admin', cpu: '0.4%', mem: '118 MB', st: 'running', t: '3 天前' }
+    ];
+    var stMap = { running: ['ok', '运行中'], sleeping: ['', '休眠'], idle: ['warn', '空闲'] };
+
+    document.getElementById('procBody').innerHTML = procs.map(function (p, i) {
+      var st = stMap[p.st];
+      return '<tr>' +
+        '<td class="mono muted">' + p.pid + '</td>' +
+        '<td class="mono" style="font-size:12.5px;">' + p.cmd + '</td>' +
+        '<td class="muted">' + p.user + '</td>' +
+        '<td class="mono">' + p.cpu + '</td>' +
+        '<td class="mono">' + p.mem + '</td>' +
+        '<td><span class="wb-tag ' + st[0] + '">' + st[1] + '</span></td>' +
+        '<td class="muted">' + p.t + '</td>' +
+        '<td><button class="wb-btn sm ghost" onclick="killProc(' + p.pid + ', this)">终止</button></td></tr>';
+    }).join('');
+    document.getElementById('procCount').textContent = procs.length + ' 个进程';
+
+    window.killProc = function (pid, btn) {
+      var tr = btn.closest('tr');
+      tr.style.opacity = '0.35';
+      tr.querySelector('.wb-tag').outerHTML = '<span class="wb-tag err">已终止</span>';
+      btn.disabled = true;
+      wbToast('已发送 SIGTERM → PID ' + pid, 'ok');
+    };
+  </script>
+</body>
+</html>

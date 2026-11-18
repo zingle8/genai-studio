@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>首页 · AI Studio</title>
+  <link rel="stylesheet" href="assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">首页</div>
+              <div class="page-subtitle">2026-10-10 星期六 · 下午好，Admin 👋</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                健康检查
+              </button>
+              <a class="btn btn-primary" href="pages/chat-workbench.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                进入体验中心
+              </a>
+            </div>
+          </div>
+
+          <!-- 概览数据 -->
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">总调用量（今日）</div>
+                <div class="stat-value">1,284,503</div>
+                <div class="stat-trend up">▲ 12.5% 较昨日</div>
+              </div>
+              <div class="stat-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">活跃 AppCode</div>
+                <div class="stat-value">238</div>
+                <div class="stat-trend up">▲ 8 个新增</div>
+              </div>
+              <div class="stat-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">今日成本</div>
+                <div class="stat-value">¥3,287.45</div>
+                <div class="stat-trend down">▼ 4.2% 较昨日</div>
+              </div>
+              <div class="stat-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">在线模型</div>
+                <div class="stat-value">42 / 45</div>
+                <div class="stat-trend up">▲ 健康度 99.2%</div>
+              </div>
+              <div class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></div>
+            </div>
+          </div>
+
+          <!-- 余额与配额提醒 -->
+          <div class="card mb-16">
+            <div class="card-body" style="display:flex; gap:36px; align-items:center; flex-wrap:wrap;">
+              <div style="min-width:170px;">
+                <div class="stat-label">账户余额</div>
+                <div class="stat-value" style="font-size:22px;">¥9.99 <span class="tag tag-danger" style="margin-left:4px;">余额偏低</span></div>
+                <a class="text-sm" style="color:var(--primary);" href="pages/topup.html">去充值 →</a>
+              </div>
+              <div style="flex:1; min-width:200px;">
+                <div style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;">
+                  <span style="color:var(--text-secondary);">Token 配额（本月）</span>
+                  <span><b>1.82B</b> / 2B · <span style="color:var(--warning);">91%</span></span>
+                </div>
+                <div style="height:6px; background:var(--bg-soft); border-radius:3px; overflow:hidden;"><div style="width:91%; height:100%; background:var(--warning);"></div></div>
+              </div>
+              <div style="flex:1; min-width:200px;">
+                <div style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;">
+                  <span style="color:var(--text-secondary);">并发额度</span>
+                  <span><b>138</b> / 200 · <span style="color:var(--text-secondary);">69%</span></span>
+                </div>
+                <div style="height:6px; background:var(--bg-soft); border-radius:3px; overflow:hidden;"><div style="width:69%; height:100%; background:var(--primary);"></div></div>
+              </div>
+              <div style="flex:1; min-width:200px;">
+                <div style="display:flex; justify-content:space-between; font-size:12.5px; margin-bottom:6px;">
+                  <span style="color:var(--text-secondary);">知识库存储</span>
+                  <span><b>68 GB</b> / 100 GB · <span style="color:var(--text-secondary);">68%</span></span>
+                </div>
+                <div style="height:6px; background:var(--bg-soft); border-radius:3px; overflow:hidden;"><div style="width:68%; height:100%; background:var(--accent);"></div></div>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:16px;" class="dash-grid">
+            <div>
+              <div class="card mb-16">
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">调用量趋势（小时）</div>
+                    <div class="card-subtitle">最近 24 小时 LLM 请求量</div>
+                  </div>
+                  <div class="flex gap-8">
+                    <button class="btn btn-sm btn-secondary">24h</button>
+                    <button class="btn btn-sm btn-ghost">7 天</button>
+                    <button class="btn btn-sm btn-ghost">30 天</button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="chart-box" id="lineChart"></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">最近请求日志</div>
+                  <a class="text-sm" style="color:var(--primary);" href="pages/usage-logs.html">查看全部 →</a>
+                </div>
+                <div class="card-body no-pad">
+                  <div class="table-wrap">
+                    <table>
+                      <thead>
+                        <tr><th>时间</th><th>用户</th><th>模型</th><th>业务</th><th>状态</th><th>耗时</th></tr>
+                      </thead>
+                      <tbody>
+                        <tr><td>14:23:08</td><td>张三 (dev-001)</td><td><span class="tag tag-primary tag-solid">GPT-4o</span></td><td>智能客服</td><td><span class="tag tag-success">成功</span></td><td>1.2s</td></tr>
+                        <tr><td>14:22:51</td><td>李四 (dev-002)</td><td><span class="tag tag-purple tag-solid">Claude 3.5</span></td><td>文档总结</td><td><span class="tag tag-success">成功</span></td><td>0.8s</td></tr>
+                        <tr><td>14:22:30</td><td>王五 (dev-003)</td><td><span class="tag tag-warning tag-solid">文心 4.0</span></td><td>营销文案</td><td><span class="tag tag-info">流式中</span></td><td>—</td></tr>
+                        <tr><td>14:21:14</td><td>赵六 (dev-001)</td><td><span class="tag tag-cyan tag-solid">Llama 3.1</span></td><td>代码助手</td><td><span class="tag tag-danger">失败</span></td><td>3.4s</td></tr>
+                        <tr><td>14:20:02</td><td>孙七 (dev-004)</td><td><span class="tag tag-primary tag-solid">GPT-4o</span></td><td>知识问答</td><td><span class="tag tag-success">成功</span></td><td>2.1s</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div class="card mb-16">
+                <div class="card-header">
+                  <div class="card-title">成本分布</div>
+                  <button class="btn btn-sm btn-ghost">详情</button>
+                </div>
+                <div class="card-body">
+                  <div style="display:flex; gap:18px; align-items:center;">
+                    <div style="width:120px; height:120px; border-radius:50%; background: conic-gradient(var(--primary) 0% 38%, var(--secondary) 38% 62%, var(--warning) 62% 78%, var(--accent) 78% 92%, #E5E6EB 92% 100%); position:relative;">
+                      <div style="position:absolute; inset:16px; background:#fff; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-direction:column;">
+                        <div style="font-size:11px; color:var(--text-secondary);">本月</div>
+                        <div style="font-size:16px; font-weight:600;">¥87,432</div>
+                      </div>
+                    </div>
+                    <div style="flex:1; font-size:12.5px;">
+                      <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;"><span style="width:8px;height:8px;background:var(--primary);border-radius:2px;"></span> GPT 系列 <b style="margin-left:auto;">38%</b></div>
+                      <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;"><span style="width:8px;height:8px;background:var(--secondary);border-radius:2px;"></span> Claude <b style="margin-left:auto;">24%</b></div>
+                      <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;"><span style="width:8px;height:8px;background:var(--warning);border-radius:2px;"></span> 通义/文心 <b style="margin-left:auto;">16%</b></div>
+                      <div style="display:flex; align-items:center; gap:6px; margin-bottom:6px;"><span style="width:8px;height:8px;background:var(--accent);border-radius:2px;"></span> Llama <b style="margin-left:auto;">14%</b></div>
+                      <div style="display:flex; align-items:center; gap:6px;"><span style="width:8px;height:8px;background:#E5E6EB;border-radius:2px;"></span> 其他 <b style="margin-left:auto;">8%</b></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">快捷入口</div>
+                </div>
+                <div class="card-body">
+                  <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+                    <a href="pages/developer.html" class="quick-btn">
+                      <div class="qb-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/></svg></div>
+                      <div>新建 AppCode</div>
+                    </a>
+                    <a href="pages/model-config.html" class="quick-btn">
+                      <div class="qb-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/></svg></div>
+                      <div>接入模型</div>
+                    </a>
+                    <a href="pages/agent-management.html" class="quick-btn">
+                      <div class="qb-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/></svg></div>
+                      <div>创建 Agent</div>
+                    </a>
+                    <a href="pages/knowledge-base.html" class="quick-btn">
+                      <div class="qb-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/></svg></div>
+                      <div>知识库</div>
+                    </a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 模型排行 + 待办告警 -->
+          <div style="display:grid; grid-template-columns: 2fr 1fr; gap:16px; margin-top:16px;" class="dash-grid">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">模型调用排行 TOP5</div>
+                  <div class="card-subtitle">按今日调用量排序</div>
+                </div>
+                <a class="text-sm" style="color:var(--primary);" href="pages/cost-statistics.html">查看全部 →</a>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th style="width:48px;">排名</th><th>模型</th><th>今日调用量</th><th style="width:26%;">占比</th><th>环比</th><th>平均耗时</th><th>状态</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><b>1</b></td><td><span class="tag tag-primary tag-solid">GPT-4o</span></td><td><b>482,103</b></td><td><div style="height:6px; background:var(--bg-soft); border-radius:3px;"><div style="width:100%; height:100%; background:var(--primary); border-radius:3px;"></div></div></td><td class="stat-trend up" style="font-size:12px;">▲ 5.2%</td><td>1.4s</td><td><span class="tag tag-success">运行中</span></td></tr>
+                      <tr><td><b>2</b></td><td><span class="tag tag-purple tag-solid">DeepSeek-V3.2</span></td><td><b>326,842</b></td><td><div style="height:6px; background:var(--bg-soft); border-radius:3px;"><div style="width:68%; height:100%; background:var(--primary); border-radius:3px;"></div></div></td><td class="stat-trend up" style="font-size:12px;">▲ 18.7%</td><td>1.1s</td><td><span class="tag tag-success">运行中</span></td></tr>
+                      <tr><td><b>3</b></td><td><span class="tag tag-cyan tag-solid">Claude 3.5</span></td><td><b>258,417</b></td><td><div style="height:6px; background:var(--bg-soft); border-radius:3px;"><div style="width:54%; height:100%; background:var(--primary); border-radius:3px;"></div></div></td><td class="stat-trend down" style="font-size:12px;">▼ 2.1%</td><td>1.8s</td><td><span class="tag tag-success">运行中</span></td></tr>
+                      <tr><td><b>4</b></td><td><span class="tag tag-warning tag-solid">GLM-4.7</span></td><td><b>164,905</b></td><td><div style="height:6px; background:var(--bg-soft); border-radius:3px;"><div style="width:34%; height:100%; background:var(--primary); border-radius:3px;"></div></div></td><td class="stat-trend up" style="font-size:12px;">▲ 9.4%</td><td>0.9s</td><td><span class="tag tag-success">运行中</span></td></tr>
+                      <tr><td><b>5</b></td><td><span class="tag tag-accent tag-solid">Llama 3.1</span></td><td><b>52,236</b></td><td><div style="height:6px; background:var(--bg-soft); border-radius:3px;"><div style="width:11%; height:100%; background:var(--primary); border-radius:3px;"></div></div></td><td class="stat-trend down" style="font-size:12px;">▼ 12.6%</td><td>3.2s</td><td><span class="tag tag-danger">已摘流</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">待办与告警</div>
+                  <div class="card-subtitle">2 条告警 · 3 条待办</div>
+                </div>
+                <a class="text-sm" style="color:var(--primary);" href="pages/ops-center.html">运维中心 →</a>
+              </div>
+              <div class="card-body">
+                <div class="todo-list">
+                  <div class="todo-item">
+                    <span class="tag tag-danger">告警</span>
+                    <div style="flex:1;">
+                      <div style="font-size:13px;"><b>prod-main-key</b> 将于 2026-10-20 过期</div>
+                      <div class="text-sm muted">14:05 · 密钥过期前 7 天自动提醒创建人</div>
+                    </div>
+                    <a class="text-sm" style="color:var(--primary);" href="pages/developer.html">去延期</a>
+                  </div>
+                  <div class="todo-item">
+                    <span class="tag tag-danger">告警</span>
+                    <div style="flex:1;">
+                      <div style="font-size:13px;"><b>Llama 3.1</b> 连续 5 分钟无响应，已自动摘流</div>
+                      <div class="text-sm muted">13:47 · 影响请求已自动切换至备用节点</div>
+                    </div>
+                    <a class="text-sm" style="color:var(--primary);" href="pages/ops-center.html">处理</a>
+                  </div>
+                  <div class="todo-item">
+                    <span class="tag tag-warning">待办</span>
+                    <div style="flex:1;">
+                      <div style="font-size:13px;">知识库「产品手册 v3」索引待重建</div>
+                      <div class="text-sm muted">11:32 · 新增 128 篇文档未向量化</div>
+                    </div>
+                    <a class="text-sm" style="color:var(--primary);" href="pages/knowledge-base.html">去处理</a>
+                  </div>
+                  <div class="todo-item">
+                    <span class="tag tag-warning">待办</span>
+                    <div style="flex:1;">
+                      <div style="font-size:13px;">3 条请求失败（429 限流）</div>
+                      <div class="text-sm muted">10:18 · 建议「代码助手」调高 AppCode 并发配额</div>
+                    </div>
+                    <a class="text-sm" style="color:var(--primary);" href="pages/usage-logs.html">查看</a>
+                  </div>
+                  <div class="todo-item">
+                    <span class="tag tag-info">待办</span>
+                    <div style="flex:1;">
+                      <div style="font-size:13px;">2 个 API Key 超 90 天未使用</div>
+                      <div class="text-sm muted">09:00 · 建议清理闲置密钥，降低泄露风险</div>
+                    </div>
+                    <a class="text-sm" style="color:var(--primary);" href="pages/developer.html">去清理</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <style>
+    .quick-btn {
+      display: flex; flex-direction: column; gap: 8px;
+      padding: 14px; border-radius: 8px; border: 1px solid var(--border-light);
+      transition: all 0.15s; font-size: 12.5px; color: var(--text-primary);
+      background: #fff;
+    }
+    .quick-btn:hover { border-color: var(--primary); background: var(--primary-soft); }
+    .qb-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; }
+    .qb-icon svg { width: 16px; height: 16px; }
+    .qb-icon.primary { background: var(--primary-soft); color: var(--primary); }
+    .qb-icon.success { background: rgba(0,180,42,0.1); color: var(--success); }
+    .qb-icon.purple { background: var(--secondary-soft); color: var(--secondary); }
+    .qb-icon.cyan { background: rgba(0,183,194,0.1); color: var(--accent); }
+    .chart-box { width: 100%; height: 240px; padding: 8px 0; }
+    .todo-list { display: flex; flex-direction: column; gap: 14px; }
+    .todo-item { display: flex; align-items: flex-start; gap: 10px; }
+    .todo-item .tag { flex-shrink: 0; }
+    .todo-item a { flex-shrink: 0; }
+    @media (max-width: 1100px) { .dash-grid { grid-template-columns: 1fr !important; } }
+  </style>
+
+  <script src="assets/js/nav.js"></script>
+  <script>initLayout('dashboard');</script>
+  <script>
+    (function() {
+      const el = document.getElementById('lineChart');
+      if (!el) return;
+      const data = [42, 55, 48, 70, 88, 76, 92, 105, 128, 116, 142, 158, 134, 162, 198, 175, 210, 185, 230, 268, 245, 290, 310, 280];
+      const max = Math.max(...data);
+      const w = el.clientWidth - 40;
+      const ht = 200;
+      const stepX = w / (data.length - 1);
+      const points = data.map((v, i) => [i * stepX, ht - (v / max) * ht]);
+      const path = points.map((p, i) => (i === 0 ? 'M' : 'L') + p[0] + ',' + p[1]).join(' ');
+      const areaPath = path + ` L${w},${ht} L0,${ht} Z`;
+      el.innerHTML = `
+        <svg width="100%" height="${ht}" viewBox="0 0 ${w} ${ht}" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="lg" x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stop-color="#4D6BFE" stop-opacity="0.18"/>
+              <stop offset="100%" stop-color="#4D6BFE" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          ${[0,1,2,3].map(i => `<line x1="0" x2="${w}" y1="${(i+1)*ht/5}" y2="${(i+1)*ht/5}" stroke="#F2F2F3" stroke-width="1"/>`).join('')}
+          <path d="${areaPath}" fill="url(#lg)"/>
+          <path d="${path}" stroke="#4D6BFE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      `;
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,2248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>知识图谱Graph · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    /* ===== 二级导航（参考个人中心布局） ===== */
+    .account-layout { display: grid; grid-template-columns: 200px 1fr; gap: 28px; align-items: start; }
+    .subnav { position: sticky; top: 16px; font-size: 13px; }
+    .subnav-back {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 600; color: var(--text-primary); padding: 3px 8px 14px 8px;
+    }
+    .subnav-back svg { width: 15px; height: 15px; }
+    .subnav-group { margin-bottom: 14px; }
+    .subnav-title { font-size: 12px; color: var(--text-tertiary); padding: 6px 8px; }
+    .subnav-item {
+      display: block; padding: 7px 8px; border-radius: var(--radius);
+      color: var(--text-secondary); cursor: pointer; transition: all .15s;
+    }
+    .subnav-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+    .subnav-item.active { background: var(--sidebar-active); color: var(--text-primary); font-weight: 500; }
+    .account-main { min-width: 0; }
+    .panel-head { margin-bottom: 16px; }
+    .panel-title { font-size: 18px; font-weight: 600; }
+    .panel-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ===== 图谱总览 ===== */
+    .kg-row { cursor: pointer; transition: background .13s; }
+    .kg-row:hover { background: var(--bg-soft); }
+    .kg-row.selected { background: var(--accent-soft-2); }
+    .kg-row.selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+    .kg-row td:nth-child(3), .kg-row td:nth-child(7), .kg-row td:nth-child(8) { white-space: nowrap; }
+    .legend { display: flex; gap: 16px; flex-wrap: wrap; }
+    .legend span { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-secondary); }
+    .legend i { width: 10px; height: 10px; border-radius: 50%; }
+    .node-btn {
+      height: 28px; padding: 0 12px; border-radius: 14px; font-size: 12.5px;
+      border: 1px solid var(--border); background: #fff; color: var(--text-secondary); transition: all .14s;
+    }
+    .node-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .node-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .entity-tag {
+      display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px;
+      background: var(--bg-soft); font-size: 12.5px; color: var(--text-secondary);
+    }
+    .entity-tag i { width: 8px; height: 8px; border-radius: 50%; }
+    .conf { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+    .conf .bar { flex: 1; height: 5px; background: var(--bg-soft); border-radius: 3px; overflow: hidden; }
+    .conf .bar i, .conf-bar { display: block; height: 5px; border-radius: 3px; background: var(--accent); }
+    .conf-bar { background: var(--bg-soft); border-radius: 3px; overflow: hidden; margin-top: 4px; }
+    .conf-bar i { background: var(--accent); }
+    .conf .val { font-size: 12px; color: var(--text-secondary); width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+    @media (max-width: 1100px) { .kg-grid { grid-template-columns: 1fr !important; } }
+
+
+    .doc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .doc-way { border: 1px solid var(--border-light); border-radius: var(--radius); padding: 12px 14px; }
+    .doc-way-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13.5px; }
+    .doc-block { border: 1px solid var(--border-light); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+    .doc-block:last-child { margin-bottom: 0; }
+    .doc-block-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg-soft); font-size: 13px; }
+    .doc-block-h .btn-copy { margin-left: auto; font-size: 12px; color: var(--accent); cursor: pointer; }
+    .doc-block-h .btn-copy:hover { text-decoration: underline; }
+    pre.doc-code {
+      margin: 0; padding: 12px 14px; background: #1F2937; color: #E5E7EB;
+      font-family: var(--font-mono, ui-monospace, Menlo, Consolas, monospace);
+      font-size: 12px; line-height: 1.8; overflow-x: auto; white-space: pre;
+    }
+    .doc-step { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--border-light); }
+    .doc-step:last-child { border-bottom: 0; padding-bottom: 0; }
+    .doc-step .n {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff;
+      font-size: 12px; display: flex; align-items: center; justify-content: center; flex: none;
+    }
+    .doc-step .b { font-size: 13px; line-height: 1.7; }
+    .doc-step .b b { display: block; margin-bottom: 3px; }
+    .page-btn[disabled] { opacity: .45; cursor: not-allowed; }
+    .pager { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pager-info { font-size: 12.5px; color: var(--text-tertiary); }
+    .subnav-item .muted { font-size: 12px; }
+    @media (max-width: 1080px) { .doc-grid { grid-template-columns: 1fr; } }
+    /* ===== 编辑：四种方式 ===== */
+    .kg-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border-light); margin-bottom: 18px; flex-wrap: wrap; }
+    .kg-tab {
+      padding: 9px 15px; font-size: 13.5px; color: var(--text-secondary); cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap;
+    }
+    .kg-tab:hover { color: var(--text-primary); }
+    .kg-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+    .kg-tab .idx { font-size: 11px; color: var(--text-tertiary); margin-right: 5px; }
+    .kg-tab.active .idx { color: var(--primary); }
+    .kg-epanel { display: none; }
+    .kg-epanel.active { display: block; }
+    .eway-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+    .eway-grid > div { min-width: 0; }
+    @media (max-width: 1180px) { .eway-grid { grid-template-columns: 1fr; } }
+    .mind-wrap2 {
+      height: 400px; overflow: auto; border: 1px solid var(--border-light); border-radius: 10px;
+      background: linear-gradient(135deg, #FAFAFB 0%, #F3F4F6 100%);
+    }
+    .node-card { border: 1px solid var(--border-light); border-radius: 10px; padding: 12px 14px; background: #fff; }
+    .node-card h5 { font-size: 13.5px; margin: 0 0 4px; }
+    .node-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 12px; }
+    .q-node {
+      border: 1px solid var(--border-light); border-radius: 10px; padding: 12px 14px;
+      background: #fff; transition: border-color .14s, box-shadow .14s;
+    }
+    .q-node:hover { border-color: var(--accent); box-shadow: 0 2px 10px rgba(99,102,241,.08); }
+    .q-node .qn-h { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .q-node .qn-h b { font-size: 13.5px; }
+    .q-node .qn-kv { display: flex; gap: 8px; font-size: 12px; padding: 3px 0; }
+    .q-node .qn-kv span:first-child { color: var(--text-tertiary); width: 48px; flex: none; }
+    .q-node .qn-kv span:last-child { color: var(--text-primary); }
+    pre.json-out {
+      margin: 0; padding: 12px 14px; background: #1F2937; color: #E5E7EB; border-radius: 8px;
+      font-family: var(--font-mono, ui-monospace, Menlo, Consolas, monospace);
+      font-size: 12px; line-height: 1.75; overflow: auto; max-height: 320px; white-space: pre;
+    }
+    .check-out { padding: 10px 14px; border-radius: 8px; font-size: 12.5px; margin-top: 10px; }
+    .check-out.ok { background: rgba(16,185,129,.08); color: var(--success); border: 1px solid rgba(16,185,129,.25); }
+    .check-out.err { background: rgba(239,68,68,.06); color: var(--danger); border: 1px solid rgba(239,68,68,.25); }
+    .ext-inp {
+      width: 100%; height: 32px; padding: 0 9px; font-size: 12.5px;
+      border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text-primary);
+    }
+    .ext-inp:focus { outline: none; border-color: var(--primary); }
+    .fm-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border-light); }
+    .fm-row:last-child { border-bottom: 0; }
+    .fm-k { width: 74px; flex: none; font-size: 12.5px; color: var(--text-secondary); }
+    .fm-v { flex: 1; min-width: 0; }
+    #qChips .file-chip {
+      padding: 4px 11px; border: 1px solid var(--border); border-radius: 20px;
+      font-size: 12px; color: var(--text-secondary); background: #fff; cursor: pointer;
+      transition: color .13s, border-color .13s;
+    }
+    #qChips .file-chip:hover { border-color: var(--accent); color: var(--accent); }
+    #tab-list table th, #tab-list table td { white-space: nowrap; }
+    #tab-list table td:first-child { white-space: normal; min-width: 168px; }
+    #tab-entity table th, #tab-entity table td { white-space: nowrap; }
+    #tab-task table th, #tab-task table td { white-space: nowrap; }
+    #tab-task table td:first-child { white-space: normal; min-width: 130px; }
+    .pager { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pager-info { font-size: 12.5px; color: var(--text-tertiary); }
+    .page-btn[disabled] { opacity: .45; cursor: not-allowed; }
+    .kg-edit-grid { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
+    .kg-pick { display: flex; flex-direction: column; gap: 6px; }
+    .kg-pick-item {
+      padding: 9px 11px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);
+      cursor: pointer; display: flex; align-items: center; gap: 8px; font-size: 13px;
+    }
+    .kg-pick-item:hover { background: var(--bg-soft); }
+    .kg-pick-item.active { border-color: var(--accent); background: var(--accent-soft-2); font-weight: 600; }
+    .kg-pick-item span.dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+    .qinput {
+      width: 100%; border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 10px 12px; font-size: 12.5px; line-height: 1.7; resize: vertical; background: #fff;
+    }
+    .qinput:focus { outline: none; border-color: var(--primary); }
+    .q-meta { font-size: 12.5px; color: var(--text-tertiary); }
+    @media (max-width: 1080px) { .kg-edit-grid { grid-template-columns: 1fr; } }
+    @media (max-width: 1080px) { .account-layout { grid-template-columns: 1fr; } .subnav { position: static; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">知识图谱Graph</div>
+              <div class="page-subtitle">图谱构建、可视化与实体浏览，以及 GraphRAG 检索接入</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                导入数据
+              </button>
+              <button class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                新建图谱
+              </button>
+            </div>
+          </div>
+
+          <div class="account-layout">
+            <!-- 二级导航 -->
+            <nav class="subnav">
+              <div class="subnav-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="18" y1="9" x2="18" y2="15"/><line x1="9" y1="18" x2="15" y2="18"/></svg>
+                知识图谱Graph
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">图谱管理</div>
+                <a class="subnav-item active" data-tab="overview">知识图谱概览</a>
+                <a class="subnav-item" data-tab="list">知识图谱列表</a>
+                <a class="subnav-item" data-tab="edit">知识图谱编辑</a>
+                <a class="subnav-item" data-tab="query">知识图谱查询</a>
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">数据与构建</div>
+                <a class="subnav-item" data-tab="entity">实体与关系浏览</a>
+                <a class="subnav-item" data-tab="task">构建任务</a>
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">接入</div>
+                <a class="subnav-item" data-tab="doc">图谱文档</a>
+              </div>
+
+            </nav>
+
+            <!-- 内容区 -->
+            <div class="account-main">
+              <div class="panel-head">
+                <div class="panel-title" id="panelTitle">知识图谱概览</div>
+                <div class="panel-sub" id="panelSub">图谱规模、健康度与 GraphRAG 接入的整体视图，含可视化与实体浏览</div>
+              </div>
+
+              <!-- ========== 图谱总览 ========== -->
+              <section class="tab-panel active" id="tab-overview">
+                <div class="stat-grid">
+                  <div class="stat-card">
+                    <div>
+                      <div class="stat-label">图谱总数</div>
+                      <div class="stat-value" id="ovTotal">14</div>
+                      <div class="stat-trend up">▲ +3 本月</div>
+                    </div>
+                    <div class="stat-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="18" y1="9" x2="18" y2="15"/><line x1="9" y1="18" x2="15" y2="18"/></svg></div>
+                  </div>
+                  <div class="stat-card">
+                    <div>
+                      <div class="stat-label">实体数量</div>
+                      <div class="stat-value">82.4K</div>
+                      <div class="stat-trend up">▲ +12K</div>
+                    </div>
+                    <div class="stat-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/></svg></div>
+                  </div>
+                  <div class="stat-card">
+                    <div>
+                      <div class="stat-label">关系数量</div>
+                      <div class="stat-value">186K</div>
+                      <div class="stat-trend up">▲ +24K</div>
+                    </div>
+                    <div class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 12 19"/></svg></div>
+                  </div>
+                  <div class="stat-card">
+                    <div>
+                      <div class="stat-label">构建中任务</div>
+                      <div class="stat-value">3</div>
+                      <div class="stat-trend up">预计 18 分钟完成</div>
+                    </div>
+                    <div class="stat-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                  </div>
+                </div>
+
+                <div class="notice" style="margin-top:16px;">
+                  <span><b>GraphRAG</b>已接入全部已发布图谱：检索时自动扩展邻接实体，答案可溯源至图谱路径。</span>
+                </div>
+
+                <div class="text-sm muted" style="margin-top:16px;">以下展示最近更新的 5 个图谱，完整列表、搜索与分页请见「知识图谱列表」</div>
+
+                <div class="tabs" id="graphTabs" style="margin-top:8px;">
+                  <div class="tab active">全部图谱 <span class="muted">5</span></div>
+                  <div class="tab">已发布 <span class="muted">3</span></div>
+                  <div class="tab">构建中 <span class="muted">1</span></div>
+                  <div class="tab">草稿 <span class="muted">1</span></div>
+                </div>
+
+                <!-- 图谱列表 -->
+                <div class="card">
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>图谱名称</th><th>类型</th><th>图谱版本</th><th>实体</th><th>关系</th><th>构建方式</th><th>更新时间</th><th>状态</th><th>操作</th></tr>
+                        </thead>
+                        <tbody id="graphBody">
+                          <tr class="kg-row selected" data-name="电商商品图谱" data-v="28,420" data-r="62,840">
+                            <td><b>电商商品图谱</b><div class="muted text-sm">商品 / 类目 / 品牌 / 属性</div></td>
+                            <td><span class="tag primary tag-solid">GraphRAG</span></td>
+                            <td><span class="mono">v3.2.0</span></td>
+                            <td>28,420</td><td>62,840</td>
+                            <td>LLM 抽取</td>
+                            <td class="muted text-sm">2026-10-08</td>
+                            <td><span class="tag success tag-solid">已发布</span></td>
+                            <td><div class="row-actions"><button title="查看"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div></td>
+                          </tr>
+                          <tr class="kg-row" data-name="企业组织图谱" data-v="5,820" data-r="12,486">
+                            <td><b>企业组织图谱</b><div class="muted text-sm">员工 / 部门 / 岗位</div></td>
+                            <td><span class="tag info tag-solid">规则图谱</span></td>
+                            <td><span class="mono">v2.1.5</span></td>
+                            <td>5,820</td><td>12,486</td>
+                            <td>规则抽取</td>
+                            <td class="muted text-sm">2026-09-25</td>
+                            <td><span class="tag success tag-solid">已发布</span></td>
+                            <td><div class="row-actions"><button title="查看"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div></td>
+                          </tr>
+                          <tr class="kg-row" data-name="金融实体图谱" data-v="42,168" data-r="98,420">
+                            <td><b>金融实体图谱</b><div class="muted text-sm">公司 / 人物 / 事件</div></td>
+                            <td><span class="tag primary tag-solid">GraphRAG</span></td>
+                            <td><span class="mono">v4.0.1</span></td>
+                            <td>42,168</td><td>98,420</td>
+                            <td>LLM + 规则</td>
+                            <td class="muted text-sm">2026-10-09</td>
+                            <td><span class="tag warning tag-solid">构建中</span></td>
+                            <td><div class="row-actions"><button title="查看"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div></td>
+                          </tr>
+                          <tr class="kg-row" data-name="医疗知识图谱" data-v="3,684" data-r="8,420">
+                            <td><b>医疗知识图谱</b><div class="muted text-sm">疾病 / 药物 / 症状</div></td>
+                            <td><span class="tag primary tag-solid">GraphRAG</span></td>
+                            <td><span class="mono">v1.8.0</span></td>
+                            <td>3,684</td><td>8,420</td>
+                            <td>专家标注</td>
+                            <td class="muted text-sm">2026-09-12</td>
+                            <td><span class="tag success tag-solid">已发布</span></td>
+                            <td><div class="row-actions"><button title="查看"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div></td>
+                          </tr>
+                          <tr class="kg-row" data-name="学术论文图谱" data-v="2,308" data-r="4,824">
+                            <td><b>学术论文图谱</b><div class="muted text-sm">作者 / 论文 / 引用</div></td>
+                            <td><span class="tag purple tag-solid">混合图谱</span></td>
+                            <td><span class="mono">v2.3.2</span></td>
+                            <td>2,308</td><td>4,824</td>
+                            <td>LLM 抽取</td>
+                            <td class="muted text-sm">2026-10-05</td>
+                            <td><span class="tag gray tag-solid">草稿</span></td>
+                            <td><div class="row-actions"><button title="查看"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button><button title="编辑"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button></div></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 可视化 + 实体浏览 -->
+                <div style="display:grid; grid-template-columns: 2fr 1fr; gap:16px;" class="kg-grid mt-24">
+                  <div class="card">
+                    <div class="card-header">
+                      <div>
+                        <div class="card-title">图谱可视化 · <span id="vizName">电商商品图谱</span></div>
+                        <div class="card-subtitle">图谱节点与关系展示 · 实体 <b id="vizE">28,420</b> · 关系 <b id="vizR">62,840</b></div>
+                      </div>
+                      <div class="flex gap-8">
+                        <button class="btn btn-sm btn-secondary">布局</button>
+                        <button class="btn btn-sm btn-ghost">筛选</button>
+                        <button class="btn btn-sm btn-ghost">导出</button>
+                      </div>
+                    </div>
+                    <div class="card-body">
+                      <div class="flex gap-8" style="margin-bottom:14px; flex-wrap:wrap;">
+                        <button class="node-btn active">商品</button>
+                        <button class="node-btn">类目</button>
+                        <button class="node-btn">品牌</button>
+                        <button class="node-btn">属性</button>
+                        <button class="node-btn">用户</button>
+                        <button class="node-btn">评论</button>
+                        <button class="node-btn">订单</button>
+                      </div>
+                      <div style="height: 400px; background: linear-gradient(135deg, #FAFAFB 0%, #F3F4F6 100%); border-radius: 10px; position:relative; overflow:hidden;">
+                        <svg width="100%" height="100%" viewBox="0 0 700 400">
+                          <line x1="350" y1="200" x2="180" y2="115" stroke="#CBD5E1" stroke-width="1.5"/>
+                          <line x1="350" y1="200" x2="540" y2="115" stroke="#CBD5E1" stroke-width="1.5"/>
+                          <line x1="350" y1="200" x2="120" y2="270" stroke="#CBD5E1" stroke-width="1.5"/>
+                          <line x1="350" y1="200" x2="560" y2="280" stroke="#CBD5E1" stroke-width="1.5"/>
+                          <line x1="350" y1="200" x2="280" y2="360" stroke="#CBD5E1" stroke-width="1.5"/>
+                          <line x1="350" y1="200" x2="450" y2="360" stroke="#CBD5E1" stroke-width="1.5"/>
+                          <line x1="180" y1="115" x2="120" y2="270" stroke="#E5E7EB" stroke-width="1"/>
+                          <line x1="540" y1="115" x2="560" y2="280" stroke="#E5E7EB" stroke-width="1"/>
+                          <line x1="180" y1="115" x2="540" y2="115" stroke="#E5E7EB" stroke-width="1"/>
+                          <circle cx="350" cy="200" r="34" fill="url(#ng)" stroke="#fff" stroke-width="3"/>
+                          <text x="350" y="205" text-anchor="middle" font-size="13" fill="#fff" font-weight="600">商品</text>
+                          <circle cx="180" cy="115" r="22" fill="#6366F1" opacity="0.85"/>
+                          <text x="180" y="119" text-anchor="middle" font-size="11" fill="#fff">类目</text>
+                          <circle cx="540" cy="115" r="22" fill="#8B5CF6" opacity="0.85"/>
+                          <text x="540" y="119" text-anchor="middle" font-size="11" fill="#fff">品牌</text>
+                          <circle cx="120" cy="270" r="22" fill="#10B981" opacity="0.85"/>
+                          <text x="120" y="274" text-anchor="middle" font-size="11" fill="#fff">属性</text>
+                          <circle cx="560" cy="280" r="22" fill="#F59E0B" opacity="0.85"/>
+                          <text x="560" y="284" text-anchor="middle" font-size="11" fill="#fff">用户</text>
+                          <circle cx="280" cy="360" r="18" fill="#06B6D4" opacity="0.85"/>
+                          <text x="280" y="364" text-anchor="middle" font-size="10" fill="#fff">评论</text>
+                          <circle cx="450" cy="360" r="18" fill="#EC4899" opacity="0.85"/>
+                          <text x="450" y="364" text-anchor="middle" font-size="10" fill="#fff">订单</text>
+                          <text x="260" y="152" font-size="10" fill="#6B7280" transform="rotate(-25 260 152)">belongs_to</text>
+                          <text x="450" y="152" font-size="10" fill="#6B7280" transform="rotate(25 450 152)">produced_by</text>
+                          <text x="220" y="236" font-size="10" fill="#6B7280" transform="rotate(60 220 236)">has_attr</text>
+                          <text x="460" y="242" font-size="10" fill="#6B7280" transform="rotate(-60 460 242)">reviewed_by</text>
+                          <defs>
+                            <radialGradient id="ng">
+                              <stop offset="0%" stop-color="#A78BFA"/>
+                              <stop offset="100%" stop-color="#6366F1"/>
+                            </radialGradient>
+                          </defs>
+                        </svg>
+                      </div>
+                      <div class="legend mt-16">
+                        <span><i style="background:#6366F1;"></i> 类目 (1,284)</span>
+                        <span><i style="background:#8B5CF6;"></i> 品牌 (486)</span>
+                        <span><i style="background:#10B981;"></i> 属性 (8,420)</span>
+                        <span><i style="background:#F59E0B;"></i> 用户 (12,840)</span>
+                        <span><i style="background:#06B6D4;"></i> 评论 (5,820)</span>
+                        <span><i style="background:#EC4899;"></i> 订单 (1,820)</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="card">
+                    <div class="card-header">
+                      <div class="card-title">实体浏览</div>
+                      <span class="link">高级检索</span>
+                    </div>
+                    <div class="card-body" style="padding-top:14px;">
+                      <input class="form-input" placeholder="搜索实体名称 / 别名" style="width:100%; margin-bottom:12px;" />
+                      <div style="display:flex; flex-direction:column; gap:8px;">
+                        <div class="entity-tag"><i style="background:#6366F1;"></i>iPhone 15 Pro · 商品</div>
+                        <div class="entity-tag"><i style="background:#6366F1;"></i>小米 14 Ultra · 商品</div>
+                        <div class="entity-tag"><i style="background:#10B981;"></i>运行内存 12GB · 属性</div>
+                        <div class="entity-tag"><i style="background:#8B5CF6;"></i>Apple · 品牌</div>
+                        <div class="entity-tag"><i style="background:#F59E0B;"></i>user_88291 · 用户</div>
+                      </div>
+                      <div style="border-top:1px solid var(--border-light); margin-top:16px; padding-top:14px;">
+                        <div class="text-sm" style="font-weight:600; margin-bottom:10px;">度中心性 Top 5</div>
+                        <div style="display:flex; flex-direction:column; gap:9px;">
+                          <div><div class="flex items-center" style="justify-content:space-between; font-size:12.5px;"><span>iPhone 15 Pro</span><span class="muted">1,284</span></div><div class="conf-bar"><i style="width:100%"></i></div></div>
+                          <div><div class="flex items-center" style="justify-content:space-between; font-size:12.5px;"><span>Apple</span><span class="muted">986</span></div><div class="conf-bar"><i style="width:76%"></i></div></div>
+                          <div><div class="flex items-center" style="justify-content:space-between; font-size:12.5px;"><span>手机数码（类目）</span><span class="muted">742</span></div><div class="conf-bar"><i style="width:57%"></i></div></div>
+                          <div><div class="flex items-center" style="justify-content:space-between; font-size:12.5px;"><span>骁龙 8 Gen3</span><span class="muted">518</span></div><div class="conf-bar"><i style="width:40%"></i></div></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- 构建任务 -->
+                <div class="card mt-24">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">构建任务</div>
+                      <div class="card-subtitle">增量抽取与全量重建任务队列</div>
+                    </div>
+                    <button class="btn btn-sm btn-secondary">新建任务</button>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>任务</th><th>图谱</th><th>方式</th><th>进度</th><th>开始时间</th><th>状态</th><th>操作</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><b>增量实体抽取</b><div class="muted text-sm">job_9c21</div></td>
+                            <td>金融实体图谱</td>
+                            <td>LLM 抽取</td>
+                            <td><div class="conf"><div class="bar"><i style="width:78%"></i></div><span class="val">78%</span></div></td>
+                            <td class="muted text-sm">今天 15:02</td>
+                            <td><span class="status-dot warning">运行中</span></td>
+                            <td><div class="row-actions"><button class="btn btn-ghost btn-sm">暂停</button></div></td>
+                          </tr>
+                          <tr>
+                            <td><b>关系对齐与去重</b><div class="muted text-sm">job_9c18</div></td>
+                            <td>电商商品图谱</td>
+                            <td>规则 + 嵌入</td>
+                            <td><div class="conf"><div class="bar"><i style="width:100%"></i></div><span class="val">100%</span></div></td>
+                            <td class="muted text-sm">今天 11:40</td>
+                            <td><span class="status-dot success">已完成</span></td>
+                            <td><div class="row-actions"><button class="btn btn-ghost btn-sm">查看日志</button></div></td>
+                          </tr>
+                          <tr>
+                            <td><b>全量图谱重建</b><div class="muted text-sm">job_9c10</div></td>
+                            <td>医疗知识图谱</td>
+                            <td>LLM + 专家标注</td>
+                            <td><div class="conf"><div class="bar"><i style="width:35%"></i></div><span class="val">35%</span></div></td>
+                            <td class="muted text-sm">今天 09:15</td>
+                            <td><span class="status-dot warning">运行中</span></td>
+                            <td><div class="row-actions"><button class="btn btn-ghost btn-sm">暂停</button></div></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 知识图谱列表（分页） ========== -->
+              <section class="tab-panel" id="tab-list">
+                <div class="card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">知识图谱列表</div>
+                      <div class="card-subtitle">共 <b id="listTotal">0</b> 个图谱 · 支持关键词搜索、状态筛选与分页浏览</div>
+                    </div>
+                    <div class="filter-bar" style="display:flex; gap:8px; align-items:center;">
+                      <input class="form-input" id="listSearch" placeholder="搜索图谱名称 / key / 描述" />
+                      <select class="form-select" id="listStatus" style="height:34px; width:120px;">
+                        <option value="">全部状态</option>
+                        <option value="已发布">已发布</option>
+                        <option value="构建中">构建中</option>
+                        <option value="草稿">草稿</option>
+                        <option value="已停用">已停用</option>
+                      </select>
+                      <button class="btn btn-sm btn-primary" id="btnNewGraph">+ 新建图谱</button>
+                    </div>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>图谱名称</th><th>图谱 key</th><th>类型</th><th>版本</th><th>实体</th><th>关系</th><th>构建方式</th><th>更新时间</th><th>状态</th><th class="text-right">操作</th></tr>
+                        </thead>
+                        <tbody id="listBody"></tbody>
+                      </table>
+                    </div>
+                    <div class="pager" style="padding:12px 16px; border-top:1px solid var(--border-light);">
+                      <span class="pager-info" id="pagerInfo">—</span>
+                      <div style="margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                        <span class="text-sm muted">每页</span>
+                        <select class="form-select" id="pageSize" style="height:30px; width:72px;">
+                          <option value="5">5</option>
+                          <option value="10" selected>10</option>
+                          <option value="20">20</option>
+                        </select>
+                        <span class="text-sm muted">条</span>
+                        <div class="pagination">
+                          <button class="page-btn" id="prevPage">上一页</button>
+                          <button class="page-btn active" id="curPage">1</button>
+                          <button class="page-btn" id="nextPage">下一页</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 知识图谱编辑 ========== -->
+              <section class="tab-panel" id="tab-edit">
+                <div class="kg-edit-grid">
+                  <div class="card">
+                    <div class="card-header">
+                      <div class="card-title">选择图谱</div>
+                      <span class="text-sm muted" id="editCount">0</span>
+                    </div>
+                    <div class="card-body" style="padding-top:12px;">
+                      <div class="kg-pick" id="editPick"></div>
+                      <div class="notice" style="margin:12px 0 0;">
+                        <span>停用状态的图谱不可编辑；Schema 变更需重新构建后生效。</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <div class="card">
+                      <div class="card-header">
+                        <div>
+                          <div class="card-title">图谱基础信息</div>
+                          <div class="card-subtitle">修改后点击保存，修订号自动递增</div>
+                        </div>
+                        <span id="editStatus" class="tag success tag-solid">已发布</span>
+                      </div>
+                      <div class="card-body">
+                        <div class="form-row row-2">
+                          <div>
+                            <label class="form-label">图谱名称<i class="required">*</i></label>
+                            <input class="form-input" id="edName" />
+                          </div>
+                          <div>
+                            <label class="form-label">图谱标识 key<i class="required">*</i></label>
+                            <input class="form-input" id="edKey" />
+                          </div>
+                        </div>
+                        <div class="form-row row-3">
+                          <div>
+                            <label class="form-label">图谱类型</label>
+                            <select class="form-select" id="edType">
+                              <option>GraphRAG</option><option>规则图谱</option><option>混合图谱</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label class="form-label">当前版本</label>
+                            <input class="form-input" id="edVersion" />
+                          </div>
+                          <div>
+                            <label class="form-label">构建方式</label>
+                            <select class="form-select" id="edBuild">
+                              <option>LLM 抽取</option><option>规则抽取</option><option>专家标注</option><option>LLM + 规则</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="form-row row-2">
+                          <div>
+                            <label class="form-label">存储引擎</label>
+                            <select class="form-select" id="edStore">
+                              <option>Neo4j</option><option>NebulaGraph</option><option>JanusGraph</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label class="form-label">更新策略</label>
+                            <select class="form-select" id="edPolicy">
+                              <option>每日增量</option><option>实时（CDC）</option><option>手动触发</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div class="form-row">
+                          <label class="form-label">图谱描述</label>
+                          <textarea class="form-textarea" id="edDesc" style="min-height:76px;"></textarea>
+                        </div>
+                        <div class="flex gap-8" style="justify-content:flex-end;">
+                          <button class="btn btn-secondary" id="btnEditReset">重置</button>
+                          <button class="btn btn-primary" id="btnEditSave">保存修改</button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="card mt-16">
+                      <div class="card-header">
+                        <div>
+                          <div class="card-title">Schema：实体类型 / 关系类型</div>
+                          <div class="card-subtitle">当前图谱共 <b id="typeCount">0</b> 个实体类型 · <b id="relCount">0</b> 个关系类型</div>
+                        </div>
+                        <div class="flex gap-8">
+                          <button class="btn btn-sm btn-secondary" id="btnAddType">+ 新增实体类型</button>
+                          <button class="btn btn-sm btn-ghost" id="btnAddRelType">+ 新增关系类型</button>
+                        </div>
+                      </div>
+                      <div class="card-body no-pad">
+                        <div class="table-wrap">
+                          <table>
+                            <thead>
+                              <tr><th>实体类型</th><th>关键属性</th><th>实例数</th><th>主键</th><th>状态</th><th class="text-right">操作</th></tr>
+                            </thead>
+                            <tbody id="typeBody"></tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card mt-16">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">图谱编辑与更新 · 四种方式</div>
+                      <div class="card-subtitle">LLM 抽取 / 规则抽取 / 文本 JSON 与列表 / 思维导图节点编辑，任一方式的改动都作用到当前图谱 Schema</div>
+                    </div>
+                    <div class="flex gap-8">
+                      <button class="btn btn-sm btn-secondary" id="btnIncUpdate">增量更新</button>
+                      <button class="btn btn-sm btn-primary" id="btnFullRebuild">全量重建</button>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="kg-tabs" id="editTabs">
+                      <div class="kg-tab active" data-e="llm"><span class="idx">01</span>LLM 抽取</div>
+                      <div class="kg-tab" data-e="rule"><span class="idx">02</span>规则抽取</div>
+                      <div class="kg-tab" data-e="text"><span class="idx">03</span>文本 JSON / 列表</div>
+                      <div class="kg-tab" data-e="mind"><span class="idx">04</span>思维导图节点编辑</div>
+                    </div>
+
+                    <!-- ========== 01 LLM 抽取 ========== -->
+                    <section class="kg-epanel active" id="ep-llm">
+                      <div class="form-row row-3">
+                        <div>
+                          <label class="form-label">数据源</label>
+                          <select class="form-select" id="llmSrc">
+                            <option>产品文档</option><option>商品评论</option><option>客服工单</option><option>供应链单据</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="form-label">抽取模型</label>
+                          <select class="form-select" id="llmModel">
+                            <option>Qwen-Max</option><option>GPT-4o</option><option>内部抽取模型 v2</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label class="form-label">置信度阈值</label>
+                          <select class="form-select" id="llmThresh">
+                            <option>0.90</option><option selected>0.85</option><option>0.75</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div class="form-row">
+                        <label class="form-label">语料样本</label>
+                        <textarea class="form-textarea mono" id="llmText" style="min-height:84px; font-size:12.5px;">iPhone 15 Pro 是 Apple 于 2023 年发布的旗舰手机，售价 7999 元，运行内存 8GB，属于手机数码类目；小米 14 Ultra 由小米生产，售价 6499 元。</textarea>
+                      </div>
+                      <div class="form-row">
+                        <label class="form-label">抽取提示词模板</label>
+                        <textarea class="form-textarea mono" id="llmPrompt" style="min-height:76px; font-size:12.5px;">从给定文本中抽取实体与关系，输出 JSON：{entities:[{name,type,attrs}], relations:[{source,target,type}]}。仅输出置信度 >= 0.85 的结果，属性需给出取值范围。</textarea>
+                      </div>
+                      <div class="flex gap-8" style="margin-top:4px; align-items:center; flex-wrap:wrap;">
+                        <button class="btn btn-sm btn-primary" id="btnLlmRun">开始抽取</button>
+                        <button class="btn btn-sm btn-ghost" id="btnLlmReset">重置</button>
+                        <span class="muted text-sm" id="llmMeta" style="margin-left:auto;">尚未抽取</span>
+                      </div>
+                      <div style="margin-top:12px; border:1px solid var(--border-light); border-radius:10px; overflow:hidden;">
+                        <div class="table-wrap">
+                          <table>
+                            <thead>
+                              <tr><th style="width:38px;"><input type="checkbox" id="llmAll" checked /></th><th>类型</th><th>名称</th><th>置信度</th><th>来源片段</th></tr>
+                            </thead>
+                            <tbody id="llmBody"></tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div class="flex gap-8" style="margin-top:12px; justify-content:flex-end;">
+                        <button class="btn btn-sm btn-secondary" id="btnLlmApply">应用到 Schema（0 项）</button>
+                      </div>
+                    </section>
+
+                    <!-- ========== 02 规则抽取 ========== -->
+                    <section class="kg-epanel" id="ep-rule">
+                      <div class="notice" style="margin-bottom:12px;">
+                        <span>规则按序执行，命中结果写入图谱；正则用于结构化字段，词典用于实体识别，模板用于关系抽取。</span>
+                      </div>
+                      <div style="border:1px solid var(--border-light); border-radius:10px; overflow:hidden;">
+                        <div class="table-wrap">
+                          <table>
+                            <thead>
+                              <tr><th>规则名称</th><th>类型</th><th>表达式</th><th>目标</th><th>命中数</th><th>状态</th><th class="text-right">操作</th></tr>
+                            </thead>
+                            <tbody id="ruleBody"></tbody>
+                          </table>
+                        </div>
+                      </div>
+                      <div class="flex gap-8" style="margin-top:12px; flex-wrap:wrap;">
+                        <button class="btn btn-sm btn-secondary" id="btnAddRule">+ 新增规则</button>
+                        <button class="btn btn-sm btn-primary" id="btnRunRules">运行全部规则</button>
+                        <span class="muted text-sm" id="ruleMeta" style="margin-left:auto;">共 0 条规则 · 启用 0 条</span>
+                      </div>
+                      <pre class="json-out" id="ruleOut" style="margin-top:12px; display:none;"></pre>
+                    </section>
+
+                    <!-- ========== 03 文本 JSON / 列表 ========== -->
+                    <section class="kg-epanel" id="ep-text">
+                      <div class="flex gap-8" style="align-items:center; margin-bottom:10px; flex-wrap:wrap;">
+                        <div class="segmented" id="textFmt">
+                          <span class="seg active" data-f="json">JSON</span>
+                          <span class="seg" data-f="list">列表（CSV）</span>
+                        </div>
+                        <select class="form-select" id="textScope" style="height:32px; width:170px;">
+                          <option value="entity">实体类型 Schema</option>
+                          <option value="relation">关系类型 Schema</option>
+                        </select>
+                        <span class="muted text-sm" style="margin-left:auto;">编辑后可校验并写回当前图谱 Schema</span>
+                      </div>
+                      <textarea class="form-textarea mono" id="textEdit" style="min-height:320px; font-size:12.5px;"></textarea>
+                      <div class="flex gap-8" style="margin-top:10px; flex-wrap:wrap;">
+                        <button class="btn btn-sm btn-secondary" id="btnTextGen">从 Schema 生成</button>
+                        <button class="btn btn-sm btn-secondary" id="btnTextFmt">格式化</button>
+                        <button class="btn btn-sm btn-primary" id="btnTextCheck">校验</button>
+                        <button class="btn btn-sm btn-secondary" id="btnTextApply">应用到 Schema</button>
+                      </div>
+                      <div id="textCheckOut"></div>
+                    </section>
+
+                    <!-- ========== 04 思维导图节点编辑 ========== -->
+                    <section class="kg-epanel" id="ep-mind">
+                      <div class="flex gap-8" style="margin-bottom:10px; flex-wrap:wrap; align-items:center;">
+                        <span class="muted text-sm">点击节点进行编辑：根节点下可新增实体类型，实体类型下可新增属性</span>
+                        <div class="flex gap-8" style="margin-left:auto;">
+                          <button class="btn btn-sm btn-secondary" id="btnMindReload">刷新</button>
+                        </div>
+                      </div>
+                      <div class="eway-grid">
+                        <div class="mind-wrap2" id="editMind"></div>
+                        <div class="node-card">
+                          <h5>节点详情</h5>
+                          <div class="muted text-sm" style="margin-bottom:6px;">编辑后点击保存，同步到 Schema 与列表</div>
+                          <div class="fm-row"><span class="fm-k">名称</span><span class="fm-v"><input class="ext-inp" id="enName" /></span></div>
+                          <div class="fm-row"><span class="fm-k">节点类型</span><span class="fm-v"><input class="ext-inp" id="enKind" disabled /></span></div>
+                          <div class="fm-row"><span class="fm-k">实例数</span><span class="fm-v"><input class="ext-inp" id="enInst" /></span></div>
+                          <div class="fm-row"><span class="fm-k">主键</span><span class="fm-v"><input class="ext-inp" id="enPk" /></span></div>
+                          <div class="flex gap-8" style="margin-top:12px; flex-wrap:wrap;">
+                            <button class="btn btn-sm btn-primary" id="btnNodeSave">保存节点</button>
+                            <button class="btn btn-sm btn-secondary" id="btnNodeAdd">+ 新增子节点</button>
+                            <button class="btn btn-sm btn-ghost" id="btnNodeDel" style="color:var(--danger);">删除节点</button>
+                          </div>
+                          <div class="muted text-sm" id="enTip" style="margin-top:10px;">未选中节点</div>
+                        </div>
+                      </div>
+                    </section>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 知识图谱查询 ========== -->
+              <section class="tab-panel" id="tab-query">
+                <div class="card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">知识图谱查询</div>
+                      <div class="card-subtitle">支持 Cypher / GQL 图查询语言与自然语言检索，结果可切换表格与图视图</div>
+                    </div>
+                    <div class="segmented" id="qMode">
+                      <span class="seg active" data-m="cypher">Cypher</span>
+                      <span class="seg" data-m="gql">GQL</span>
+                      <span class="seg" data-m="nl">自然语言</span>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="flex gap-8" style="margin-bottom:10px; flex-wrap:wrap;" id="qChips">
+                      <span class="file-chip" data-q="MATCH (p:商品)-[:belongs_to]->(c:类目 {name:'手机数码'}) RETURN p.name, p.price LIMIT 20">查询手机数码类目下的商品</span>
+                      <span class="file-chip" data-q="MATCH (u:用户)-[:purchased]->(o:订单)-[:contains]->(p:商品) RETURN u.id, p.name LIMIT 50">查询用户购买过的商品</span>
+                      <span class="file-chip" data-q="MATCH (b:品牌)-[:produced_by]->(p:商品) RETURN b.name, count(p) AS cnt ORDER BY cnt DESC LIMIT 10">统计各品牌商品数量</span>
+                      <span class="file-chip" data-nl="1">近一个月销量最高的十款手机分别属于哪些品牌？</span>
+                    </div>
+                    <textarea class="qinput mono" id="qInput" rows="4">MATCH (p:商品)-[:belongs_to]->(c:类目 {name:'手机数码'}) RETURN p.name, p.price LIMIT 20</textarea>
+                    <div class="flex gap-8" style="margin-top:10px; flex-wrap:wrap; align-items:center;">
+                      <select class="form-select" id="qGraph" style="height:34px; width:190px;"></select>
+                      <button class="btn btn-primary" id="btnRunQuery">执行查询</button>
+                      <button class="btn btn-ghost" id="btnClearQuery">清空</button>
+                      <span class="q-meta" style="margin-left:auto;">命中 <b id="qHit">—</b> · 耗时 <b id="qCost">—</b></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card mt-16">
+                  <div class="card-header">
+                    <div class="card-title">查询结果</div>
+                    <div class="segmented" id="qView">
+                      <span class="seg active" data-v="table">表格</span>
+                      <span class="seg" data-v="mind">思维导图</span>
+                      <span class="seg" data-v="node">节点</span>
+                      <span class="seg" data-v="json">JSON</span>
+                    </div>
+                  </div>
+                  <div class="card-body no-pad" id="qWrapTable">
+                    <div class="table-wrap">
+                      <table>
+                        <thead><tr id="qHead"></tr></thead>
+                        <tbody id="qBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div class="card-body" id="qWrapMind" style="display:none;">
+                    <div class="mind-wrap2" id="qMind" style="height:360px;"></div>
+                    <div class="legend mt-16">
+                      <span><i style="background:#6366F1;"></i>查询主题</span>
+                      <span><i style="background:#0EA5E9;"></i>实体</span>
+                      <span><i style="background:#10B981;"></i>属性 / 取值</span>
+                    </div>
+                  </div>
+                  <div class="card-body" id="qWrapNode" style="display:none;">
+                    <div class="node-grid" id="qNodes"></div>
+                  </div>
+                  <div class="card-body" id="qWrapJson" style="display:none;">
+                    <div class="flex gap-8" style="margin-bottom:10px; align-items:center;">
+                      <span class="muted text-sm">结构化返回，可被应用直接解析（与 MCP / REST 接口返回一致）</span>
+                      <button class="btn btn-sm btn-ghost" id="btnQCopy" style="margin-left:auto;">复制 JSON</button>
+                    </div>
+                    <pre class="json-out" id="qJson"></pre>
+                  </div>
+                </div>
+
+                <div class="card mt-16">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">查询历史</div>
+                      <div class="card-subtitle">近 10 次执行记录</div>
+                    </div>
+                    <button class="btn btn-sm btn-ghost" id="btnClearHistory">清空历史</button>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead><tr><th>查询语句</th><th>图谱</th><th>方式</th><th>命中</th><th>耗时</th><th>执行时间</th><th class="text-right">操作</th></tr></thead>
+                        <tbody id="qHistoryBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 实体与关系浏览 ========== -->
+              <section class="tab-panel" id="tab-entity">
+                <div class="card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">实体浏览 · <span id="entGraph">电商商品图谱</span></div>
+                      <div class="card-subtitle">按实体类型查看实例、别名与邻接关系</div>
+                    </div>
+                    <div class="flex gap-8" style="align-items:center;">
+                      <select class="form-select" id="entGraphSel" style="height:34px; width:180px;"></select>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="flex gap-8" style="margin-bottom:12px; flex-wrap:wrap;" id="entTypes"></div>
+                    <input class="form-input" id="entSearch" placeholder="搜索实体名称 / 别名" style="width:100%; margin-bottom:12px;" />
+                    <div class="table-wrap" style="border:1px solid var(--border-light); border-radius:var(--radius);">
+                      <table>
+                        <thead><tr><th>实体名称</th><th>类型</th><th>别名</th><th>邻接关系数</th><th>置信度</th><th>更新时间</th></tr></thead>
+                        <tbody id="entBody"></tbody>
+                      </table>
+                    </div>
+                    <div class="pager" style="padding-top:12px;">
+                      <span class="pager-info" id="entPagerInfo">—</span>
+                      <div style="margin-left:auto; display:flex; align-items:center; gap:10px;">
+                        <div class="pagination">
+                          <button class="page-btn" id="entPrev">上一页</button>
+                          <button class="page-btn active" id="entCur">1</button>
+                          <button class="page-btn" id="entNext">下一页</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 构建任务 ========== -->
+              <section class="tab-panel" id="tab-task">
+                <div class="card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">构建任务</div>
+                      <div class="card-subtitle">增量抽取、关系对齐与全量重建的任务队列</div>
+                    </div>
+                    <button class="btn btn-sm btn-primary" id="btnNewTask">+ 新建任务</button>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>任务</th><th>图谱</th><th>方式</th><th>进度</th><th>开始时间</th><th>状态</th><th class="text-right">操作</th></tr>
+                        </thead>
+                        <tbody id="taskBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card mt-16">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">调度与执行日志</div>
+                      <div class="card-subtitle">最近一次全量重建的执行记录</div>
+                    </div>
+                    <span class="tag gray tag-solid">Cron: 0 2 * * *</span>
+                  </div>
+                  <div class="card-body">
+                    <div style="font-family:var(--font-mono); font-size:12px; line-height:1.9; background:var(--bg-soft); border-radius:8px; padding:12px 14px; color:var(--text-secondary);">
+                      <div>[2026-10-10 02:00:01] INFO  schedule triggered · 电商商品图谱 · 每日增量</div>
+                      <div>[2026-10-10 02:00:07] INFO  load delta docs: 12,840</div>
+                      <div>[2026-10-10 02:03:22] INFO  entity extraction done: 3,120 entities</div>
+                      <div>[2026-10-10 02:05:41] INFO  relation alignment done: 7,486 relations</div>
+                      <div>[2026-10-10 02:06:03] WARN  8 entities need manual review</div>
+                      <div>[2026-10-10 02:06:10] INFO  graph committed · version v3.2.0</div>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 图谱文档 ========== -->
+              <section class="tab-panel" id="tab-doc">
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">图谱开放能力</div>
+                  <div class="card-subtitle">通过 MCP Server / REST API / SDK 三种方式访问图谱与本体，均使用同一把 API Key 鉴权</div>
+                </div>
+                <span class="tag tag-accent">Bearer $AI_STUDIO_API_KEY</span>
+              </div>
+              <div class="card-body">
+                <div class="doc-grid">
+                  <div class="doc-way">
+                    <div class="doc-way-h"><b>MCP Server</b><span class="tag gray tag-solid">推荐</span></div>
+                    <div class="text-sm muted">以 MCP 工具方式暴露图谱检索与本体校验能力，Claude / Cursor 等客户端可直接接入，无需自行编写图查询语言。</div>
+                  </div>
+                  <div class="doc-way">
+                    <div class="doc-way-h"><b>REST API（curl）</b></div>
+                    <div class="text-sm muted">标准 HTTP 接口，适用于后端服务、数据管道与定时任务；支持分页检索、构建任务触发与本体约束校验。</div>
+                  </div>
+                  <div class="doc-way">
+                    <div class="doc-way-h"><b>Python / Java SDK</b></div>
+                    <div class="text-sm muted">封装鉴权、重试与分页逻辑，适合在应用内做 GraphRAG 问答、实体写入与批量校验。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">MCP 工具列表</div>
+                  <div class="card-subtitle">MCP Server 暴露的图谱 / 本体工具，客户端通过 tools/call 调用</div>
+                </div>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>工具</th><th>说明</th><th>主要入参</th><th class="text-right">类型</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="mono">kg.search_entities</td><td>混合检索实体（向量 + 关键词）</td><td class="mono text-sm">query, top_k, entity_types[]</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td class="mono">kg.expand_neighbors</td><td>N 跳邻接实体扩展，用于 GraphRAG 上下文</td><td class="mono text-sm">entity_id, hops, rel_types[]</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td class="mono">kg.query_cypher</td><td>执行只读 Cypher 查询（超时自动中断）</td><td class="mono text-sm">cypher, limit, timeout_ms</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td class="mono">kg.upsert_entities</td><td>实体 / 关系批量写入（幂等，按主键合并）</td><td class="mono text-sm">graph_key, entities[], relations[]</td><td class="text-right"><span class="tag warning tag-solid">写入</span></td></tr>
+                      <tr><td class="mono">kg.build_job</td><td>查询构建任务进度 / 触发增量与全量构建</td><td class="mono text-sm">graph_key, action(query|trigger)</td><td class="text-right"><span class="tag warning tag-solid">写入</span></td></tr>
+                      <tr><td class="mono">onto.get_schema</td><td>获取本体 Schema：实体 / 关系 / 属性与约束</td><td class="mono text-sm">ontology_key, version</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td class="mono">onto.validate</td><td>按约束 YAML 校验实体数据（必填 / 正则 / 枚举 / 范围）</td><td class="mono text-sm">ontology_key, entity, payload</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">curl 接口列表</div>
+                  <div class="card-subtitle">REST API v1 · 基础地址 https://api.example.com/v1</div>
+                </div>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>方法</th><th>路径</th><th>说明</th><th class="text-right">类型</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><span class="tag primary tag-solid">POST</span></td><td class="mono text-sm">/graphs/{graph_key}/query</td><td>执行图查询（Cypher / GQL）</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag success tag-solid">GET</span></td><td class="mono text-sm">/graphs/{graph_key}/entities/{id}</td><td>实体详情与一跳邻接关系</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag primary tag-solid">POST</span></td><td class="mono text-sm">/graphs/{graph_key}/entities:search</td><td>实体检索，支持分页与类型过滤</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag primary tag-solid">POST</span></td><td class="mono text-sm">/graphs/{graph_key}/build-jobs</td><td>触发增量 / 全量构建任务</td><td class="text-right"><span class="tag warning tag-solid">写入</span></td></tr>
+                      <tr><td><span class="tag success tag-solid">GET</span></td><td class="mono text-sm">/ontologies/{ontology_key}/schema</td><td>本体 Schema 与版本信息</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag primary tag-solid">POST</span></td><td class="mono text-sm">/ontologies/{ontology_key}:validate</td><td>按本体约束校验实体数据</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag success tag-solid">GET</span></td><td class="mono text-sm">/ontologies/{ontology_key}/changes</td><td>本体变更申请列表与审核状态</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">使用案例</div>
+                  <div class="card-subtitle">复制即可运行，替换 API Key 与图谱标识</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 1 · MCP 客户端检索实体</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "kg.search_entities",
+    "arguments": {
+      "query": "iPhone 15 Pro 的运行内存",
+      "top_k": 10,
+      "entity_types": ["商品", "属性"]
+    }
+  }
+}</pre>
+                </div>
+
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 2 · curl 执行 Cypher 查询</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">curl -X POST https://api.example.com/v1/graphs/kg_ecommerce/query \
+  -H "Authorization: Bearer $AI_STUDIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "cypher",
+    "statement": "MATCH (p:商品)-[:belongs_to]-&gt;(c:类目 {name: \'手机数码\'}) RETURN p.name, p.price LIMIT 20"
+  }'</pre>
+                </div>
+
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 3 · curl 按本体约束校验实体数据</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">curl -X POST https://api.example.com/v1/ontologies/ontology_ecommerce:validate \
+  -H "Authorization: Bearer $AI_STUDIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity": "商品",
+    "payload": {
+      "sku_id": "SKU00012345",
+      "name": "iPhone 15 Pro",
+      "price": 7999.00,
+      "level": "旗舰"
+    }
+  }'
+
+# 响应
+{
+  "valid": false,
+  "errors": [
+    { "field": "sku_id", "rule": "pattern ^SKU[0-9]{8,12}$", "msg": "长度不足 8 位" }
+  ],
+  "warnings": [{ "field": "level", "msg": "枚举值建议收敛为：入门 | 中端 | 旗舰" }]
+}</pre>
+                </div>
+
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 4 · Python SDK 做 GraphRAG 问答（含图谱路径溯源）</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">import os
+from ai_studio import GraphRAG
+
+client = GraphRAG(api_key=os.environ["AI_STUDIO_API_KEY"])
+
+ans = client.ask(
+    question="近一个月销量最高的手机分别属于哪些品牌？",
+    graph_key="kg_ecommerce",
+    hops=2,          # 邻接扩展跳数
+    top_k=8,         # 召回实体数
+    with_path=True   # 返回用于溯源的图谱路径
+)
+
+print(ans.answer)
+for path in ans.paths:
+    print(" → ".join(path))
+
+# 输出示例
+# 近一个月销量 Top3 为 iPhone 15 Pro、小米 14 Ultra、华为 Mate 60，分别属于 Apple、小米、华为。
+# iPhone 15 Pro → belongs_to → 手机数码 → produced_by → Apple</pre>
+                </div>
+
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 5 · 触发增量构建并轮询进度</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">JOB=$(curl -s -X POST https://api.example.com/v1/graphs/kg_ecommerce/build-jobs \
+  -H "Authorization: Bearer $AI_STUDIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "incremental", "sources": ["product_doc", "review_doc"]}' | jq -r .job_id)
+
+curl "https://api.example.com/v1/graphs/kg_ecommerce/build-jobs/$JOB" \
+  -H "Authorization: Bearer $AI_STUDIO_API_KEY"
+
+# 响应：{ "job_id": "job_9c21", "status": "running", "progress": 78, "eta": "约 4 分钟" }</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">图谱使用步骤教程</div>
+                  <div class="card-subtitle">从本体定义到线上检索的完整流程</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="doc-step">
+                  <span class="n">1</span>
+                  <div class="b"><b>定义本体（本体图谱Onto）</b>新建本体图谱 → 用「状态编辑图 / 属性画布 / YAML / Chat」四种方式定义实体、关系与属性约束 → 在「本体图谱审核」中通过变更 → 发布版本并生成约束 YAML。</div>
+                </div>
+                <div class="doc-step">
+                  <span class="n">2</span>
+                  <div class="b"><b>构建图谱（知识图谱Graph）</b>在「知识图谱编辑」绑定本体 Schema 与数据源 → 选择抽取方式（LLM 抽取 / 规则抽取 / 专家标注）→ 在「构建任务」中触发增量或全量构建 → 观察进度与日志。</div>
+                </div>
+                <div class="doc-step">
+                  <span class="n">3</span>
+                  <div class="b"><b>配置检索策略</b>选择目标图谱 → 设置召回方式（GraphRAG 邻接扩展 hops、向量召回、关键词召回）→ 绑定知识库与重排模型 → 在「知识图谱查询」中用 Cypher / 自然语言验证召回效果。</div>
+                </div>
+                <div class="doc-step">
+                  <span class="n">4</span>
+                  <div class="b"><b>接入应用</b>创建 API Key 并授予只读或写入权限 → MCP 客户端配置 Server 地址，或后端直接调用 REST API / SDK → 用 kg.search_entities、kg.expand_neighbors 拼装上下文。</div>
+                </div>
+                <div class="doc-step">
+                  <span class="n">5</span>
+                  <div class="b"><b>运维与迭代</b>监控「构建任务」成功率与耗时 → 处理本体变更申请并回归校验（onto.validate）→ 发布新版本后灰度切换 graph_key → 定期用「实体与关系浏览」抽查数据质量。</div>
+                </div>
+              </div>
+            </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('knowledge-graph');
+
+    /* ==================== 二级导航切换 ==================== */
+    var PANEL_META = {
+      overview: ['知识图谱概览', '图谱规模、健康度与 GraphRAG 接入的整体视图，含可视化与实体浏览'],
+      list: ['知识图谱列表', '全部图谱的分页管理：搜索、状态筛选、每页条数与上下翻页'],
+      edit: ['知识图谱编辑', '选定图谱后编辑基础信息与 Schema（实体类型 / 关系类型）'],
+      query: ['知识图谱查询', 'Cypher / GQL / 自然语言三种方式查询图谱，结果支持表格与图视图'],
+      entity: ['实体与关系浏览', '按实体类型浏览实例、别名与邻接关系，支持关键词搜索与分页'],
+      task: ['构建任务', '增量抽取、关系对齐与全量重建的任务队列与执行日志'],
+      doc: ['图谱文档', '开放的图谱 MCP 工具、curl 接口列表、使用案例与图谱使用步骤教程']
+    };
+
+    function switchTab(key) {
+      var meta = PANEL_META[key];
+      if (!meta) return;
+      document.querySelectorAll('.subnav-item').forEach(function (x) {
+        x.classList.toggle('active', x.dataset.tab === key);
+      });
+      document.querySelectorAll('.tab-panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'tab-' + key);
+      });
+      document.getElementById('panelTitle').textContent = meta[0];
+      document.getElementById('panelSub').textContent = meta[1];
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.querySelectorAll('.subnav-item').forEach(function (el) {
+      el.addEventListener('click', function () { switchTab(el.dataset.tab); });
+    });
+    document.querySelectorAll('[data-tab-jump]').forEach(function (a) {
+      a.addEventListener('click', function (e) { e.preventDefault(); switchTab(a.dataset.tabJump); });
+    });
+
+    /* ==================== 图谱总览交互 ==================== */
+    var rows = Array.prototype.slice.call(document.querySelectorAll('#graphBody tr'));
+    document.querySelectorAll('#graphTabs .tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        document.querySelectorAll('#graphTabs .tab').forEach(function (x) { x.classList.remove('active'); });
+        t.classList.add('active');
+        var tab = t.textContent.trim();
+        rows.forEach(function (r) {
+          var s = r.querySelector('td:nth-child(8) .tag').textContent.trim();
+          var ok = tab.indexOf('全部') > -1 ||
+            (tab.indexOf('已发布') > -1 && s === '已发布') ||
+            (tab.indexOf('构建中') > -1 && s === '构建中') ||
+            (tab.indexOf('草稿') > -1 && s === '草稿');
+          r.style.display = ok ? '' : 'none';
+        });
+      });
+    });
+
+    rows.forEach(function (r) {
+      r.addEventListener('click', function (e) {
+        if (e.target.closest('a, button')) return;
+        rows.forEach(function (x) { x.classList.remove('selected'); });
+        r.classList.add('selected');
+        document.getElementById('vizName').textContent = r.dataset.name;
+        document.getElementById('vizE').textContent = r.dataset.v;
+        document.getElementById('vizR').textContent = r.dataset.r;
+      });
+    });
+
+    document.querySelectorAll('.node-btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        if (!b.closest('#entTypes')) return;
+        document.querySelectorAll('.node-btn').forEach(function (x) { x.classList.remove('active'); });
+        b.classList.add('active');
+      });
+    });
+
+    /* ==================== 图谱数据 ==================== */
+    var KG_LIST = [
+      { name: '电商商品图谱', key: 'kg_ecommerce', type: 'GraphRAG', version: '3.2.0', e: '28,420', r: '62,840', build: 'LLM 抽取', time: '2026-10-08', status: '已发布', store: 'Neo4j', policy: '每日增量', desc: '商品 / 类目 / 品牌 / 属性' },
+      { name: '企业组织图谱', key: 'kg_org', type: '规则图谱', version: '2.1.5', e: '5,820', r: '12,486', build: '规则抽取', time: '2026-09-25', status: '已发布', store: 'NebulaGraph', policy: '实时（CDC）', desc: '员工 / 部门 / 岗位' },
+      { name: '金融实体图谱', key: 'kg_finance', type: 'GraphRAG', version: '4.0.1', e: '42,168', r: '98,420', build: 'LLM + 规则', time: '2026-10-09', status: '构建中', store: 'NebulaGraph', policy: '每日增量', desc: '公司 / 人物 / 事件' },
+      { name: '医疗知识图谱', key: 'kg_medical', type: 'GraphRAG', version: '1.8.0', e: '3,684', r: '8,420', build: '专家标注', time: '2026-09-12', status: '已发布', store: 'JanusGraph', policy: '手动触发', desc: '疾病 / 药物 / 症状' },
+      { name: '学术论文图谱', key: 'kg_paper', type: '混合图谱', version: '2.3.2', e: '2,308', r: '4,824', build: 'LLM 抽取', time: '2026-10-05', status: '草稿', store: 'Neo4j', policy: '手动触发', desc: '作者 / 论文 / 引用' },
+      { name: '供应链图谱', key: 'kg_supply', type: '规则图谱', version: '1.4.2', e: '8,940', r: '16,208', build: '规则抽取', time: '2026-10-02', status: '已发布', store: 'Neo4j', policy: '每日增量', desc: '供应商 / 物料 / 仓库' },
+      { name: '客服工单图谱', key: 'kg_ticket', type: '混合图谱', version: '0.9.6', e: '15,620', r: '28,940', build: 'LLM + 规则', time: '2026-10-07', status: '构建中', store: 'NebulaGraph', policy: '实时（CDC）', desc: '工单 / 问题 / 解决方案' },
+      { name: '法律法规图谱', key: 'kg_law', type: 'GraphRAG', version: '2.0.4', e: '6,182', r: '11,046', build: '专家标注', time: '2026-09-28', status: '已发布', store: 'JanusGraph', policy: '手动触发', desc: '法条 / 案例 / 主体' },
+      { name: '设备物联图谱', key: 'kg_iot', type: '规则图谱', version: '1.1.0', e: '32,410', r: '51,882', build: '规则抽取', time: '2026-10-01', status: '已发布', store: 'NebulaGraph', policy: '实时（CDC）', desc: '设备 / 传感器 / 点位' },
+      { name: '营销活动图谱', key: 'kg_market', type: '混合图谱', version: '0.6.3', e: '1,842', r: '3,620', build: 'LLM 抽取', time: '2026-10-06', status: '草稿', store: 'Neo4j', policy: '手动触发', desc: '活动 / 优惠券 / 人群' },
+      { name: '代码仓库图谱', key: 'kg_code', type: '规则图谱', version: '1.2.8', e: '24,660', r: '46,182', build: '规则抽取', time: '2026-09-30', status: '已发布', store: 'Neo4j', policy: '每日增量', desc: '服务 / 接口 / 调用链' },
+      { name: '风控反欺诈图谱', key: 'kg_risk', type: 'GraphRAG', version: '3.0.9', e: '58,920', r: '126,440', build: 'LLM + 规则', time: '2026-10-10', status: '已发布', store: 'NebulaGraph', policy: '实时（CDC）', desc: '账号 / 设备 / 关系网络' },
+      { name: '历史归档图谱', key: 'kg_archive', type: '规则图谱', version: '0.2.1', e: '986', r: '1,842', build: '规则抽取', time: '2026-08-18', status: '已停用', store: 'JanusGraph', policy: '手动触发', desc: '2024 年前历史数据（已归档）' },
+      { name: '测试用例图谱', key: 'kg_test', type: '混合图谱', version: '0.4.5', e: '2,140', r: '4,286', build: 'LLM 抽取', time: '2026-09-20', status: '已停用', store: 'Neo4j', policy: '手动触发', desc: '已迁移至代码仓库图谱' }
+    ];
+
+    var KG_SCHEMA = {
+      kg_ecommerce: [
+        { name: '商品', attrs: 'sku_id / name / price / level', inst: '12,840', pk: 'sku_id', status: '已发布' },
+        { name: '类目', attrs: 'cate_id / name / parent_id', inst: '1,284', pk: 'cate_id', status: '已发布' },
+        { name: '品牌', attrs: 'brand_id / name / country', inst: '486', pk: 'brand_id', status: '已发布' },
+        { name: '用户', attrs: 'user_id / nickname / level', inst: '12,840', pk: 'user_id', status: '已发布' },
+        { name: '订单', attrs: 'order_id / amount / status', inst: '1,820', pk: 'order_id', status: '已发布' }
+      ],
+      kg_org: [
+        { name: '员工', attrs: 'emp_id / name / dept', inst: '3,120', pk: 'emp_id', status: '已发布' },
+        { name: '部门', attrs: 'dept_code / name / parent', inst: '286', pk: 'dept_code', status: '已发布' },
+        { name: '岗位', attrs: 'post_code / name / level', inst: '182', pk: 'post_code', status: '已发布' }
+      ],
+      kg_finance: [
+        { name: '公司', attrs: 'credit_code / name / capital', inst: '18,240', pk: 'credit_code', status: '已发布' },
+        { name: '人物', attrs: 'person_id / name / title', inst: '21,806', pk: 'person_id', status: '已发布' },
+        { name: '事件', attrs: 'event_id / type / date', inst: '2,122', pk: 'event_id', status: '待评审' }
+      ],
+      kg_medical: [
+        { name: '疾病', attrs: 'icd10 / name / dept', inst: '1,842', pk: 'icd10', status: '已发布' },
+        { name: '药物', attrs: 'drug_code / name / dosage', inst: '1,286', pk: 'drug_code', status: '已发布' },
+        { name: '症状', attrs: 'sym_code / name / part', inst: '556', pk: 'sym_code', status: '已发布' }
+      ],
+      kg_paper: [
+        { name: '论文', attrs: 'doi / title / year', inst: '1,286', pk: 'doi', status: '已发布' },
+        { name: '作者', attrs: 'author_id / name / org', inst: '842', pk: 'author_id', status: '已发布' },
+        { name: '期刊', attrs: 'issn / name / rank', inst: '180', pk: 'issn', status: '已发布' }
+      ]
+    };
+    var DEF_SCHEMA = [
+      { name: '主实体', attrs: 'id / name / type', inst: '1,204', pk: 'id', status: '已发布' },
+      { name: '附属实体', attrs: 'id / name / ref_id', inst: '2,486', pk: 'id', status: '已发布' },
+      { name: '事件', attrs: 'event_id / time / desc', inst: '862', pk: 'event_id', status: '草稿' }
+    ];
+    function schemaOf(key) { return KG_SCHEMA[key] || DEF_SCHEMA; }
+
+    var ENTITY_LIST = [
+      { name: 'iPhone 15 Pro', type: '商品', alias: '苹果15Pro / A3104', deg: 1284, conf: 0.98, time: '2026-10-08' },
+      { name: '小米 14 Ultra', type: '商品', alias: 'Mi14U / 24031PN0DC', deg: 986, conf: 0.96, time: '2026-10-08' },
+      { name: '华为 Mate 60', type: '商品', alias: 'Mate60 / BRA-AL00', deg: 872, conf: 0.95, time: '2026-10-07' },
+      { name: 'Apple', type: '品牌', alias: '苹果 / Apple Inc.', deg: 742, conf: 0.99, time: '2026-10-08' },
+      { name: '小米', type: '品牌', alias: 'Xiaomi / MI', deg: 618, conf: 0.99, time: '2026-10-08' },
+      { name: '运行内存 12GB', type: '属性', alias: 'RAM 12G', deg: 486, conf: 0.92, time: '2026-10-06' },
+      { name: '手机数码', type: '类目', alias: '手机 / 智能设备', deg: 518, conf: 0.97, time: '2026-10-05' },
+      { name: '骁龙 8 Gen3', type: '属性', alias: 'SM8650', deg: 342, conf: 0.91, time: '2026-10-04' },
+      { name: 'user_88291', type: '用户', alias: '会员 A88291', deg: 128, conf: 0.88, time: '2026-10-09' },
+      { name: 'order_20261008_7741', type: '订单', alias: '—', deg: 12, conf: 0.94, time: '2026-10-08' },
+      { name: 'OPPO Find X7', type: '商品', alias: 'PHK110', deg: 296, conf: 0.93, time: '2026-10-03' },
+      { name: 'vivo X100 Pro', type: '商品', alias: 'V2324HA', deg: 264, conf: 0.93, time: '2026-10-02' }
+    ];
+
+    var TASK_LIST = [
+      { name: '增量实体抽取', id: 'job_9c21', g: '金融实体图谱', way: 'LLM 抽取', pct: 78, time: '今天 15:02', status: '运行中' },
+      { name: '关系对齐与去重', id: 'job_9c18', g: '电商商品图谱', way: '规则 + 嵌入', pct: 100, time: '今天 11:40', status: '已完成' },
+      { name: '全量图谱重建', id: 'job_9c10', g: '医疗知识图谱', way: 'LLM + 专家标注', pct: 35, time: '今天 09:15', status: '运行中' },
+      { name: '实体消歧合并', id: 'job_9c02', g: '风控反欺诈图谱', way: '规则 + 嵌入', pct: 100, time: '昨天 22:10', status: '已完成' },
+      { name: 'Schema 校验', id: 'job_9b86', g: '客服工单图谱', way: '规则校验', pct: 62, time: '昨天 18:30', status: '运行中' },
+      { name: '历史数据归档', id: 'job_9b41', g: '历史归档图谱', way: '批量导出', pct: 100, time: '2026-08-18 03:00', status: '已取消' }
+    ];
+
+    function statusTag(st) {
+      var cls = st === '已发布' ? 'success' : st === '构建中' ? 'warning' : st === '草稿' ? 'gray' : 'danger';
+      return '<span class="tag ' + cls + ' tag-solid">' + st + '</span>';
+    }
+    function toastKg(msg) {
+      var t = document.createElement('div');
+      t.className = 'toast show';
+      t.textContent = msg;
+      document.body.appendChild(t);
+      setTimeout(function () { t.remove(); }, 1900);
+    }
+
+    /* ==================== 知识图谱列表：搜索 / 筛选 / 分页 ==================== */
+    var page = 1, size = 10;
+    function filteredList() {
+      var kw = document.getElementById('listSearch').value.trim().toLowerCase();
+      var st = document.getElementById('listStatus').value;
+      return KG_LIST.filter(function (g) {
+        var okKw = !kw || (g.name + g.key + g.desc).toLowerCase().indexOf(kw) > -1;
+        var okSt = !st || g.status === st;
+        return okKw && okSt;
+      });
+    }
+    function renderList() {
+      var all = filteredList();
+      var pages = Math.max(1, Math.ceil(all.length / size));
+      if (page > pages) page = pages;
+      var start = (page - 1) * size;
+      var rows = all.slice(start, start + size);
+      document.getElementById('listTotal').textContent = all.length;
+      document.getElementById('listBody').innerHTML = rows.length ? rows.map(function (g) {
+        return '<tr data-key="' + g.key + '">'
+          + '<td><b>' + g.name + '</b><div class="muted text-sm">' + g.desc + '</div></td>'
+          + '<td class="mono text-sm muted">' + g.key + '</td>'
+          + '<td><span class="tag ' + (g.type === 'GraphRAG' ? 'primary' : g.type === '规则图谱' ? 'info' : 'purple') + ' tag-solid">' + g.type + '</span></td>'
+          + '<td class="mono">v' + g.version + '</td>'
+          + '<td>' + g.e + '</td><td>' + g.r + '</td>'
+          + '<td>' + g.build + '</td>'
+          + '<td class="muted text-sm">' + g.time + '</td>'
+          + '<td>' + statusTag(g.status) + '</td>'
+          + '<td class="text-right"><div class="row-actions">'
+          + '<button class="btn btn-ghost btn-sm" data-act="view" data-key="' + g.key + '">查看</button>'
+          + '<button class="btn btn-ghost btn-sm" data-act="edit" data-key="' + g.key + '">编辑</button>'
+          + '<button class="btn btn-ghost btn-sm" data-act="del" data-key="' + g.key + '" style="color:var(--danger);">删除</button>'
+          + '</div></td></tr>';
+      }).join('') : '<tr><td colspan="10" class="muted text-sm" style="padding:20px 16px;">没有匹配的图谱</td></tr>';
+
+      document.getElementById('pagerInfo').textContent = all.length
+        ? ('第 ' + (start + 1) + ' - ' + Math.min(start + size, all.length) + ' 条 / 共 ' + all.length + ' 条 · 第 ' + page + ' / ' + pages + ' 页')
+        : '共 0 条';
+      document.getElementById('curPage').textContent = page;
+      document.getElementById('prevPage').disabled = page <= 1;
+      document.getElementById('nextPage').disabled = page >= pages;
+
+      document.querySelectorAll('#listBody [data-act]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var k = b.getAttribute('data-key'), act = b.getAttribute('data-act');
+          var g = KG_LIST.filter(function (x) { return x.key === k; })[0];
+          if (act === 'view') { switchTab('overview'); toastKg('已切换到概览：' + g.name); }
+          if (act === 'edit') { editKey = k; switchTab('edit'); renderEdit(); toastKg('正在编辑：' + g.name); }
+          if (act === 'del') {
+            if (!confirm('确认删除图谱「' + g.name + '」？')) return;
+            KG_LIST = KG_LIST.filter(function (x) { return x.key !== k; });
+            if (editKey === k) editKey = KG_LIST[0].key;
+            renderList(); renderEdit(); fillGraphSelects(); refreshOverview();
+            toastKg('已删除：' + g.name);
+          }
+        });
+      });
+    }
+    document.getElementById('listSearch').addEventListener('input', function () { page = 1; renderList(); });
+    document.getElementById('listStatus').addEventListener('change', function () { page = 1; renderList(); });
+    document.getElementById('pageSize').addEventListener('change', function () { size = parseInt(this.value, 10); page = 1; renderList(); });
+    document.getElementById('prevPage').addEventListener('click', function () { if (page > 1) { page--; renderList(); } });
+    document.getElementById('nextPage').addEventListener('click', function () { if (page < Math.ceil(filteredList().length / size)) { page++; renderList(); } });
+    document.getElementById('btnNewGraph').addEventListener('click', function () { toastKg('演示环境：新建图谱向导未开放'); });
+
+    /* ==================== 知识图谱编辑 ==================== */
+    var editKey = 'kg_ecommerce';
+    function curGraph() { return KG_LIST.filter(function (g) { return g.key === editKey; })[0]; }
+    function renderEdit() { renderPick(); fillForm(); renderTypes(); refreshEway(); }
+    function renderPick() {
+      document.getElementById('editCount').textContent = KG_LIST.length;
+      document.getElementById('editPick').innerHTML = KG_LIST.map(function (g) {
+        var c = g.status === '已发布' ? 'var(--success)' : g.status === '构建中' ? 'var(--warning)' : g.status === '已停用' ? 'var(--danger)' : 'var(--text-quaternary)';
+        return '<div class="kg-pick-item ' + (g.key === editKey ? 'active' : '') + '" data-key="' + g.key + '">'
+          + '<span class="dot" style="background:' + c + '"></span>' + g.name + '</div>';
+      }).join('');
+      document.querySelectorAll('#editPick .kg-pick-item').forEach(function (el) {
+        el.addEventListener('click', function () { editKey = el.getAttribute('data-key'); renderEdit(); });
+      });
+    }
+    function fillForm() {
+      var g = curGraph();
+      if (!g) return;
+      var disabled = g.status === '已停用';
+      document.getElementById('edName').value = g.name;
+      document.getElementById('edKey').value = g.key;
+      document.getElementById('edType').value = g.type;
+      document.getElementById('edVersion').value = 'v' + g.version;
+      document.getElementById('edBuild').value = g.build;
+      document.getElementById('edStore').value = g.store;
+      document.getElementById('edPolicy').value = g.policy;
+      document.getElementById('edDesc').value = g.desc;
+      document.getElementById('editStatus').textContent = g.status;
+      document.getElementById('editStatus').className = 'tag ' + (g.status === '已发布' ? 'success' : g.status === '构建中' ? 'warning' : g.status === '已停用' ? 'danger' : 'gray') + ' tag-solid';
+      ['edName', 'edKey', 'edType', 'edBuild', 'edStore', 'edPolicy', 'edDesc', 'btnEditSave', 'btnAddType', 'btnAddRelType'].forEach(function (id) {
+        document.getElementById(id).disabled = disabled;
+      });
+    }
+    function renderTypes() {
+      var list = schemaOf(editKey), g = curGraph();
+      var disabled = g && g.status === '已停用';
+      document.getElementById('typeCount').textContent = list.length;
+      document.getElementById('relCount').textContent = Math.max(1, list.length - 1) * 2;
+      document.getElementById('typeBody').innerHTML = list.map(function (t, i) {
+        return '<tr data-i="' + i + '">'
+          + '<td><b>' + t.name + '</b></td>'
+          + '<td class="muted text-sm mono">' + t.attrs + '</td>'
+          + '<td>' + t.inst + '</td>'
+          + '<td class="mono text-sm">' + t.pk + '</td>'
+          + '<td>' + statusTag(t.status) + '</td>'
+          + '<td class="text-right"><div class="row-actions">'
+          + '<button class="btn btn-ghost btn-sm" data-act="edit-type" data-i="' + i + '">编辑</button>'
+          + '<button class="btn btn-ghost btn-sm" data-act="del-type" data-i="' + i + '" style="color:var(--danger);"' + (disabled ? ' disabled' : '') + '>删除</button>'
+          + '</div></td></tr>';
+      }).join('');
+      document.querySelectorAll('#typeBody [data-act]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var i = parseInt(b.getAttribute('data-i'), 10);
+          var list2 = schemaOf(editKey);
+          if (b.getAttribute('data-act') === 'del-type') {
+            if (!confirm('确认删除实体类型「' + list2[i].name + '」？')) return;
+            var arr = KG_SCHEMA[editKey] || (KG_SCHEMA[editKey] = DEF_SCHEMA.slice());
+            arr.splice(i, 1);
+            renderTypes();
+            toastKg('已删除实体类型');
+          } else {
+            var nm = prompt('实体类型名称：', list2[i].name);
+            if (nm) {
+              (KG_SCHEMA[editKey] || (KG_SCHEMA[editKey] = DEF_SCHEMA.slice()))[i].name = nm;
+              renderTypes();
+              toastKg('已更新为：' + nm);
+            }
+          }
+        });
+      });
+    }
+    document.getElementById('btnEditSave').addEventListener('click', function () {
+      var g = curGraph();
+      if (!g) return;
+      g.name = document.getElementById('edName').value || g.name;
+      g.key = document.getElementById('edKey').value || g.key;
+      g.type = document.getElementById('edType').value;
+      g.build = document.getElementById('edBuild').value;
+      g.store = document.getElementById('edStore').value;
+      g.policy = document.getElementById('edPolicy').value;
+      g.desc = document.getElementById('edDesc').value;
+      var vs = g.version.split('.');
+      vs[2] = String(parseInt(vs[2], 10) + 1);
+      g.version = vs.join('.');
+      g.time = '2026-10-10';
+      renderEdit(); renderList(); fillGraphSelects();
+      toastKg('已保存：' + g.name + ' → v' + g.version);
+    });
+    document.getElementById('btnEditReset').addEventListener('click', function () { renderEdit(); toastKg('已重置为最新保存值'); });
+    document.getElementById('btnAddType').addEventListener('click', function () {
+      var nm = prompt('新增实体类型名称：', '新实体类型');
+      if (!nm) return;
+      var arr = KG_SCHEMA[editKey] || (KG_SCHEMA[editKey] = DEF_SCHEMA.slice());
+      arr.push({ name: nm, attrs: 'id / name', inst: '0', pk: 'id', status: '草稿' });
+      renderTypes();
+      toastKg('已新增实体类型：' + nm);
+    });
+    document.getElementById('btnAddRelType').addEventListener('click', function () {
+      var nm = prompt('新增关系类型名称（如 belongs_to / produced_by）：', 'related_to');
+      if (!nm) return;
+      toastKg('已新增关系类型：' + nm + '（演示：需在构建任务中重跑）');
+    });
+
+    /* ==================== 知识图谱编辑：四种编辑 & 更新方式 ==================== */
+    function escKg(v) {
+      return String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    var DEF_RELS = [
+      { name: 'belongs_to', from: '商品', to: '类目', card: '1 : 0..N', status: '已发布' },
+      { name: 'produced_by', from: '商品', to: '品牌', card: 'N : 1', status: '已发布' },
+      { name: 'has_attr', from: '商品', to: '属性', card: '1 : 0..N', status: '草稿' }
+    ];
+    var KG_RELS = {};
+    function relsOf(key) {
+      if (!KG_RELS[key]) KG_RELS[key] = DEF_RELS.map(function (r) { return { name: r.name, from: r.from, to: r.to, card: r.card, status: r.status }; });
+      return KG_RELS[key];
+    }
+    function schemaArr(key) { return KG_SCHEMA[key] || (KG_SCHEMA[key] = DEF_SCHEMA.slice()); }
+
+    /* ---------- 方式切换 ---------- */
+    function switchEway(key) {
+      document.querySelectorAll('#editTabs .kg-tab').forEach(function (t) {
+        t.classList.toggle('active', t.getAttribute('data-e') === key);
+      });
+      document.querySelectorAll('.kg-epanel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'ep-' + key);
+      });
+    }
+    document.querySelectorAll('#editTabs .kg-tab').forEach(function (t) {
+      t.addEventListener('click', function () { switchEway(t.getAttribute('data-e')); });
+    });
+
+    /* ---------- 01 LLM 抽取 ---------- */
+    var LLM_CAND = [];
+    function llmPool() {
+      return [
+        { kind: '实体类型', name: '品牌', conf: 0.96, src: 'iPhone 15 Pro 是 Apple 于 2023 年发布的旗舰手机' },
+        { kind: '实体类型', name: '运行内存', conf: 0.92, src: '运行内存 8GB' },
+        { kind: '关系类型', name: '商品 produced_by 品牌', conf: 0.93, src: 'iPhone 15 Pro 是 Apple 发布的' },
+        { kind: '关系类型', name: '商品 has_attr 运行内存', conf: 0.88, src: '运行内存 8GB' },
+        { kind: '属性', name: '商品.release_year', conf: 0.95, src: '于 2023 年发布' }
+      ];
+    }
+    function renderLlm() {
+      document.getElementById('llmBody').innerHTML = LLM_CAND.length ? LLM_CAND.map(function (c, i) {
+        return '<tr><td><input type="checkbox" class="llm-ck" data-i="' + i + '" checked /></td>'
+          + '<td><span class="tag ' + (c.kind === '实体类型' ? 'tag-success' : c.kind === '关系类型' ? 'tag-primary' : 'tag-warning') + '">' + c.kind + '</span></td>'
+          + '<td><b>' + escKg(c.name) + '</b></td>'
+          + '<td class="mono text-sm">' + c.conf.toFixed(2) + '</td>'
+          + '<td class="muted text-sm">' + escKg(c.src) + '</td></tr>';
+      }).join('') : '<tr><td colspan="5" class="muted text-sm" style="padding:20px 16px;">点击「开始抽取」从语料中抽取实体与关系候选</td></tr>';
+      var n = LLM_CAND.filter(function (c) { return c.on !== false; }).length;
+      document.getElementById('btnLlmApply').textContent = '应用到 Schema（' + n + ' 项）';
+      document.querySelectorAll('#llmBody .llm-ck').forEach(function (ck) {
+        ck.addEventListener('change', function () {
+          LLM_CAND[parseInt(ck.getAttribute('data-i'), 10)].on = ck.checked;
+          renderLlm();
+        });
+      });
+    }
+    document.getElementById('llmAll').addEventListener('change', function () {
+      var all = this.checked;
+      LLM_CAND.forEach(function (c) { c.on = all; });
+      renderLlm();
+    });
+    document.getElementById('btnLlmRun').addEventListener('click', function () {
+      var th = parseFloat(document.getElementById('llmThresh').value);
+      LLM_CAND = llmPool().filter(function (c) { return c.conf >= th; }).map(function (c) { return JSON.parse(JSON.stringify(c)); });
+      document.getElementById('llmMeta').textContent = '模型 ' + document.getElementById('llmModel').value
+        + ' · 数据源 ' + document.getElementById('llmSrc').value
+        + ' · 阈值 ' + th.toFixed(2) + ' · 候选 ' + LLM_CAND.length + ' 项';
+      renderLlm();
+      toastKg('抽取完成：候选 ' + LLM_CAND.length + ' 项');
+    });
+    document.getElementById('btnLlmReset').addEventListener('click', function () {
+      LLM_CAND = [];
+      document.getElementById('llmMeta').textContent = '尚未抽取';
+      renderLlm();
+    });
+    document.getElementById('btnLlmApply').addEventListener('click', function () {
+      var picks = LLM_CAND.filter(function (c) { return c.on !== false; });
+      if (!picks.length) { toastKg('请至少勾选一项候选'); return; }
+      var arr = schemaArr(editKey), rels = relsOf(editKey), addE = 0, addR = 0, addA = 0;
+      picks.forEach(function (c) {
+        if (c.kind === '实体类型') {
+          if (arr.filter(function (t) { return t.name === c.name; }).length) return;
+          arr.push({ name: c.name, attrs: 'id / name', inst: '0', pk: 'id', status: '草稿' });
+          addE++;
+        } else if (c.kind === '关系类型') {
+          var nm = c.name.split(' ')[1] || 'related_to';
+          if (rels.filter(function (r) { return r.name === nm; }).length) return;
+          rels.push({ name: nm, from: c.name.split(' ')[0], to: c.name.split(' ')[2], card: '1 : 0..N', status: '草稿' });
+          addR++;
+        } else {
+          var parts = c.name.split('.');
+          var t = arr.filter(function (x) { return x.name === parts[0]; })[0] || arr[0];
+          if (t.attrs.indexOf(parts[1]) > -1) return;
+          t.attrs = t.attrs + ' / ' + parts[1];
+          addA++;
+        }
+      });
+      renderTypes(); refreshEway();
+      toastKg('已应用：实体类型 +' + addE + ' · 关系 +' + addR + ' · 属性 +' + addA);
+    });
+
+    /* ---------- 02 规则抽取 ---------- */
+    var RULE_LIST = [
+      { name: 'SKU 编号识别', type: '正则', expr: '^SKU[0-9]{8,12}$', target: '商品.sku_id', hit: '12,480', on: true },
+      { name: '品牌词典', type: '词典', expr: 'Apple / 小米 / 华为 / OPPO / vivo', target: '品牌.name', hit: '386', on: true },
+      { name: '价格抽取', type: '正则', expr: '([0-9]+(\\.[0-9]+)?) 元', target: '商品.price', hit: '28,420', on: true },
+      { name: '归属关系模板', type: '模板', expr: '{商品} 属于 {类目}', target: 'belongs_to', hit: '9,842', on: false },
+      { name: '生产关系模板', type: '模板', expr: '{品牌} 生产 {商品}', target: 'produced_by', hit: '7,486', on: true }
+    ];
+    function renderRules() {
+      document.getElementById('ruleBody').innerHTML = RULE_LIST.map(function (r, i) {
+        return '<tr><td><b>' + escKg(r.name) + '</b></td>'
+          + '<td><span class="tag ' + (r.type === '正则' ? 'tag-primary' : r.type === '词典' ? 'tag-success' : 'tag-warning') + '">' + r.type + '</span></td>'
+          + '<td class="mono text-sm">' + escKg(r.expr) + '</td>'
+          + '<td class="muted text-sm">' + escKg(r.target) + '</td>'
+          + '<td class="mono text-sm">' + r.hit + '</td>'
+          + '<td>' + (r.on ? '<span class="status-dot success">已启用</span>' : '<span class="status-dot gray">已停用</span>') + '</td>'
+          + '<td class="text-right"><div class="row-actions">'
+          + '<button class="btn btn-ghost btn-sm" data-r="test" data-i="' + i + '">测试</button>'
+          + '<button class="btn btn-ghost btn-sm" data-r="toggle" data-i="' + i + '">' + (r.on ? '停用' : '启用') + '</button>'
+          + '<button class="btn btn-ghost btn-sm" data-r="del" data-i="' + i + '" style="color:var(--danger);">删除</button>'
+          + '</div></td></tr>';
+      }).join('');
+      var on = RULE_LIST.filter(function (r) { return r.on; }).length;
+      document.getElementById('ruleMeta').textContent = '共 ' + RULE_LIST.length + ' 条规则 · 启用 ' + on + ' 条';
+      document.querySelectorAll('#ruleBody [data-r]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var i = parseInt(b.getAttribute('data-i'), 10), r = RULE_LIST[i];
+          var act = b.getAttribute('data-r');
+          if (act === 'toggle') { r.on = !r.on; renderRules(); }
+          else if (act === 'del') {
+            if (!confirm('确认删除规则「' + r.name + '」？')) return;
+            RULE_LIST.splice(i, 1); renderRules(); toastKg('已删除规则');
+          } else {
+            var out = document.getElementById('ruleOut');
+            out.style.display = '';
+            out.textContent = '规则：' + r.name + '（' + r.type + '）\n表达式：' + r.expr + '\n目标：' + r.target
+              + '\n\n抽样命中 3 条：\n  · SKU00012345 → 商品.sku_id\n  · Apple → 品牌.name\n  · 7,999 元 → 商品.price';
+            toastKg('规则测试完成：' + r.name);
+          }
+        });
+      });
+    }
+    document.getElementById('btnAddRule').addEventListener('click', function () {
+      var nm = prompt('规则名称：', '新规则');
+      if (!nm) return;
+      RULE_LIST.push({ name: nm, type: '正则', expr: '^.*$', target: '商品.name', hit: '0', on: true });
+      renderRules();
+      toastKg('已新增规则：' + nm);
+    });
+    document.getElementById('btnRunRules').addEventListener('click', function () {
+      var on = RULE_LIST.filter(function (r) { return r.on; });
+      var out = document.getElementById('ruleOut');
+      out.style.display = '';
+      out.textContent = JSON.stringify({
+        graph_key: editKey,
+        rules: on.map(function (r) { return { rule: r.name, type: r.type, target: r.target, hits: r.hit }; }),
+        total_hits: on.reduce(function (a, r) { return a + parseInt(String(r.hit).replace(/,/g, ''), 10) || 0; }, 0)
+      }, null, 2);
+      toastKg('规则执行完成：命中 ' + on.length + ' 条规则');
+    });
+
+    /* ---------- 03 文本 JSON / 列表 ---------- */
+    var textFmt = 'json';
+    function genText() {
+      var g = curGraph();
+      if (!g) return '';
+      if (textFmt === 'json') {
+        var scope = document.getElementById('textScope').value;
+        var obj = { graph_key: g.key, version: g.version };
+        if (scope === 'entity') {
+          obj.entity_types = schemaOf(editKey).map(function (t) {
+            return { name: t.name, primary_key: t.pk, attributes: t.attrs.split(' / '), instances: t.inst, status: t.status };
+          });
+        } else {
+          obj.relation_types = relsOf(editKey).map(function (r) {
+            return { name: r.name, from: r.from, to: r.to, cardinality: r.card, status: r.status };
+          });
+        }
+        return JSON.stringify(obj, null, 2);
+      }
+      var scope2 = document.getElementById('textScope').value;
+      if (scope2 === 'entity') {
+        var lines = ['实体类型,主键,关键属性,实例数,状态'];
+        schemaOf(editKey).forEach(function (t) {
+          lines.push([t.name, t.pk, t.attrs, String(t.inst).replace(/,/g, ''), t.status].join(','));
+        });
+        return lines.join('\n');
+      }
+      var l2 = ['关系类型,起始实体,目标实体,基数,状态'];
+      relsOf(editKey).forEach(function (r) { l2.push([r.name, r.from, r.to, r.card, r.status].join(',')); });
+      return l2.join('\n');
+    }
+    function checkOut(ok, msg) {
+      document.getElementById('textCheckOut').innerHTML =
+        '<div class="check-out ' + (ok ? 'ok' : 'err') + '">' + msg + '</div>';
+    }
+    function parseText() {
+      var raw = document.getElementById('textEdit').value;
+      var scope = document.getElementById('textScope').value;
+      if (textFmt === 'json') {
+        var o = JSON.parse(raw);
+        if (scope === 'entity') {
+          if (!o.entity_types || !o.entity_types.length) throw new Error('缺少 entity_types 数组');
+          return { kind: 'entity', list: o.entity_types.map(function (t) {
+            return { name: t.name, pk: t.primary_key || 'id', attrs: (t.attributes || []).join(' / '), inst: t.instances || '0', status: t.status || '草稿' };
+          }) };
+        }
+        if (!o.relation_types || !o.relation_types.length) throw new Error('缺少 relation_types 数组');
+        return { kind: 'relation', list: o.relation_types.map(function (r) {
+          return { name: r.name, from: r.from, to: r.to, card: r.cardinality || '1 : 0..N', status: r.status || '草稿' };
+        }) };
+      }
+      var lines = raw.split('\n').filter(function (l) { return l.trim(); });
+      if (lines.length < 2) throw new Error('至少需要表头与 1 行数据');
+      var body = lines.slice(1);
+      if (scope === 'entity') {
+        return { kind: 'entity', list: body.map(function (l) {
+          var c = l.split(',');
+          return { name: c[0], pk: c[1] || 'id', attrs: c[2] || 'id / name', inst: c[3] || '0', status: c[4] || '草稿' };
+        }) };
+      }
+      return { kind: 'relation', list: body.map(function (l) {
+        var c = l.split(',');
+        return { name: c[0], from: c[1], to: c[2], card: c[3] || '1 : 0..N', status: c[4] || '草稿' };
+      }) };
+    }
+    document.querySelectorAll('#textFmt .seg').forEach(function (seg) {
+      seg.addEventListener('click', function () {
+        document.querySelectorAll('#textFmt .seg').forEach(function (x) { x.classList.remove('active'); });
+        seg.classList.add('active');
+        textFmt = seg.getAttribute('data-f');
+        document.getElementById('textEdit').value = genText();
+        document.getElementById('textCheckOut').innerHTML = '';
+      });
+    });
+    document.getElementById('textScope').addEventListener('change', function () {
+      document.getElementById('textEdit').value = genText();
+      document.getElementById('textCheckOut').innerHTML = '';
+    });
+    document.getElementById('btnTextGen').addEventListener('click', function () {
+      document.getElementById('textEdit').value = genText();
+      checkOut(true, '已根据当前 Schema 生成' + (textFmt === 'json' ? ' JSON' : ' 列表') + '（未应用的改动将被覆盖）');
+    });
+    document.getElementById('btnTextFmt').addEventListener('click', function () {
+      if (textFmt !== 'json') { checkOut(true, '列表格式无需格式化'); return; }
+      try {
+        document.getElementById('textEdit').value = JSON.stringify(JSON.parse(document.getElementById('textEdit').value), null, 2);
+        checkOut(true, 'JSON 已格式化');
+      } catch (e) { checkOut(false, '格式化失败：' + e.message); }
+    });
+    document.getElementById('btnTextCheck').addEventListener('click', function () {
+      try {
+        var r = parseText();
+        checkOut(true, '校验通过：' + r.kind + ' 共 ' + r.list.length + ' 项，可点击「应用到 Schema」');
+      } catch (e) { checkOut(false, '校验失败：' + e.message); }
+    });
+    document.getElementById('btnTextApply').addEventListener('click', function () {
+      try {
+        var r = parseText();
+        if (r.kind === 'entity') KG_SCHEMA[editKey] = r.list;
+        else KG_RELS[editKey] = r.list;
+        renderTypes(); refreshEway();
+        toastKg('已应用到 Schema：' + (r.kind === 'entity' ? '实体类型' : '关系类型') + ' ' + r.list.length + ' 项');
+        checkOut(true, '应用成功：' + r.list.length + ' 项已写入 ' + editKey);
+      } catch (e) { checkOut(false, '应用失败：' + e.message); }
+    });
+
+    /* ---------- 04 思维导图节点编辑 ---------- */
+    var MINDPICK = null;
+    var MNW = 172, MNH = 42, MHG = 46, MVG = 10;
+    function editTree() {
+      var g = curGraph();
+      if (!g) return { id: 'root', name: '—', kind: '图谱根', children: [] };
+      return {
+        id: 'root', name: g.name, kind: '图谱根', ver: 'v' + g.version,
+        children: schemaOf(editKey).map(function (t, i) {
+          return {
+            id: 't' + i, name: t.name, kind: '实体类型', inst: t.inst, pk: t.pk,
+            children: t.attrs.split(' / ').map(function (a, j) {
+              return { id: 't' + i + 'a' + j, name: a, kind: '属性' };
+            })
+          };
+        })
+      };
+    }
+    function mFind(node, id) {
+      if (node.id === id) return node;
+      var r = null;
+      (node.children || []).forEach(function (c) { if (!r) r = mFind(c, id); });
+      return r;
+    }
+    function mMeasure(n) {
+      if (!n.children || !n.children.length) return MNH + MVG;
+      var h = 0;
+      n.children.forEach(function (c) { h += mMeasure(c); });
+      return Math.max(h, MNH + MVG);
+    }
+    function mPlace(n, x, y, out) {
+      var h = mMeasure(n);
+      out.push({ n: n, x: x, y: y + h / 2 - MNH / 2 });
+      var cy = y;
+      (n.children || []).forEach(function (c) { mPlace(c, x + MNW + MHG, cy, out); cy += mMeasure(c); });
+    }
+    function renderEditMind() {
+      var boxes = [], tree = editTree();
+      mPlace(tree, 18, 14, boxes);
+      if (boxes[0]) boxes[0].y = 14;   /* 根节点顶部对齐，避免内容超长时根节点滚出视口 */
+      var maxX = 0, maxY = 0;
+      boxes.forEach(function (b) { maxX = Math.max(maxX, b.x + MNW + 20); maxY = Math.max(maxY, b.y + MNH + 20); });
+      var svg = '<svg width="' + maxX + '" height="' + maxY + '" viewBox="0 0 ' + maxX + ' ' + maxY + '">';
+      var byId = {};
+      boxes.forEach(function (b) { byId[b.n.id] = b; });
+      boxes.forEach(function (b) {
+        (b.n.children || []).forEach(function (c) {
+          var cb = byId[c.id];
+          if (!cb) return;
+          svg += '<path d="M' + (b.x + MNW) + ' ' + (b.y + MNH / 2) + ' C' + (b.x + MNW + 32) + ' ' + (b.y + MNH / 2)
+            + ', ' + (cb.x - 32) + ' ' + (cb.y + MNH / 2) + ', ' + cb.x + ' ' + (cb.y + MNH / 2)
+            + '" fill="none" stroke="#CBD5E1" stroke-width="1.4"/>';
+        });
+      });
+      boxes.forEach(function (b) {
+        var sel = b.n.id === MINDPICK;
+        var color = b.n.kind === '图谱根' ? '#6366F1' : b.n.kind === '实体类型' ? '#0EA5E9' : '#10B981';
+        svg += '<g class="en-box" data-id="' + b.n.id + '" style="cursor:pointer;">';
+        svg += '<rect x="' + b.x + '" y="' + b.y + '" width="' + MNW + '" height="' + MNH + '" rx="8" fill="#fff" stroke="'
+          + (sel ? '#6366F1' : '#E5E7EB') + '" stroke-width="' + (sel ? 2 : 1) + '"/>';
+        svg += '<rect x="' + b.x + '" y="' + b.y + '" width="4" height="' + MNH + '" rx="2" fill="' + color + '"/>';
+        svg += '<text x="' + (b.x + 14) + '" y="' + (b.y + 17) + '" font-size="12.5" font-weight="600" fill="#111827">'
+          + escKg(String(b.n.name).slice(0, 13)) + '</text>';
+        svg += '<text x="' + (b.x + 14) + '" y="' + (b.y + 32) + '" font-size="10.5" fill="#6B7280">'
+          + b.n.kind + (b.n.inst ? ' · ' + b.n.inst : '') + '</text>';
+        svg += '</g>';
+      });
+      svg += '</svg>';
+      document.getElementById('editMind').innerHTML = svg;
+      document.querySelectorAll('#editMind .en-box').forEach(function (g) {
+        g.addEventListener('click', function () { MINDPICK = g.getAttribute('data-id'); renderEditMind(); fillEditNode(); });
+      });
+    }
+    function fillEditNode() {
+      var n = MINDPICK ? mFind(editTree(), MINDPICK) : null;
+      var dis = !n;
+      ['enName', 'enInst', 'enPk', 'btnNodeSave', 'btnNodeAdd', 'btnNodeDel'].forEach(function (id) {
+        document.getElementById(id).disabled = dis;
+      });
+      document.getElementById('enName').value = n ? n.name : '';
+      document.getElementById('enKind').value = n ? n.kind : '';
+      document.getElementById('enInst').value = n && n.inst ? n.inst : '';
+      document.getElementById('enPk').value = n && n.pk ? n.pk : '';
+      var g = curGraph();
+      var ro = g && g.status === '已停用';
+      if (ro) ['enName', 'enInst', 'enPk', 'btnNodeSave', 'btnNodeAdd', 'btnNodeDel'].forEach(function (id) {
+        document.getElementById(id).disabled = true;
+      });
+      document.getElementById('enTip').textContent = !n
+        ? '未选中节点'
+        : ro ? '图谱已停用，节点只读'
+          : n.kind === '图谱根' ? '图谱根节点：可修改名称、新增实体类型'
+            : n.kind === '实体类型' ? '实体类型节点：可改名、改实例数 / 主键、新增属性、删除该类型'
+              : '属性节点：可改名或删除该属性';
+    }
+    document.getElementById('btnMindReload').addEventListener('click', function () { renderEditMind(); fillEditNode(); toastKg('已按最新 Schema 重绘'); });
+    document.getElementById('btnNodeSave').addEventListener('click', function () {
+      if (!MINDPICK) return;
+      var arr = schemaArr(editKey), n = mFind(editTree(), MINDPICK);
+      if (!n) return;
+      var v = document.getElementById('enName').value.trim();
+      if (!v) { toastKg('名称不能为空'); return; }
+      if (n.kind === '图谱根') {
+        var g = curGraph();
+        g.name = v; renderList(); fillGraphSelects();
+      } else if (n.kind === '实体类型') {
+        var idx = parseInt(MINDPICK.slice(1), 10);
+        arr[idx].name = v;
+        arr[idx].inst = document.getElementById('enInst').value || arr[idx].inst;
+        arr[idx].pk = document.getElementById('enPk').value || arr[idx].pk;
+      } else {
+        var ti = parseInt(MINDPICK.slice(1).split('a')[0], 10);
+        var ai = parseInt(MINDPICK.split('a')[1], 10);
+        var parts = arr[ti].attrs.split(' / ');
+        parts[ai] = v;
+        arr[ti].attrs = parts.join(' / ');
+      }
+      renderTypes(); renderEditMind(); fillEditNode();
+      toastKg('已保存节点：' + v);
+    });
+    document.getElementById('btnNodeAdd').addEventListener('click', function () {
+      if (!MINDPICK) return;
+      var arr = schemaArr(editKey), n = mFind(editTree(), MINDPICK);
+      if (!n) return;
+      if (n.kind === '属性') { toastKg('属性节点下不可再新增子节点'); return; }
+      if (n.kind === '图谱根') {
+        var nm = prompt('新增实体类型名称：', '新实体类型');
+        if (!nm) return;
+        arr.push({ name: nm, attrs: 'id / name', inst: '0', pk: 'id', status: '草稿' });
+      } else {
+        var an = prompt('新增属性名称：', 'new_attr');
+        if (!an) return;
+        var ti2 = parseInt(MINDPICK.slice(1), 10);
+        arr[ti2].attrs = arr[ti2].attrs + ' / ' + an;
+      }
+      renderTypes(); renderEditMind(); fillEditNode();
+      toastKg('已新增子节点');
+    });
+    document.getElementById('btnNodeDel').addEventListener('click', function () {
+      if (!MINDPICK) return;
+      var n = mFind(editTree(), MINDPICK);
+      if (!n || n.kind === '图谱根') { toastKg('根节点不可删除'); return; }
+      if (!confirm('确认删除节点「' + n.name + '」？')) return;
+      var arr = schemaArr(editKey);
+      if (n.kind === '实体类型') {
+        arr.splice(parseInt(MINDPICK.slice(1), 10), 1);
+      } else {
+        var ti3 = parseInt(MINDPICK.slice(1).split('a')[0], 10);
+        var ai3 = parseInt(MINDPICK.split('a')[1], 10);
+        var p3 = arr[ti3].attrs.split(' / ');
+        p3.splice(ai3, 1);
+        arr[ti3].attrs = p3.join(' / ');
+      }
+      MINDPICK = null;
+      renderTypes(); renderEditMind(); fillEditNode();
+      toastKg('已删除节点');
+    });
+
+    /* ---------- 增量更新 / 全量重建 ---------- */
+    function submitJob(kind) {
+      var g = curGraph();
+      if (!g) return;
+      if (g.status === '已停用') { toastKg('已停用图谱不可更新，请先启用'); return; }
+      TASK_LIST.unshift({
+        name: (kind === 'inc' ? '增量更新 · ' : '全量重建 · ') + g.name,
+        id: 'job_' + Math.random().toString(36).slice(2, 6),
+        g: g.name, way: kind === 'inc' ? '增量抽取' : '全量重建',
+        pct: 0, time: '刚刚', status: '运行中'
+      });
+      renderTasks(); refreshOverview();
+      toastKg((kind === 'inc' ? '增量更新' : '全量重建') + '任务已提交：' + g.name + '（见「构建任务」）');
+    }
+    document.getElementById('btnIncUpdate').addEventListener('click', function () { submitJob('inc'); });
+    document.getElementById('btnFullRebuild').addEventListener('click', function () { submitJob('full'); });
+
+    /* ---------- 面板刷新入口 ---------- */
+    var lastEwayKey = null;
+    function refreshEway() {
+      var keyChanged = lastEwayKey !== editKey;
+      lastEwayKey = editKey;
+      var te = document.getElementById('textEdit');
+      if (te && (keyChanged || !te.value)) te.value = genText();
+      if (keyChanged) MINDPICK = null;
+      renderRules();
+      renderLlm();
+      renderEditMind();
+      fillEditNode();
+    }
+
+    /* ==================== 知识图谱查询 ==================== */
+    var qMode = 'cypher';
+    var Q_HISTORY = [
+      { q: 'MATCH (p:商品)-[:belongs_to]->(c:类目 {name:"手机数码"}) RETURN p.name LIMIT 20', g: '电商商品图谱', m: 'Cypher', hit: 20, cost: '86ms', t: '今天 14:52' },
+      { q: '统计各品牌商品数量', g: '电商商品图谱', m: '自然语言', hit: 10, cost: '124ms', t: '今天 14:31' }
+    ];
+    var Q_SAMPLE = {
+      cypher: 'MATCH (p:商品)-[:belongs_to]->(c:类目 {name:\'手机数码\'}) RETURN p.name, p.price LIMIT 20',
+      gql: 'MATCH (p:商品)-[r:belongs_to]->(c:类目) WHERE c.name = \'手机数码\' RETURN p.name, p.price LIMIT 20',
+      nl: '找出手机数码类目下价格高于 5000 的商品'
+    };
+    function fillGraphSelects() {
+      var opts = KG_LIST.map(function (g) { return '<option value="' + g.key + '">' + g.name + '</option>'; }).join('');
+      document.getElementById('qGraph').innerHTML = opts;
+      document.getElementById('entGraphSel').innerHTML = opts;
+      if (!KG_LIST.filter(function (g) { return g.key === editKey; })[0]) editKey = KG_LIST[0].key;
+    }
+    document.querySelectorAll('#qMode .seg').forEach(function (seg) {
+      seg.addEventListener('click', function () {
+        document.querySelectorAll('#qMode .seg').forEach(function (x) { x.classList.remove('active'); });
+        seg.classList.add('active');
+        qMode = seg.getAttribute('data-m');
+        document.getElementById('qInput').value = Q_SAMPLE[qMode];
+      });
+    });
+    document.querySelectorAll('#qChips .file-chip').forEach(function (c) {
+      c.addEventListener('click', function () {
+        if (c.getAttribute('data-nl')) {
+          document.querySelectorAll('#qMode .seg').forEach(function (x) { x.classList.toggle('active', x.getAttribute('data-m') === 'nl'); });
+          qMode = 'nl';
+        }
+        document.getElementById('qInput').value = c.getAttribute('data-q') || c.textContent;
+      });
+    });
+    document.getElementById('btnClearQuery').addEventListener('click', function () { document.getElementById('qInput').value = ''; });
+    document.getElementById('btnRunQuery').addEventListener('click', function () {
+      var q = document.getElementById('qInput').value.trim();
+      if (!q) { toastKg('请输入查询语句'); return; }
+      var gname = document.getElementById('qGraph').selectedOptions[0].textContent;
+      var rows = qMode === 'nl'
+        ? [
+            { label: 'iPhone 15 Pro', type: '商品', attrs: [['说明', '价格 7999 · 旗舰机型'], ['品牌', 'Apple'], ['销量排名', 'Top1']] },
+            { label: '小米 14 Ultra', type: '商品', attrs: [['说明', '价格 6499 · 旗舰机型'], ['品牌', '小米'], ['销量排名', 'Top2']] },
+            { label: '华为 Mate 60', type: '商品', attrs: [['说明', '价格 5999'], ['品牌', '华为'], ['销量排名', 'Top3']] },
+            { label: 'OPPO Find X7', type: '商品', attrs: [['说明', '价格 4999'], ['品牌', 'OPPO'], ['销量排名', 'Top4']] }
+          ]
+        : [
+            { label: 'iPhone 15 Pro', type: '商品', attrs: [['价格', '7,999'], ['类目', '手机数码'], ['品牌', 'Apple']] },
+            { label: '小米 14 Ultra', type: '商品', attrs: [['价格', '6,499'], ['类目', '手机数码'], ['品牌', '小米']] },
+            { label: '华为 Mate 60', type: '商品', attrs: [['价格', '5,999'], ['类目', '手机数码'], ['品牌', '华为']] },
+            { label: 'OPPO Find X7', type: '商品', attrs: [['价格', '4,999'], ['类目', '手机数码'], ['品牌', 'OPPO']] },
+            { label: 'vivo X100 Pro', type: '商品', attrs: [['价格', '4,999'], ['类目', '手机数码'], ['品牌', 'vivo']] }
+          ];
+      Q_RESULT = { q: q, graph: gname, mode: qMode, rows: rows };
+      renderQueryResult();
+      var cost = (40 + Math.floor(Math.random() * 140)) + 'ms';
+      document.getElementById('qHit').textContent = rows.length;
+      document.getElementById('qCost').textContent = cost;
+      var now = new Date();
+      Q_HISTORY.unshift({ q: q, g: gname, m: qMode === 'nl' ? '自然语言' : qMode.toUpperCase(), hit: rows.length, cost: cost, t: '今天 ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0') });
+      renderHistory();
+      toastKg('查询完成：命中 ' + rows.length + ' 条 · ' + cost);
+    });
+    var Q_RESULT = null;
+    function renderQueryResult() {
+      if (!Q_RESULT) return;
+      var R = Q_RESULT, rows = R.rows;
+      /* 表格视图 */
+      var keys = rows.length ? rows[0].attrs.map(function (a) { return a[0]; }) : [];
+      document.getElementById('qHead').innerHTML = ['实体', '类型'].concat(keys).map(function (c) {
+        return '<th>' + escKg(c) + '</th>';
+      }).join('');
+      document.getElementById('qBody').innerHTML = rows.map(function (r) {
+        return '<tr><td><b>' + escKg(r.label) + '</b></td><td>' + escKg(r.type) + '</td>'
+          + r.attrs.map(function (a) { return '<td>' + escKg(a[1]) + '</td>'; }).join('') + '</tr>';
+      }).join('');
+      /* 思维导图视图 */
+      var theme = R.mode === 'nl' ? '自然语言检索结果' : (rows[0] && rows[0].attrs.filter(function (a) { return a[0] === '类目'; })[0] || ['类目', '查询结果'])[1];
+      var QW = 156, CX = 24, RQ = 36;
+      var h = Math.max(360, 70 + rows.length * (rows[0] ? rows[0].attrs.length * 30 + 34 : 60));
+      var svg = '<svg width="780" height="' + h + '" viewBox="0 0 780 ' + h + '">';
+      var cy = 44;   /* 主题节点置顶，避免内容超长时滚出视口 */
+      svg += '<circle cx="' + (CX + 92) + '" cy="' + cy + '" r="' + RQ + '" fill="url(#qgrad)" stroke="#fff" stroke-width="3"/>';
+      svg += '<text x="' + (CX + 92) + '" y="' + (cy + 4) + '" text-anchor="middle" font-size="11.5" fill="#fff" font-weight="600">'
+        + escKg(String(theme).slice(0, 5)) + '</text>';
+      svg += '<defs><radialGradient id="qgrad"><stop offset="0%" stop-color="#A78BFA"/><stop offset="100%" stop-color="#6366F1"/></radialGradient></defs>';
+      var ty = 40;
+      rows.forEach(function (r) {
+        var nh = 24 + r.attrs.length * 26;
+        var nx = CX + 176;
+        svg += '<path d="M' + (CX + 92 + RQ) + ' ' + cy + ' C' + (CX + 180) + ' ' + cy + ', ' + (nx - 30) + ' ' + (ty + 17) + ', ' + nx + ' ' + (ty + 17)
+          + '" fill="none" stroke="#CBD5E1" stroke-width="1.4"/>';
+        svg += '<rect x="' + nx + '" y="' + ty + '" width="' + QW + '" height="34" rx="7" fill="#0EA5E9"/>';
+        svg += '<text x="' + (nx + 12) + '" y="' + (ty + 22) + '" font-size="12" fill="#fff" font-weight="600">'
+          + escKg(String(r.label).slice(0, 13)) + '</text>';
+        var ay = ty + 42;
+        r.attrs.forEach(function (a) {
+          svg += '<path d="M' + (nx + QW) + ' ' + (ty + 17) + ' C' + (nx + QW + 24) + ' ' + (ty + 17) + ', ' + (nx + QW + 16) + ' ' + (ay + 11) + ', ' + (nx + QW + 40) + ' ' + (ay + 11)
+            + '" fill="none" stroke="#E2E8F0" stroke-width="1.2"/>';
+          svg += '<rect x="' + (nx + QW + 40) + '" y="' + ay + '" width="168" height="22" rx="6" fill="#10B981" opacity=".92"/>';
+          svg += '<text x="' + (nx + QW + 50) + '" y="' + (ay + 15) + '" font-size="11" fill="#fff">'
+            + escKg(a[0] + '：' + String(a[1]).slice(0, 15)) + '</text>';
+          ay += 26;
+        });
+        ty += nh + 30;
+      });
+      svg += '</svg>';
+      document.getElementById('qMind').innerHTML = svg;
+      /* 节点视图 */
+      document.getElementById('qNodes').innerHTML = rows.map(function (r) {
+        return '<div class="q-node">'
+          + '<div class="qn-h"><i style="width:8px;height:8px;border-radius:50%;background:#0EA5E9;display:inline-block;"></i>'
+          + '<b>' + escKg(r.label) + '</b><span class="tag gray tag-solid" style="margin-left:auto;">' + escKg(r.type) + '</span></div>'
+          + r.attrs.map(function (a) {
+            return '<div class="qn-kv"><span>' + escKg(a[0]) + '</span><span>' + escKg(a[1]) + '</span></div>';
+          }).join('')
+          + '<div class="flex gap-8" style="margin-top:8px; flex-wrap:wrap;">'
+          + '<span class="entity-tag"><i style="background:#6366F1;"></i>belongs_to 类目</span>'
+          + '<span class="entity-tag"><i style="background:#8B5CF6;"></i>produced_by 品牌</span>'
+          + '</div></div>';
+      }).join('');
+      /* JSON 视图 */
+      document.getElementById('qJson').textContent = JSON.stringify({
+        graph: R.graph,
+        mode: R.mode === 'nl' ? 'natural_language' : R.mode,
+        statement: R.q,
+        hits: rows.length,
+        results: rows.map(function (r) {
+          var o = { entity: r.label, type: r.type };
+          r.attrs.forEach(function (a) { o[a[0]] = a[1]; });
+          return o;
+        })
+      }, null, 2);
+    }
+    document.querySelectorAll('#qView .seg').forEach(function (seg) {
+      seg.addEventListener('click', function () {
+        document.querySelectorAll('#qView .seg').forEach(function (x) { x.classList.remove('active'); });
+        seg.classList.add('active');
+        var v = seg.getAttribute('data-v');
+        document.getElementById('qWrapTable').style.display = v === 'table' ? '' : 'none';
+        document.getElementById('qWrapMind').style.display = v === 'mind' ? '' : 'none';
+        document.getElementById('qWrapNode').style.display = v === 'node' ? '' : 'none';
+        document.getElementById('qWrapJson').style.display = v === 'json' ? '' : 'none';
+        if (v !== 'table') renderQueryResult();
+      });
+    });
+    document.getElementById('btnQCopy').addEventListener('click', function () {
+      var txt = document.getElementById('qJson').textContent;
+      var ta = document.createElement('textarea');
+      ta.value = txt; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e) {}
+      ta.remove();
+      var b = document.getElementById('btnQCopy');
+      b.textContent = '已复制';
+      setTimeout(function () { b.textContent = '复制 JSON'; }, 1500);
+    });
+    function renderHistory() {
+      var rows = Q_HISTORY.slice(0, 10);
+      document.getElementById('qHistoryBody').innerHTML = rows.length ? rows.map(function (h) {
+        return '<tr><td class="mono text-sm" style="max-width:420px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' + h.q + '</td>'
+          + '<td>' + h.g + '</td><td><span class="tag gray tag-solid">' + h.m + '</span></td>'
+          + '<td>' + h.hit + '</td><td class="muted text-sm">' + h.cost + '</td><td class="muted text-sm">' + h.t + '</td>'
+          + '<td class="text-right"><div class="row-actions"><button class="btn btn-ghost btn-sm" data-q="' + h.q.replace(/"/g, '&quot;') + '">复用</button></div></td></tr>';
+      }).join('') : '<tr><td colspan="7" class="muted text-sm" style="padding:20px 16px;">暂无查询历史</td></tr>';
+      document.querySelectorAll('#qHistoryBody [data-q]').forEach(function (b) {
+        b.addEventListener('click', function () { document.getElementById('qInput').value = b.getAttribute('data-q'); });
+      });
+    }
+    document.getElementById('btnClearHistory').addEventListener('click', function () {
+      Q_HISTORY = []; renderHistory(); toastKg('查询历史已清空');
+    });
+
+    /* ==================== 实体与关系浏览 ==================== */
+    var entPage = 1, entSize = 8, entType = '全部';
+    function renderEntTypes() {
+      var types = ['全部'].concat(schemaOf(document.getElementById('entGraphSel').value).map(function (t) { return t.name; }));
+      document.getElementById('entTypes').innerHTML = types.map(function (t) {
+        return '<button class="node-btn ' + (t === entType ? 'active' : '') + '" data-t="' + t + '">' + t + '</button>';
+      }).join('');
+      document.querySelectorAll('#entTypes .node-btn').forEach(function (b) {
+        b.addEventListener('click', function () { entType = b.getAttribute('data-t'); entPage = 1; renderEntTypes(); renderEnt(); });
+      });
+    }
+    function renderEnt() {
+      var kw = document.getElementById('entSearch').value.trim().toLowerCase();
+      var all = ENTITY_LIST.filter(function (e) {
+        var okT = entType === '全部' || e.type === entType;
+        var okKw = !kw || (e.name + e.alias).toLowerCase().indexOf(kw) > -1;
+        return okT && okKw;
+      });
+      var pages = Math.max(1, Math.ceil(all.length / entSize));
+      if (entPage > pages) entPage = pages;
+      var start = (entPage - 1) * entSize;
+      var rows = all.slice(start, start + entSize);
+      document.getElementById('entBody').innerHTML = rows.length ? rows.map(function (e) {
+        return '<tr><td><b>' + e.name + '</b></td><td>' + e.type + '</td>'
+          + '<td class="muted text-sm">' + e.alias + '</td><td>' + e.deg + '</td>'
+          + '<td><div class="conf"><div class="bar"><i style="width:' + Math.round(e.conf * 100) + '%"></i></div><span class="val">' + e.conf.toFixed(2) + '</span></div></td>'
+          + '<td class="muted text-sm">' + e.time + '</td></tr>';
+      }).join('') : '<tr><td colspan="6" class="muted text-sm" style="padding:20px 16px;">没有匹配的实体</td></tr>';
+      document.getElementById('entPagerInfo').textContent = all.length
+        ? ('第 ' + (start + 1) + ' - ' + Math.min(start + entSize, all.length) + ' 条 / 共 ' + all.length + ' 条 · 第 ' + entPage + ' / ' + pages + ' 页')
+        : '共 0 条';
+      document.getElementById('entCur').textContent = entPage;
+      document.getElementById('entPrev').disabled = entPage <= 1;
+      document.getElementById('entNext').disabled = entPage >= pages;
+    }
+    document.getElementById('entSearch').addEventListener('input', function () { entPage = 1; renderEnt(); });
+    document.getElementById('entPrev').addEventListener('click', function () { if (entPage > 1) { entPage--; renderEnt(); } });
+    document.getElementById('entNext').addEventListener('click', function () { entPage++; renderEnt(); });
+    document.getElementById('entGraphSel').addEventListener('change', function () {
+      document.getElementById('entGraph').textContent = this.selectedOptions[0].textContent;
+      entType = '全部'; entPage = 1; renderEntTypes(); renderEnt();
+    });
+
+    /* ==================== 构建任务 ==================== */
+    function renderTasks() {
+      document.getElementById('taskBody').innerHTML = TASK_LIST.map(function (t, i) {
+        var st = t.status === '已完成' ? 'success' : t.status === '运行中' ? 'warning' : 'gray';
+        return '<tr><td><b>' + t.name + '</b><div class="muted text-sm">' + t.id + '</div></td>'
+          + '<td>' + t.g + '</td><td>' + t.way + '</td>'
+          + '<td><div class="conf"><div class="bar"><i style="width:' + t.pct + '%"></i></div><span class="val">' + t.pct + '%</span></div></td>'
+          + '<td class="muted text-sm">' + t.time + '</td>'
+          + '<td><span class="status-dot ' + st + '">' + t.status + '</span></td>'
+          + '<td class="text-right"><div class="row-actions">'
+          + '<button class="btn btn-ghost btn-sm" data-act="' + (t.status === '运行中' ? 'pause' : 'rerun') + '" data-i="' + i + '">' + (t.status === '运行中' ? '暂停' : '重跑') + '</button>'
+          + '<button class="btn btn-ghost btn-sm" data-act="log" data-i="' + i + '">日志</button>'
+          + '</div></td></tr>';
+      }).join('');
+      document.querySelectorAll('#taskBody [data-act]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var t = TASK_LIST[parseInt(b.getAttribute('data-i'), 10)];
+          var act = b.getAttribute('data-act');
+          if (act === 'pause') { t.status = '已暂停'; toastKg('任务已暂停：' + t.name); }
+          if (act === 'rerun') { t.status = '运行中'; t.pct = 0; toastKg('任务已重新入队：' + t.name); }
+          if (act === 'log') { toastKg('演示环境：日志面板未开放（' + t.id + '）'); }
+          renderTasks();
+        });
+      });
+    }
+    document.getElementById('btnNewTask').addEventListener('click', function () { toastKg('演示环境：新建构建任务未开放'); });
+
+
+    /* ==================== 图谱文档：代码示例复制 ==================== */
+    document.querySelectorAll('.doc-block .btn-copy').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var code = btn.closest('.doc-block').querySelector('pre.doc-code').textContent;
+        var ta = document.createElement('textarea');
+        ta.value = code;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        ta.remove();
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      });
+    });
+
+    /* ==================== 初始化 ==================== */
+    function refreshOverview() {
+      document.getElementById('ovTotal').textContent = KG_LIST.length;
+      var vs = document.querySelectorAll('#tab-overview .stat-value');
+      if (vs[3]) vs[3].textContent = TASK_LIST.filter(function (t) { return t.status === '运行中'; }).length;
+    }
+    fillGraphSelects();
+    refreshOverview();
+    renderList();
+    renderEdit();
+    renderHistory();
+    document.getElementById('entGraph').textContent = document.getElementById('entGraphSel').selectedOptions[0].textContent;
+    renderEntTypes();
+    renderEnt();
+    renderTasks();
+
+
+  </script>
+</body>
+</html>

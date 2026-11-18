@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>接口文档 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    .doc-layout { display: grid; grid-template-columns: 220px 1fr; gap: 32px; align-items: start; }
+    .doc-toc { position: sticky; top: 16px; font-size: 13px; }
+    .doc-toc .toc-title { font-size: 12px; color: var(--text-tertiary); padding: 6px 8px; }
+    .doc-toc a { display: block; padding: 6px 8px; border-radius: var(--radius); color: var(--text-secondary); }
+    .doc-toc a:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+    .doc-toc a.active { background: var(--sidebar-active); color: var(--text-primary); font-weight: 500; }
+
+    .doc-main { min-width: 0; }
+    .doc-section { margin-bottom: 32px; scroll-margin-top: 16px; }
+    .doc-h1 { font-size: 18px; font-weight: 600; padding-bottom: 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px; }
+    .doc-h2 { font-size: 15px; font-weight: 600; margin: 22px 0 10px; }
+    .doc-p { font-size: 13.5px; line-height: 1.8; color: var(--text-secondary); margin-bottom: 10px; }
+    .doc-p b, .doc-p code { color: var(--text-primary); }
+    .doc-p code, .doc-code-inline {
+      font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 12.5px; background: var(--bg-soft); border: 1px solid var(--border-light);
+      border-radius: 4px; padding: 1px 5px;
+    }
+    .doc-code {
+      background: #1B1D23; color: #E6E8EB; border-radius: var(--radius-md);
+      padding: 14px 16px; font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      font-size: 12.5px; line-height: 1.75; overflow-x: auto; white-space: pre; margin-bottom: 12px;
+    }
+    .doc-code .c-key { color: #7FB4FF; }
+    .doc-code .c-str { color: #9BE39B; }
+    .doc-code .c-com { color: #7A8296; }
+    .doc-code-head {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #24262D; color: #B8BEC9; font-size: 12px;
+      padding: 8px 14px; border-radius: var(--radius-md) var(--radius-md) 0 0;
+      font-family: ui-monospace, Menlo, monospace;
+    }
+    .doc-code-head + .doc-code { border-radius: 0 0 var(--radius-md) var(--radius-md); margin-top: 0; }
+    .doc-code-head .copy { color: #8A93A5; cursor: pointer; }
+    .doc-code-head .copy:hover { color: #fff; }
+    .method { display: inline-block; font-family: ui-monospace, Menlo, monospace; font-size: 12px; font-weight: 600; padding: 2px 7px; border-radius: 4px; margin-right: 6px; }
+    .method.post { background: var(--accent-soft); color: var(--accent); }
+    .method.get { background: var(--success-soft); color: var(--success); }
+    .doc-table-note { font-size: 12.5px; color: var(--text-tertiary); margin-top: 8px; }
+    @media (max-width: 1080px) {
+      .doc-layout { grid-template-columns: 1fr; }
+      .doc-toc { position: static; display: flex; flex-wrap: wrap; gap: 4px; }
+      .doc-toc .toc-title { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">接口文档</div>
+              <div class="page-subtitle">HTTP API 参考：鉴权、对话补全、视觉理解、流式、工具调用与错误码</div>
+            </div>
+            <div class="page-actions">
+              <a class="btn btn-secondary" href="developer.html">获取 API Key</a>
+              <a class="btn btn-primary" href="web-chat.html">在线调试</a>
+            </div>
+          </div>
+
+          <div class="notice">
+            <span>基础地址 <b class="mono">https://api.ai-studio.local/v1</b> · 兼容 OpenAI 协议，可直接使用官方 SDK（仅需替换 base_url 与 api_key）。</span>
+            <button class="notice-close">知道了</button>
+          </div>
+
+          <div class="doc-layout">
+            <!-- 目录 -->
+            <nav class="doc-toc" id="docToc">
+              <div class="toc-title">文档目录</div>
+              <a href="#quickstart" class="active">快速开始</a>
+              <a href="#auth">鉴权</a>
+              <a href="#chat">对话补全</a>
+              <a href="#vision">视觉理解</a>
+              <a href="#stream">流式输出</a>
+              <a href="#tools">函数调用</a>
+              <a href="#embedding">向量化</a>
+              <a href="#ratelimit">速率限制</a>
+              <a href="#errors">错误码</a>
+            </nav>
+
+            <div class="doc-main">
+              <!-- 快速开始 -->
+              <section class="doc-section" id="quickstart">
+                <div class="doc-h1">快速开始</div>
+                <div class="doc-p">三步发起第一次调用：<b>①</b> 在 <a class="link" href="developer.html">API Key</a> 页面创建密钥；<b>②</b> 配置 base_url 与密钥；<b>③</b> 调用对话补全接口。</div>
+
+                <div class="doc-h2">1. 准备凭据</div>
+                <div class="doc-p">密钥格式为 <code>sk-&lt;uuid&gt;</code>，例如 <code>sk-9f2a7c4b-1e8d-4a3f-8c6e-5d2b0a7f3c1e</code>；密钥同时有主键 ID <code>kid=10048231</code>，用于在日志与账单中定位调用来源。</div>
+
+                <div class="doc-h2">2. 发起请求（cURL）</div>
+                <div class="doc-code-head"><span>bash</span><span class="copy">复制</span></div>
+                <pre class="doc-code">curl https://api.ai-studio.local/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer sk-9f2a7c4b-1e8d-4a3f-8c6e-5d2b0a7f3c1e" \
+  -d '{
+    "model": "DeepSeek-V3.2",
+    "messages": [
+      {"role": "system", "content": "你是一个严谨的技术助手。"},
+      {"role": "user", "content": "用三句话解释什么是向量数据库"}
+    ],
+    "temperature": 0.7,
+    "max_tokens": 1024
+  }'</pre>
+
+                <div class="doc-h2">3. 发起请求（Python）</div>
+                <div class="doc-code-head"><span>python</span><span class="copy">复制</span></div>
+                <pre class="doc-code">from openai import OpenAI
+
+client = OpenAI(
+    api_key="sk-9f2a7c4b-1e8d-4a3f-8c6e-5d2b0a7f3c1e",
+    base_url="https://api.ai-studio.local/v1",
+)
+
+resp = client.chat.completions.create(
+    model="DeepSeek-V3.2",
+    messages=[{"role": "user", "content": "你好"}],
+)
+print(resp.choices[0].message.content)</pre>
+              </section>
+
+              <!-- 鉴权 -->
+              <section class="doc-section" id="auth">
+                <div class="doc-h1">鉴权</div>
+                <div class="doc-p">所有接口均需在请求头携带 Bearer Token。密钥仅在创建时展示一次，请妥善保存；泄露后请立即在控制台<b>更新</b>或删除。</div>
+                <pre class="doc-code">Authorization: Bearer sk-xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+Content-Type: application/json</pre>
+                <div class="card">
+                  <div class="card-header"><div class="card-title">密钥能力</div></div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead><tr><th>配置项</th><th>说明</th><th>示例</th></tr></thead>
+                        <tbody>
+                          <tr><td><b>可用模型</b></td><td class="muted">不限制或指定模型白名单，未授权的模型返回 403</td><td class="mono text-sm">模型不限制</td></tr>
+                          <tr><td><b>过期时间</b></td><td class="muted">永久有效或指定日期，过期前 7 天自动提醒创建人</td><td class="mono text-sm">2027-10-10</td></tr>
+                          <tr><td><b>限流 RPM</b></td><td class="muted">每分钟请求数上限，不限制则继承账号默认额度</td><td class="mono text-sm">3000</td></tr>
+                          <tr><td><b>限流 TPM</b></td><td class="muted">每分钟 Token 上限（输入 + 输出）</td><td class="mono text-sm">1000000</td></tr>
+                          <tr><td><b>并发上限</b></td><td class="muted">同时在途请求数，超出后排队或快速失败</td><td class="mono text-sm">500</td></tr>
+                          <tr><td><b>IP 白名单</b></td><td class="muted">CIDR 限制调用来源，留空表示不限制</td><td class="mono text-sm">10.0.0.0/8</td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- 对话补全 -->
+              <section class="doc-section" id="chat">
+                <div class="doc-h1">对话补全</div>
+                <div class="doc-p"><span class="method post">POST</span><code>/v1/chat/completions</code></div>
+
+                <div class="doc-h2">请求参数</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>参数</th><th>类型</th><th>必填</th><th>说明</th></tr></thead>
+                    <tbody>
+                      <tr><td class="mono">model</td><td>string</td><td>是</td><td class="muted">模型名称，如 <code>DeepSeek-V3.2</code>、<code>GLM-4.7</code>、<code>GPT-4o</code></td></tr>
+                      <tr><td class="mono">messages</td><td>array</td><td>是</td><td class="muted">消息列表，role 支持 system / user / assistant / tool</td></tr>
+                      <tr><td class="mono">stream</td><td>boolean</td><td>否</td><td class="muted">是否流式返回，默认 false</td></tr>
+                      <tr><td class="mono">temperature</td><td>number</td><td>否</td><td class="muted">采样温度 0~2，默认 1；越低越确定</td></tr>
+                      <tr><td class="mono">max_tokens</td><td>integer</td><td>否</td><td class="muted">生成上限，默认取模型最大输出长度</td></tr>
+                      <tr><td class="mono">top_p</td><td>number</td><td>否</td><td class="muted">核采样，与 temperature 建议只调一个</td></tr>
+                      <tr><td class="mono">tools</td><td>array</td><td>否</td><td class="muted">函数调用工具定义，见「函数调用」</td></tr>
+                      <tr><td class="mono">response_format</td><td>object</td><td>否</td><td class="muted">设为 <code>{"type":"json_object"}</code> 强制输出 JSON</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+
+                <div class="doc-h2">响应示例</div>
+                <pre class="doc-code">{
+  "id": "chatcmpl-8f2a71c4b9e3",
+  "object": "chat.completion",
+  "created": 1791187385,
+  "model": "DeepSeek-V3.2",
+  "choices": [
+    {
+      "index": 0,
+      "message": {"role": "assistant", "content": "向量数据库是专门存储和检索高维向量的数据库…"},
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": {"prompt_tokens": 32, "completion_tokens": 118, "total_tokens": 150}
+}</pre>
+                <div class="doc-table-note">账单按 <b>usage</b> 中的 prompt_tokens / completion_tokens 分别计价，详见 <a class="link" href="pricing.html">产品定价</a>。</div>
+              </section>
+
+              <!-- 视觉理解 -->
+              <section class="doc-section" id="vision">
+                <div class="doc-h1">视觉理解（多模态）</div>
+                <div class="doc-p"><span class="method post">POST</span><code>/v1/chat/completions</code> · 支持 <code>GLM-4V</code>、<code>GLM-4V-Flash</code>、<code>GPT-4o</code>、<code>Claude 3.5</code>。</div>
+                <div class="doc-p">图片通过 <b>content 数组</b>传入，与文本混排。支持两种形式：<b>公网图片链接</b>（推荐，无需上传）与 <b>Base64 内联</b>（本地图片，格式 <code>data:image/jpeg;base64,&lt;编码&gt;</code>）。</div>
+
+                <div class="doc-h2">方式一：图片 URL</div>
+                <div class="doc-code-head"><span>python</span><span class="copy">复制</span></div>
+                <pre class="doc-code">resp = client.chat.completions.create(
+    model="GLM-4V",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "text", "text": "这张图里有哪些设备？请列出并说明位置"},
+            {"type": "image_url", "image_url": {"url": "https://example.com/rack.jpg"}},
+        ],
+    }],
+)
+print(resp.choices[0].message.content)</pre>
+
+                <div class="doc-h2">方式二：Base64 内联</div>
+                <div class="doc-code-head"><span>python</span><span class="copy">复制</span></div>
+                <pre class="doc-code">import base64
+
+with open("rack.jpg", "rb") as f:
+    b64 = base64.b64encode(f.read()).decode()
+
+resp = client.chat.completions.create(
+    model="GLM-4V",
+    messages=[{
+        "role": "user",
+        "content": [
+            {"type": "image_url",
+             "image_url": {"url": f"data:image/jpeg;base64,{b64}"}},
+            {"type": "text", "text": "识别图中告警指示灯"},
+        ],
+    }],
+)</pre>
+
+                <div class="doc-h2">图片限制与计费</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>项目</th><th>限制 / 规则</th></tr></thead>
+                    <tbody>
+                      <tr><td>支持格式</td><td class="muted">JPEG / PNG / WEBP / GIF（静态）</td></tr>
+                      <tr><td>单图大小</td><td class="muted">≤ 10 MB；Base64 后体积约为原图 1.33 倍</td></tr>
+                      <tr><td>单次请求图片数</td><td class="muted">≤ 8 张</td></tr>
+                      <tr><td>分辨率</td><td class="muted">建议长边 ≤ 2048px，超出会自动等比压缩</td></tr>
+                      <tr><td>Token 折算</td><td class="muted">图片按 <code>⌈长 × 宽 / 750⌉</code> 折算为视觉 Token，计入 prompt_tokens</td></tr>
+                      <tr><td>计价方式</td><td class="muted">视觉 Token 按对应模型的<b>输入价</b>计费，详见产品定价页</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="notice" style="margin-top:12px; align-items:flex-start;">
+                  <span>提示：多轮对话中重复传同一张图会重复计费，建议将图片结论写入后续文本上下文。</span>
+                </div>
+              </section>
+
+              <!-- 流式输出 -->
+              <section class="doc-section" id="stream">
+                <div class="doc-h1">流式输出</div>
+                <div class="doc-p">设置 <code>stream: true</code>，服务端以 SSE（<code>text/event-stream</code>）逐块返回增量内容，适合打字机效果。流结束后返回 <code>data: [DONE]</code>。</div>
+                <div class="doc-code-head"><span>bash</span><span class="copy">复制</span></div>
+                <pre class="doc-code">curl https://api.ai-studio.local/v1/chat/completions \
+  -H "Authorization: Bearer $AI_STUDIO_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model":"DeepSeek-V3.2","stream":true,
+       "messages":[{"role":"user","content":"写一首关于白露的五言诗"}]}'</pre>
+                <div class="doc-code-head"><span>SSE 响应</span></div>
+                <pre class="doc-code">data: {"choices":[{"delta":{"content":"白"}}]}
+data: {"choices":[{"delta":{"content":"露"}}]}
+data: {"choices":[{"delta":{"content":"凝"}}]}
+data: {"choices":[{"delta":{},"finish_reason":"stop"}],"usage":{"total_tokens":96}}
+data: [DONE]</pre>
+                <div class="doc-table-note">流式与非流式计费一致；异常中断时已产生的 Token 仍会计费。</div>
+              </section>
+
+              <!-- 函数调用 -->
+              <section class="doc-section" id="tools">
+                <div class="doc-h1">函数调用（Tool Calling）</div>
+                <div class="doc-p">在 <code>tools</code> 中声明可调用函数，模型会返回 <code>tool_calls</code>；执行本地函数后以 <code>role: "tool"</code> 回传结果。</div>
+                <div class="doc-code-head"><span>python</span><span class="copy">复制</span></div>
+                <pre class="doc-code">tools = [{
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "查询指定城市的实时天气",
+        "parameters": {
+            "type": "object",
+            "properties": {"city": {"type": "string", "description": "城市名"}},
+            "required": ["city"],
+        },
+    },
+}]
+
+resp = client.chat.completions.create(
+    model="GLM-4.7",
+    messages=[{"role": "user", "content": "杭州今天要带伞吗？"}],
+    tools=tools,
+    tool_choice="auto",
+)
+print(resp.choices[0].message.tool_calls)</pre>
+              </section>
+
+              <!-- 向量化 -->
+              <section class="doc-section" id="embedding">
+                <div class="doc-h1">向量化</div>
+                <div class="doc-p"><span class="method post">POST</span><code>/v1/embeddings</code> · 用于知识库入库与语义检索，输出维度与模型相关（<code>GLM-Embedding-3</code> 为 2048 维）。</div>
+                <pre class="doc-code">{
+  "model": "GLM-Embedding-3",
+  "input": ["向量数据库选型对比", "如何提升 RAG 召回率"]
+}</pre>
+                <div class="doc-code-head"><span>响应（截断）</span></div>
+                <pre class="doc-code">{
+  "data": [
+    {"index": 0, "embedding": [0.0123, -0.0456, 0.0789, "…"]},
+    {"index": 1, "embedding": [-0.0331, 0.0902, 0.0145, "…"]}
+  ],
+  "usage": {"prompt_tokens": 18, "total_tokens": 18}
+}</pre>
+                <div class="doc-table-note">单次最多 64 条文本，每条 ≤ 8192 Token；批量请求按总 Token 计费。</div>
+              </section>
+
+              <!-- 速率限制 -->
+              <section class="doc-section" id="ratelimit">
+                <div class="doc-h1">速率限制</div>
+                <div class="doc-p">限流按 <b>API Key</b> 维度生效，可在创建/更新密钥时配置为「不限制」或指定数值；未配置则继承账号默认额度（3000 RPM / 1M TPM / 500 并发）。</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>维度</th><th>含义</th><th>超限返回</th><th>建议处理</th></tr></thead>
+                    <tbody>
+                      <tr><td><b>RPM</b></td><td class="muted">每分钟请求数</td><td><span class="tag tag-warning">429</span></td><td class="muted">指数退避重试（1s → 2s → 4s）</td></tr>
+                      <tr><td><b>TPM</b></td><td class="muted">每分钟 Token 数（输入 + 输出）</td><td><span class="tag tag-warning">429</span></td><td class="muted">缩短上下文或分批提交</td></tr>
+                      <tr><td><b>并发</b></td><td class="muted">同时在途请求数</td><td><span class="tag tag-warning">429 / 排队</span></td><td class="muted">降低客户端并发，或申请提额</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="doc-table-note">响应头会返回 <code>x-ratelimit-limit-requests</code>、<code>x-ratelimit-remaining-tokens</code>、<code>retry-after</code>，可用于自适应节流。提额入口：<a class="link" href="ops-center.html">运维中心</a> / <a class="link" href="help-feedback.html">提交工单</a>。</div>
+              </section>
+
+              <!-- 错误码 -->
+              <section class="doc-section" id="errors">
+                <div class="doc-h1">错误码</div>
+                <div class="table-wrap">
+                  <table>
+                    <thead><tr><th>HTTP</th><th>错误码</th><th>说明</th><th>处理建议</th></tr></thead>
+                    <tbody>
+                      <tr><td><b>400</b></td><td class="mono">invalid_request_error</td><td class="muted">参数缺失或格式错误</td><td class="muted">对照请求参数表检查字段与类型</td></tr>
+                      <tr><td><b>401</b></td><td class="mono">invalid_api_key</td><td class="muted">密钥无效、已删除或格式错误</td><td class="muted">确认 Header 中 Bearer 后为完整 <code>sk-</code> 密钥</td></tr>
+                      <tr><td><b>402</b></td><td class="mono">insufficient_balance</td><td class="muted">账户余额不足</td><td class="muted">前往 <a class="link" href="topup.html">充值</a></td></tr>
+                      <tr><td><b>403</b></td><td class="mono">model_not_allowed</td><td class="muted">调用的模型不在密钥白名单内</td><td class="muted">更新密钥可用模型范围</td></tr>
+                      <tr><td><b>404</b></td><td class="mono">model_not_found</td><td class="muted">模型不存在或已下线</td><td class="muted">在<a class="link" href="model-config.html">模型广场</a>确认名称</td></tr>
+                      <tr><td><b>413</b></td><td class="mono">payload_too_large</td><td class="muted">请求体超限（含 Base64 图片）</td><td class="muted">压缩图片或改用图片 URL</td></tr>
+                      <tr><td><b>422</b></td><td class="mono">context_length_exceeded</td><td class="muted">上下文超出模型窗口</td><td class="muted">裁剪历史消息或改用长上下文模型</td></tr>
+                      <tr><td><b>429</b></td><td class="mono">rate_limit_exceeded</td><td class="muted">触发 RPM / TPM / 并发限制</td><td class="muted">退避重试或申请提额</td></tr>
+                      <tr><td><b>500</b></td><td class="mono">internal_error</td><td class="muted">服务端异常</td><td class="muted">重试；持续失败提交工单</td></tr>
+                      <tr><td><b>503</b></td><td class="mono">upstream_unavailable</td><td class="muted">上游模型不可用或已摘流</td><td class="muted">切换备用模型，见<a class="link" href="ops-center.html">运维中心</a>告警</td></tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="doc-code-head" style="margin-top:16px;"><span>错误响应体</span></div>
+                <pre class="doc-code">{
+  "error": {
+    "code": "rate_limit_exceeded",
+    "message": "Rate limit reached for RPM: Limit 3000, Used 3000.",
+    "type": "requests"
+  }
+}</pre>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('api-docs');
+
+    /* 目录高亮 + 平滑滚动 */
+    var tocLinks = Array.prototype.slice.call(document.querySelectorAll('.doc-toc a'));
+    tocLinks.forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        var target = document.querySelector(a.getAttribute('href'));
+        if (!target) return;
+        e.preventDefault();
+        window.scrollTo({ top: target.offsetTop - 12, behavior: 'smooth' });
+        tocLinks.forEach(function (x) { x.classList.remove('active'); });
+        a.classList.add('active');
+      });
+    });
+    window.addEventListener('scroll', function () {
+      var pos = window.scrollY + 80, current = tocLinks[0];
+      tocLinks.forEach(function (a) {
+        var sec = document.querySelector(a.getAttribute('href'));
+        if (sec && sec.offsetTop <= pos) current = a;
+      });
+      tocLinks.forEach(function (x) { x.classList.toggle('active', x === current); });
+    });
+
+    /* 代码复制 */
+    document.querySelectorAll('.doc-code-head .copy').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var pre = btn.closest('.doc-code-head').nextElementSibling;
+        if (!pre) return;
+        navigator.clipboard && navigator.clipboard.writeText(pre.textContent);
+        var old = btn.textContent;
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = old; }, 1200);
+      });
+    });
+  </script>
+</body>
+</html>

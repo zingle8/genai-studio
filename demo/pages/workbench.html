@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>工作台 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    /* 内嵌工作台：去掉内容区内边距，iframe 撑满 */
+    .content.embed-full {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .wb-frame-wrap {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border-top: 1px solid var(--border, #e5e7eb);
+    }
+    .wb-frame-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 8px 16px;
+      background: var(--panel, #fff);
+      border-bottom: 1px solid var(--border, #e5e7eb);
+      font-size: 12px;
+      color: var(--text-tertiary, #6b7280);
+      flex-shrink: 0;
+    }
+    .wb-frame-bar .bar-left {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .wb-frame-bar .bar-title {
+      font-weight: 600;
+      color: var(--text-primary, #111827);
+    }
+    .wb-frame-bar button {
+      cursor: pointer;
+      border: 1px solid var(--border, #e5e7eb);
+      background: #fff;
+      border-radius: 6px;
+      padding: 4px 12px;
+      font-size: 12px;
+      color: var(--text-secondary, #374151);
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .wb-frame-bar button:hover { border-color: #f37320; color: #f37320; }
+    .wb-frame-wrap iframe {
+      flex: 1;
+      width: 100%;
+      border: 0;
+      display: block;
+      background: #fafafa;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content embed-full">
+          <div class="page-header">
+            <div>
+              <div class="page-title">工作台</div>
+              <div class="page-subtitle">类 Jupyter 交互式开发环境 · Notebook / 终端 / 资源监控</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary" onclick="openStandalone()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+                新窗口打开
+              </button>
+            </div>
+          </div>
+          <div class="wb-frame-wrap">
+            <div class="wb-frame-bar">
+              <div class="bar-left">
+                <span class="bar-title">AI Workbench</span>
+                <span>v1.0 Beta · Python 3.11.8 · conda base</span>
+              </div>
+              <div style="display:flex;gap:8px;">
+                <button onclick="reloadFrame()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.13-9.36L23 10"/></svg>
+                  刷新
+                </button>
+                <button onclick="resetFrame()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><line x1="12" y1="5" x2="12" y2="19"/><polyline points="19 12 12 19 5 12"/></svg>
+                  回到控制台
+                </button>
+              </div>
+            </div>
+            <iframe id="wbFrame" src="../workbench/index.html?embed=1" title="AI Workbench 工作台"></iframe>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('workbench');
+
+    var frame = document.getElementById('wbFrame');
+    var HOME = '../workbench/index.html?embed=1';
+
+    window.reloadFrame = function () { frame.src = frame.src; };
+    window.resetFrame = function () { frame.src = HOME; };
+    window.openStandalone = function () {
+      window.open('../workbench/index.html', '_blank', 'noopener');
+    };
+  </script>
+</body>
+</html>

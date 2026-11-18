@@ -1,0 +1,29 @@
+server:
+  port: 38081
+
+spring:
+  application:
+    name: jv-genai-auth
+
+# 网关平台接入（jv-api-gateway-client-starter：服务注册/心跳/调用采集上报）
+zimo:
+  gateway:
+    client:
+      enabled: true
+      # 统一入口：jv-api-gateway-proxy（按前缀转发 /discovery /trace 等）
+      server-addr: http://127.0.0.1:28090/api
+      client-token: ${GATEWAY_CLIENT_TOKEN:dev-gateway-token}
+      app-id: app-genai-studio
+      app-name: GenAI Studio
+      service-id: jv-genai-auth
+      service-name: 认证授权服务
+      ip: 127.0.0.1
+      port: 38081
+      registry:
+        enabled: true
+        heartbeat-interval: 30000
+
+# 平台用户体系地址（自有配置，供该服务代理网关用户接口）
+genai:
+  gateway:
+    user-base-url: http://localhost:28081/api

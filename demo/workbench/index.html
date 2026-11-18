@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>控制台 · AI Workbench</title>
+  <link rel="stylesheet" href="assets/css/workbench.css" />
+</head>
+<body>
+  <div id="wb-header-root"></div>
+
+  <div class="wb-main">
+    <!-- 欢迎横幅 -->
+    <div class="hero-card">
+      <div class="hero-info">
+        <h2>欢迎回来，Admin</h2>
+        <span class="muted">你的专属交互式计算环境已就绪，所有会话数据保存在个人工作区。</span>
+        <div class="hero-meta">
+          <span>Python 3.11.8</span>
+          <span>conda env: <b class="mono" style="color:#F6A45C;">base</b></span>
+          <span>已运行 3 天 4 小时</span>
+          <span>区域: 华东-上海</span>
+        </div>
+      </div>
+      <div class="spacer"></div>
+      <div class="flex gap-12" style="flex-wrap:wrap;">
+        <a class="wb-btn primary" href="notebook.html">打开 Notebook</a>
+        <a class="wb-btn dark" href="terminals.html" style="background:#3A3D47;border-color:#3A3D47;color:#fff;">
+          新建终端
+        </a>
+      </div>
+    </div>
+
+    <!-- 快捷入口 -->
+    <div class="grid-4 mt-24" id="launchGrid">
+      <a class="launch-card" href="notebook.html">
+        <span class="launch-icon" style="background:var(--orange-soft);color:var(--orange);"></span>
+        <div class="launch-title">新建 Notebook</div>
+        <div class="launch-desc">Jupyter Notebook · Python 3 内核</div>
+      </a>
+      <a class="launch-card" href="terminals.html">
+        <span class="launch-icon" style="background:#2C2E37;color:#7EC699;"></span>
+        <div class="launch-title">打开终端</div>
+        <div class="launch-desc">bash · 持久会话 · 支持后台任务</div>
+      </a>
+      <a class="launch-card" href="files.html">
+        <span class="launch-icon" style="background:var(--blue-soft);color:var(--blue);"></span>
+        <div class="launch-title">浏览文件</div>
+        <div class="launch-desc">工作区文件管理与上传</div>
+      </a>
+      <a class="launch-card" href="#" onclick="wbToast('GPU 会话需管理员审批，已提交申请（演示）','ok');return false;">
+        <span class="launch-icon" style="background:var(--purple-soft);color:var(--purple);"></span>
+        <div class="launch-title">启动 GPU 会话</div>
+        <div class="launch-desc">A100 40GB · 按需计费 · 剩余额度 6.4 GPU 时</div>
+      </a>
+    </div>
+
+    <!-- 会话 + 资源 -->
+    <div class="split-8-4 mt-24">
+      <div class="wb-card">
+        <div class="wb-card-head">
+          <div>
+            <div class="wb-card-title">运行中的会话</div>
+            <div class="wb-card-sub">2 个 Notebook 内核 · 2 个终端 · 1 个 GPU 任务</div>
+          </div>
+          <a class="wb-btn sm" href="sessions.html">全部会话</a>
+        </div>
+        <div class="wb-card-body no-pad" id="miniSessions"></div>
+      </div>
+
+      <div class="wb-card">
+        <div class="wb-card-head">
+          <div class="wb-card-title">资源使用</div>
+          <a class="wb-btn sm ghost" href="resources.html">详情</a>
+        </div>
+        <div class="wb-card-body" id="resBars"></div>
+      </div>
+    </div>
+
+    <!-- 最近文件 -->
+    <div class="wb-card mt-24">
+      <div class="wb-card-head">
+        <div>
+          <div class="wb-card-title">最近打开</div>
+          <div class="wb-card-sub">个人工作区 ~ 下的最近文件</div>
+        </div>
+        <a class="wb-btn sm" href="files.html">进入文件浏览器</a>
+      </div>
+      <div class="wb-card-body no-pad">
+        <div class="wb-table-wrap">
+          <table class="wb-table">
+            <thead><tr><th>文件名</th><th>类型</th><th>大小</th><th>最后打开</th><th></th></tr></thead>
+            <tbody id="recentBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/wb.js"></script>
+  <script>
+    initWb('home');
+
+    /* 快捷入口图标（JS 注入，保持 HTML 简洁） */
+    var launchIcons = ['book', 'terminal', 'folder', 'gpu'];
+    document.querySelectorAll('#launchGrid .launch-icon').forEach(function (el, i) {
+      el.innerHTML = wbIcon(launchIcons[i], 21);
+    });
+
+    /* 运行中的会话（迷你列表） */
+    var miniSessions = [
+      { icon: 'nb', type: 'notebook', name: 'notebooks/02-模型训练.ipynb', kernel: 'Python 3.11', mem: '1.8 GB', time: '14:32', tag: '<span class="wb-tag ok">运行中</span>' },
+      { icon: 'nb', type: 'notebook', name: 'notebooks/01-数据探索.ipynb', kernel: 'Python 3.11', mem: '640 MB', time: '12:05', tag: '<span class="wb-tag ok">运行中</span>' },
+      { icon: 'term', type: 'terminal', name: 'terminal-1', kernel: 'bash', mem: '36 MB', time: '13:40', tag: '<span class="wb-tag">活跃</span>' },
+      { icon: 'gpu', type: 'gpu', name: 'finetune-llm（GPU 队列）', kernel: 'A100 40GB', mem: '23.4 GB', time: '09:15', tag: '<span class="wb-tag purple">GPU</span>' }
+    ];
+    document.getElementById('miniSessions').innerHTML = miniSessions.map(function (s) {
+      return '<div class="session-card" style="border-radius:0;border:0;border-bottom:1px solid var(--border-light);box-shadow:none;">' +
+        '<span class="session-icon ' + s.icon + '">' + wbIcon(s.icon === 'term' ? 'terminal' : (s.icon === 'gpu' ? 'gpu' : 'book'), 19) + '</span>' +
+        '<div style="min-width:0;"><div class="mono text-sm" style="font-weight:550;">' + s.name + '</div>' +
+        '<div class="text-sm muted">' + s.kernel + ' · 内存 ' + s.mem + ' · 最后活动 ' + s.time + '</div></div>' +
+        '<div class="spacer"></div>' + s.tag +
+        '<a class="wb-btn sm" href="' + (s.type === 'notebook' ? 'notebook.html' : (s.type === 'terminal' ? 'terminals.html' : 'resources.html')) + '">打开</a>' +
+        '</div>';
+    }).join('');
+
+    /* 资源条 */
+    var res = [
+      { label: 'vCPU', used: '12.4 / 16 核', pct: 77.5, cls: '' },
+      { label: '内存', used: '46.2 / 64 GB', pct: 72.2, cls: 'blue' },
+      { label: 'GPU（共享池）', used: '0.82 / 1 卡', pct: 82, cls: 'warn' },
+      { label: '磁盘', used: '320 / 500 GB', pct: 64, cls: 'ok' }
+    ];
+    document.getElementById('resBars').innerHTML = res.map(function (r) {
+      return '<div style="margin-bottom:16px;"><div class="flex" style="justify-content:space-between;margin-bottom:7px;">' +
+        '<span class="text-sm" style="font-weight:550;">' + r.label + '</span>' +
+        '<span class="text-sm muted mono">' + r.used + '</span></div>' +
+        '<div class="wb-bar ' + r.cls + '"><i style="width:' + r.pct + '%"></i></div></div>';
+    }).join('');
+
+    /* 最近文件 */
+    var recent = [
+      { n: 'notebooks/03-模型评估.ipynb', t: 'IPYNB', s: '88 KB', w: '昨天 19:21' },
+      { n: 'notebooks/02-模型训练.ipynb', t: 'IPYNB', s: '156 KB', w: '今天 11:08' },
+      { n: 'data/sales_2026.csv', t: 'CSV', s: '12.4 MB', w: '昨天 09:12' },
+      { n: 'train.py', t: 'PY', s: '6 KB', w: '今天 10:02' },
+      { n: 'README.md', t: 'MD', s: '2 KB', w: '上周' }
+    ];
+    var icoCls = { IPYNB: 'nb', CSV: 'csv', PY: 'py', MD: 'md' };
+    document.getElementById('recentBody').innerHTML = recent.map(function (f) {
+      var isNb = f.t === 'IPYNB';
+      return '<tr><td><div class="fname"><span class="f-icon ' + icoCls[f.t] + '">' + f.t + '</span>' +
+        (isNb ? '<a href="notebook.html">' + f.n + '</a>' : '<a href="files.html">' + f.n + '</a>') + '</div></td>' +
+        '<td class="muted">' + f.t + '</td><td class="mono muted">' + f.s + '</td><td class="muted">' + f.w + '</td>' +
+        '<td><a class="wb-btn sm ghost" href="' + (isNb ? 'notebook.html' : 'files.html') + '">打开</a></td></tr>';
+    }).join('');
+  </script>
+</body>
+</html>

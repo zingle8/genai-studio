@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>登录 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    body { background: #F5F6F8; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* 顶部品牌 + 已登录提示 */
+    .login-top {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 22px 32px 0; gap: 16px; flex-wrap: wrap;
+    }
+    .login-brand { display: flex; align-items: center; gap: 8px; }
+    .login-brand .logo-brand { font-size: 18px; font-weight: 700; letter-spacing: -0.4px; }
+    .login-brand .logo-badge {
+      font-size: 10px; color: #fff; background: var(--text-primary);
+      padding: 2px 6px; border-radius: 4px; font-weight: 500;
+    }
+    .signed-chip {
+      display: none; align-items: center; gap: 8px; height: 32px; padding: 0 6px 0 10px;
+      background: #fff; border: 1px solid var(--border); border-radius: 16px; font-size: 12.5px;
+      color: var(--text-secondary);
+    }
+    .signed-chip.show { display: inline-flex; }
+    .signed-chip a { color: var(--accent); font-weight: 500; }
+    .signed-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--success); }
+
+    /* 登录卡片 */
+    .login-main { flex: 1; display: flex; align-items: flex-start; justify-content: center; padding: 26px 20px 0; }
+    .login-card {
+      width: 100%; max-width: 720px; background: #fff; border-radius: 14px;
+      box-shadow: 0 10px 34px rgba(16, 24, 40, .08); overflow: hidden;
+    }
+    .login-head {
+      position: relative; padding: 30px 40px 26px; overflow: hidden;
+      background: linear-gradient(135deg, #E9EEFB 0%, #F6F8FC 52%, #FFFFFF 100%);
+    }
+    .login-head::after {
+      content: ''; position: absolute; right: -60px; top: -70px; width: 220px; height: 220px;
+      border-radius: 50%; background: radial-gradient(circle at 30% 30%, rgba(77,107,254,.16), rgba(77,107,254,0) 68%);
+    }
+    .login-head h1 { position: relative; font-size: 27px; font-weight: 700; letter-spacing: -0.4px; }
+    .login-head p { position: relative; font-size: 14.5px; color: var(--text-secondary); margin-top: 10px; }
+    .login-head p b { color: #E34D59; font-weight: 700; }
+
+    /* Tab */
+    .login-tabs {
+      display: flex; align-items: center; gap: 26px;
+      padding: 20px 40px 0; border-bottom: 1px solid var(--border-light);
+    }
+    .login-tab {
+      position: relative; padding: 0 2px 12px; font-size: 15.5px;
+      color: var(--text-secondary); transition: color .15s;
+    }
+    .login-tab:hover { color: var(--text-primary); }
+    .login-tab.active { color: var(--accent); font-weight: 500; }
+    .login-tab.active::after {
+      content: ''; position: absolute; left: 0; right: 0; bottom: -1px;
+      height: 2px; border-radius: 2px; background: var(--accent);
+    }
+    .login-tab.tab-right { margin-left: auto; }
+
+    /* 双栏主体 */
+    .login-cols { display: flex; gap: 34px; padding: 26px 40px 4px; align-items: flex-start; }
+    .login-form { flex: 1; min-width: 0; }
+
+    .lf { position: relative; margin-bottom: 16px; }
+    .lf-input {
+      width: 100%; height: 48px; padding: 0 44px 0 14px; font-size: 14.5px;
+      background: #F5F6F8; border: 1px solid transparent; border-radius: 8px;
+      outline: 0; color: var(--text-primary); transition: all .15s;
+    }
+    .lf-input::placeholder { color: var(--text-tertiary); }
+    .lf-input:focus { background: #fff; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(77, 107, 254, .10); }
+    .lf-eye {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      width: 26px; height: 26px; display: flex; align-items: center; justify-content: center;
+      color: var(--text-tertiary); border-radius: 6px;
+    }
+    .lf-eye:hover { color: var(--text-secondary); background: var(--bg-soft); }
+    .lf-eye svg { width: 17px; height: 17px; }
+    .lf-code { display: flex; gap: 10px; }
+    .lf-code .lf-input { padding-right: 14px; }
+    .lf-code-btn {
+      flex-shrink: 0; width: 120px; height: 48px; border-radius: 8px; font-size: 14px;
+      background: var(--accent-soft); color: var(--accent); transition: all .15s;
+    }
+    .lf-code-btn:hover { background: #E3E9FE; }
+    .lf-code-btn:disabled { background: var(--bg-soft); color: var(--text-tertiary); cursor: not-allowed; }
+
+    .lf-row { display: flex; align-items: center; justify-content: space-between; margin: 4px 0 18px; }
+    .lf-check { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-secondary); cursor: pointer; }
+    .lf-check input { width: 15px; height: 15px; accent-color: var(--accent); cursor: pointer; }
+
+    .login-btn {
+      width: 100%; height: 48px; border-radius: 8px; background: var(--accent);
+      color: #fff; font-size: 16px; font-weight: 500; letter-spacing: 1px; transition: background .15s;
+    }
+    .login-btn:hover { background: var(--accent-hover); }
+    .login-btn:disabled { background: #A9B7FE; cursor: not-allowed; }
+    .login-err { min-height: 18px; font-size: 12.5px; color: var(--danger); margin-top: 9px; }
+
+    .forget-link { display: inline-block; margin-top: 14px; font-size: 13.5px; color: var(--accent); }
+    .forget-link:hover { text-decoration: underline; }
+
+    /* 右侧微信快捷登录 */
+    .login-side { flex-shrink: 0; width: 200px; }
+    .wx-card {
+      border: 1px solid var(--border); border-radius: 10px; background: #fff;
+      padding: 18px 14px 16px; text-align: center;
+    }
+    .wx-avatar {
+      width: 46px; height: 46px; margin: 0 auto 10px; border-radius: 10px;
+      background: linear-gradient(135deg, #4D6BFE, #7B5CFF); color: #fff;
+      font-size: 18px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .wx-name { font-size: 14px; color: var(--text-primary); }
+    .wx-btn {
+      width: 100%; height: 36px; margin-top: 12px; border-radius: 6px;
+      background: #07C160; color: #fff; font-size: 13.5px; font-weight: 500; transition: background .15s;
+    }
+    .wx-btn:hover { background: #06AD56; }
+    .wx-switch { font-size: 12px; color: var(--text-tertiary); margin-top: 12px; cursor: pointer; line-height: 1.6; }
+    .wx-switch:hover { color: var(--accent); }
+
+    /* 扫码面板 */
+    .qr-panel { text-align: center; padding: 4px 0 10px; }
+    .qr-box {
+      width: 168px; height: 168px; margin: 0 auto; border: 1px solid var(--border);
+      border-radius: 10px; display: flex; align-items: center; justify-content: center;
+      background: repeating-conic-gradient(#1A1A1A 0% 25%, #fff 0% 50%) 0 0 / 14px 14px;
+      opacity: .9;
+    }
+    .qr-box span {
+      background: #fff; border-radius: 8px; padding: 10px 12px; font-size: 12.5px; color: var(--text-secondary);
+      box-shadow: var(--shadow-sm);
+    }
+    .qr-tip { font-size: 13px; color: var(--text-secondary); margin-top: 14px; }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    /* 演示账号条 */
+    .demo-strip {
+      display: flex; align-items: center; gap: 12px; margin: 20px 40px 30px;
+      padding: 13px 16px; border-radius: 10px;
+      background: var(--accent-soft-2); border: 1px dashed #C7D2FE;
+    }
+    .demo-strip .ds-icon {
+      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: #fff; color: var(--accent); border: 1px solid #DCE3FE;
+    }
+    .demo-strip .ds-icon svg { width: 16px; height: 16px; }
+    .demo-strip .ds-text { flex: 1; min-width: 0; }
+    .demo-strip .ds-text b { display: block; font-size: 13px; color: var(--text-primary); }
+    .demo-strip .ds-text span { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+    .demo-strip .ds-text code {
+      font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12px;
+      background: #fff; border: 1px solid #DCE3FE; border-radius: 4px; padding: 1px 6px; color: var(--accent);
+    }
+    .ds-btn {
+      flex-shrink: 0; height: 34px; padding: 0 16px; border-radius: 8px;
+      background: var(--text-primary); color: #fff; font-size: 13.5px; font-weight: 500; transition: all .15s;
+    }
+    .ds-btn:hover { background: #000; }
+    .ds-btn:disabled { background: #9CA3AF; cursor: not-allowed; }
+
+    /* 底部备案 */
+    .login-foot {
+      padding: 22px 20px 26px; text-align: center;
+      font-size: 12.5px; color: var(--text-tertiary); line-height: 1.8;
+    }
+    .login-foot .sep { margin: 0 8px; color: var(--text-quaternary); }
+
+    /* 轻提示 */
+    .toast {
+      position: fixed; left: 50%; top: 26px; transform: translate(-50%, -16px);
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 16px; border-radius: 10px; background: #fff;
+      border: 1px solid var(--border); box-shadow: var(--shadow-lg);
+      font-size: 13.5px; color: var(--text-primary);
+      opacity: 0; visibility: hidden; transition: all .22s; z-index: 99;
+    }
+    .toast.show { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
+    .toast svg { width: 16px; height: 16px; color: var(--success); }
+
+    @media (max-width: 720px) {
+      .login-cols { flex-direction: column; gap: 22px; padding: 22px 22px 0; }
+      .login-side { width: 100%; }
+      .login-head { padding: 24px 22px 20px; }
+      .login-head h1 { font-size: 22px; }
+      .login-tabs { padding: 16px 22px 0; gap: 18px; }
+      .login-tab { font-size: 14.5px; }
+      .demo-strip { margin: 18px 22px 24px; flex-wrap: wrap; }
+      .login-top { padding: 16px 20px 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="login-top">
+    <a class="login-brand" href="../index.html">
+      <span class="logo-brand">AI Studio</span>
+      <span class="logo-badge">微服务</span>
+    </a>
+    <span class="signed-chip" id="signedChip">
+      <span class="dot"></span>
+      当前已登录：<b id="signedName">Admin</b>
+      <a href="../index.html">进入工作台 →</a>
+    </span>
+  </div>
+
+  <div class="login-main">
+    <div class="login-card">
+      <div class="login-head">
+        <h1>完成登录 / 注册，开启开发之旅</h1>
+        <p>新用户免费赠送专享 <b>2000万</b> tokens 体验包！</p>
+      </div>
+
+      <div class="login-tabs">
+        <button class="login-tab" data-panel="phone">手机号登录</button>
+        <button class="login-tab active" data-panel="account">账号登录</button>
+        <button class="login-tab tab-right" data-panel="wechat">微信扫码登录</button>
+      </div>
+
+      <div class="login-cols">
+        <div class="login-form">
+          <!-- 账号登录 -->
+          <form class="panel active" id="panel-account" autocomplete="off">
+            <div class="lf">
+              <input class="lf-input" id="account" value="admin" placeholder="请输入用户名 / 邮箱 / 手机号" />
+            </div>
+            <div class="lf">
+              <input class="lf-input" id="password" type="password" value="admin123" placeholder="请输入密码" />
+              <button class="lf-eye" type="button" id="togglePwd" title="显示 / 隐藏密码">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>
+              </button>
+            </div>
+            <div class="lf-row">
+              <label class="lf-check"><input type="checkbox" checked />记住我</label>
+              <a class="link" href="help-feedback.html">忘记密码？</a>
+            </div>
+            <button class="login-btn" type="submit" id="btnAccount">登录</button>
+            <div class="login-err" id="errAccount"></div>
+          </form>
+
+          <!-- 手机号登录 -->
+          <form class="panel" id="panel-phone" autocomplete="off">
+            <div class="lf">
+              <input class="lf-input" id="phone" placeholder="请输入手机号" />
+            </div>
+            <div class="lf lf-code">
+              <input class="lf-input" id="code" placeholder="请输入验证码" />
+              <button class="lf-code-btn" type="button" id="btnCode">获取验证码</button>
+            </div>
+            <button class="login-btn" type="submit" id="btnPhone">登录</button>
+            <div class="login-err" id="errPhone"></div>
+            <a class="forget-link" href="help-feedback.html">收不到验证码？</a>
+          </form>
+
+          <!-- 微信扫码登录 -->
+          <div class="panel qr-panel" id="panel-wechat">
+            <div class="qr-box"><span>演示环境<br />扫码登录已模拟</span></div>
+            <div class="qr-tip">请使用微信扫一扫，扫描二维码登录</div>
+            <div class="login-err"></div>
+          </div>
+        </div>
+
+        <aside class="login-side">
+          <div class="wx-card">
+            <div class="wx-avatar">子</div>
+            <div class="wx-name">子墨</div>
+            <button class="wx-btn" id="btnWx">微信快捷登录</button>
+            <div class="wx-switch" id="wxSwitch">使用其他头像、昵称或账号</div>
+          </div>
+        </aside>
+      </div>
+
+      <!-- 演示账号：一键登录 -->
+      <div class="demo-strip">
+        <span class="ds-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        </span>
+        <div class="ds-text">
+          <b>演示账号已预填，点击即可登录</b>
+          <span>管理员账号 <code>admin</code> / 密码 <code>admin123</code> · 登录后可直接进入工作台与用户中心</span>
+        </div>
+        <button class="ds-btn" id="btnOneClick">一键登录</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="login-foot">
+    京公网安备 33010602009975 号<span class="sep">·</span>京ICP备 20011824 号-14<span class="sep">·</span>Copyright © 2026 AI Studio
+  </div>
+
+  <div class="toast" id="toast">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+    <span id="toastText">已安全退出登录</span>
+  </div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    var params = new URLSearchParams(location.search);
+
+    /* 登录成功后的跳转目标（默认工作台） */
+    function target() {
+      var r = params.get('redirect');
+      return r || (ASSET_BASE + 'index.html');
+    }
+
+    function toast(msg) {
+      var el = document.getElementById('toast');
+      document.getElementById('toastText').textContent = msg;
+      el.classList.add('show');
+      setTimeout(function () { el.classList.remove('show'); }, 2200);
+    }
+
+    /* 退出登录后回到本页 → 提示 */
+    if (params.get('logout')) toast('已安全退出登录');
+
+    /* 已登录状态提示 */
+    var user = Auth.getUser();
+    if (user) {
+      document.getElementById('signedName').textContent = user.name;
+      document.getElementById('signedChip').classList.add('show');
+    }
+
+    /* Tab 切换 */
+    document.querySelectorAll('.login-tab').forEach(function (tab) {
+      tab.addEventListener('click', function () {
+        document.querySelectorAll('.login-tab').forEach(function (t) { t.classList.remove('active'); });
+        tab.classList.add('active');
+        document.querySelectorAll('.panel').forEach(function (p) { p.classList.remove('active'); });
+        document.getElementById('panel-' + tab.dataset.panel).classList.add('active');
+      });
+    });
+
+    /* 密码显隐 */
+    var pwd = document.getElementById('password');
+    document.getElementById('togglePwd').addEventListener('click', function () {
+      var show = pwd.type === 'password';
+      pwd.type = show ? 'text' : 'password';
+      this.innerHTML = show
+        ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>'
+        : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z"/><circle cx="12" cy="12" r="3"/></svg>';
+    });
+
+    /* 登录：写入登录态 → 跳转 */
+    function doLogin(username, password, btn, errEl) {
+      if (!username || !password) {
+        errEl.textContent = '请输入用户名和密码';
+        return;
+      }
+      var old = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = '登录中…';
+      errEl.textContent = '';
+      setTimeout(function () {
+        Auth.login(username, password);
+        toast('登录成功，正在进入…');
+        setTimeout(function () { location.href = target(); }, 420);
+        btn.textContent = old;
+        btn.disabled = false;
+      }, 480);
+    }
+
+    /* 账号登录 */
+    document.getElementById('panel-account').addEventListener('submit', function (e) {
+      e.preventDefault();
+      doLogin(document.getElementById('account').value.trim(), pwd.value, document.getElementById('btnAccount'), document.getElementById('errAccount'));
+    });
+
+    /* 手机号登录 */
+    document.getElementById('panel-phone').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var phone = document.getElementById('phone').value.trim();
+      var errEl = document.getElementById('errPhone');
+      if (!phone) { errEl.textContent = '请输入手机号'; return; }
+      if (!document.getElementById('code').value.trim()) { errEl.textContent = '请输入验证码'; return; }
+      doLogin('admin', 'admin123', document.getElementById('btnPhone'), errEl);
+    });
+
+    /* 获取验证码（60s 倒计时） */
+    document.getElementById('btnCode').addEventListener('click', function () {
+      var phone = document.getElementById('phone').value.trim();
+      var errEl = document.getElementById('errPhone');
+      if (!phone) { errEl.textContent = '请先输入手机号'; return; }
+      errEl.textContent = '';
+      var btn = this, n = 60;
+      btn.disabled = true;
+      btn.textContent = n + 's 后重发';
+      var t = setInterval(function () {
+        n--;
+        if (n <= 0) { clearInterval(t); btn.disabled = false; btn.textContent = '获取验证码'; }
+        else btn.textContent = n + 's 后重发';
+      }, 1000);
+      toast('验证码已发送（演示环境，任意 6 位数字均可）');
+    });
+
+    /* 一键登录：免输入直接登录并跳转 */
+    function oneClick(btn) {
+      btn.disabled = true;
+      var old = btn.textContent;
+      btn.textContent = '登录中…';
+      setTimeout(function () {
+        Auth.login(DEMO_ADMIN.username, DEMO_ADMIN.password);
+        toast('已使用 admin 演示账号登录，正在进入工作台…');
+        setTimeout(function () { location.href = target(); }, 420);
+        btn.textContent = old;
+        btn.disabled = false;
+      }, 320);
+    }
+    document.getElementById('btnOneClick').addEventListener('click', function () { oneClick(this); });
+    document.getElementById('btnWx').addEventListener('click', function () { oneClick(this); });
+    document.getElementById('wxSwitch').addEventListener('click', function () {
+      document.querySelector('.login-tab[data-panel="account"]').click();
+      document.getElementById('account').focus();
+    });
+
+    /* 已登录时直接回车也可进入 */
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && Auth.getUser()) location.href = target();
+    });
+
+    document.getElementById('account').focus();
+  </script>
+</body>
+</html>

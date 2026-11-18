@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>文件 · AI Workbench</title>
+  <link rel="stylesheet" href="assets/css/workbench.css" />
+</head>
+<body>
+  <div id="wb-header-root"></div>
+
+  <div class="wb-main">
+    <div class="wb-page-head">
+      <div>
+        <div class="wb-page-title">文件</div>
+        <div class="wb-page-sub">浏览与管理个人工作区文件，双击 Notebook 直接打开编辑器</div>
+      </div>
+      <div class="flex gap-8">
+        <div class="wb-dropdown" id="newDropdown">
+          <button class="wb-btn primary" onclick="wbToggleMenu(this,event)">＋ 新建</button>
+          <div class="wb-menu">
+            <button onclick="createItem('Notebook');return false;"></button>
+            <button onclick="createItem('Python 文件');return false;"></button>
+            <button onclick="createItem('文件夹');return false;"></button>
+          </div>
+        </div>
+        <button class="wb-btn" onclick="wbToast('演示环境：上传已模拟完成','ok')"></button>
+        <button class="wb-btn" onclick="refreshList()"></button>
+      </div>
+    </div>
+
+    <div class="files-layout">
+      <!-- 左侧文件树 -->
+      <div class="wb-card">
+        <div class="wb-card-head" style="padding:14px 16px;">
+          <div class="wb-card-title" style="font-size:14px;">工作区</div>
+          <span class="wb-tag accent">~</span>
+        </div>
+        <div class="ftree" id="ftree"></div>
+      </div>
+
+      <!-- 右侧文件列表 -->
+      <div class="wb-card">
+        <div class="wb-card-head" style="flex-direction:column; align-items:stretch; gap:10px;">
+          <div class="crumb" id="crumb"></div>
+          <div class="fbrowser-bar">
+            <input class="wb-input" id="fSearch" placeholder="搜索当前目录…" style="width:220px;" />
+            <span class="spacer"></span>
+            <span class="text-sm muted" id="fCount"></span>
+          </div>
+        </div>
+        <div class="wb-card-body no-pad">
+          <div class="wb-table-wrap">
+            <table class="wb-table">
+              <thead><tr><th style="width:44%;">名称</th><th>状态</th><th>大小</th><th>修改时间</th><th style="width:120px;">操作</th></tr></thead>
+              <tbody id="fileBody"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/js/wb.js"></script>
+  <script>
+    initWb('files');
+
+    var current = [];           /* 当前目录路径，如 ['notebooks'] */
+    var created = [];           /* 本次演示新建的文件 */
+
+    /* ---------- 新建/上传/刷新按钮图标与菜单 ---------- */
+    document.querySelector('#newDropdown .wb-btn').innerHTML = wbIcon('plus') + '新建';
+    document.querySelector('#newDropdown .wb-btn.primary').innerHTML = wbIcon('plus') + ' 新建';
+    var menuBtns = document.querySelectorAll('#newDropdown .wb-menu button');
+    menuBtns[0].innerHTML = wbIcon('book') + 'Notebook';
+    menuBtns[1].innerHTML = wbIcon('code') + 'Python 文件';
+    menuBtns[2].innerHTML = wbIcon('folder') + '文件夹';
+    var barBtns = document.querySelectorAll('.wb-page-head .wb-btn:not(.primary)');
+    barBtns[0].innerHTML = wbIcon('upload') + '上传';
+    barBtns[1].innerHTML = wbIcon('refresh') + '刷新';
+
+    function createItem(kind) {
+      created.push({ name: '未命名' + (kind === '文件夹' ? '文件夹' : (kind === 'Notebook' ? '.ipynb' : '.py')), type: kind === '文件夹' ? 'dir' : (kind === 'Notebook' ? 'nb' : 'py'), size: '—', mtime: '刚刚' });
+      renderFiles();
+      wbToast('已创建' + kind + '（演示）', 'ok');
+    }
+
+    /* ---------- 文件树 ---------- */
+    function nodeByPath(path) {
+      var node = WB_FS;
+      for (var i = 0; i < path.length; i++) {
+        var hit = (node.children || []).filter(function (c) { return c.name === path[i]; })[0];
+        if (!hit) return WB_FS;
+        node = hit;
+      }
+      return node;
+    }
+
+    function renderTree() {
+      function branch(node, path, depth) {
+        if (!node.children) return '';
+        var kids = node.children.filter(function (c) { return c.dir; });
+        var html = kids.map(function (c) {
+          var childPath = path.concat([c.name]);
+          var isCur = current.slice(0, childPath.length).join('/') === childPath.join('/');
+          var expanded = current.length > path.length && current[path.length] === c.name;
+          return '<div>' +
+            '<div class="ft-item ' + (isCur && current.join('/') === childPath.join('/') ? 'active' : '') + '" onclick="enterDir(\'' + childPath.join('/') + '\')">' +
+              (c.children && c.children.some(function (k) { return k.dir; })
+                ? '<span class="ft-caret ' + (expanded ? 'open' : '') + '">' + wbIcon('caret') + '</span>'
+                : '<span style="width:12px;"></span>') +
+              wbIcon('folder') + '<span>' + c.name + '/</span>' +
+            '</div>' +
+            (c.children && c.children.some(function (k) { return k.dir; })
+              ? '<div class="ft-children ' + (expanded ? '' : 'collapsed') + '">' + branch(c, childPath, depth + 1) + '</div>'
+              : '') +
+            '</div>';
+        }).join('');
+        return html;
+      }
+      document.getElementById('ftree').innerHTML =
+        '<div class="ft-group-title">目录</div>' +
+        '<div class="ft-item ' + (current.length === 0 ? 'active' : '') + '" onclick="enterDir(\'\')">' +
+          '<span style="width:12px;"></span>' + wbIcon('home') + '<span>~（根目录）</span></div>' +
+        branch(WB_FS, [], 0);
+    }
+
+    /* ---------- 面包屑 ---------- */
+    function renderCrumb() {
+      var parts = ['<a onclick="enterDir(\'\')">~</a>'];
+      current.forEach(function (p, i) {
+        parts.push('<span class="sep">/</span>');
+        if (i === current.length - 1) parts.push('<b>' + p + '</b>');
+        else parts.push('<a onclick="enterDir(\'' + current.slice(0, i + 1).join('/') + '\')">' + p + '</a>');
+      });
+      document.getElementById('crumb').innerHTML = parts.join('');
+    }
+
+    /* ---------- 文件列表 ---------- */
+    function renderFiles() {
+      var node = nodeByPath(current);
+      var kw = (document.getElementById('fSearch').value || '').toLowerCase();
+      var items = (node.children || []).filter(function (f) {
+        return !kw || f.name.toLowerCase().indexOf(kw) > -1;
+      });
+
+      var dirs = items.filter(function (f) { return f.dir; });
+      var files = items.filter(function (f) { return !f.dir; });
+      var list = dirs.concat(files);
+
+      document.getElementById('fCount').textContent = list.length + ' 个项目' + (kw ? '（已筛选）' : '');
+
+      document.getElementById('fileBody').innerHTML = list.map(function (f) {
+        var status = f.running
+          ? '<span class="wb-tag ok">' + wbIcon('activity', 11) + '运行中</span>'
+          : (f.dir ? '<span class="wb-tag">目录</span>' : '<span class="wb-tag muted">就绪</span>');
+        var open = f.dir
+          ? '<button class="wb-btn sm ghost" onclick="enterDir(\'' + current.concat([f.name]).join('/') + '\')">打开</button>'
+          : (f.type === 'nb'
+            ? '<a class="wb-btn sm ghost" href="notebook.html">编辑</a>'
+            : '<button class="wb-btn sm ghost" onclick="wbToast(\'演示环境：仅 Notebook 支持在线编辑\')">编辑</button>');
+        return '<tr>' +
+          '<td><div class="fname">' + wbFileIcon(f) +
+            (f.dir
+              ? '<a onclick="enterDir(\'' + current.concat([f.name]).join('/') + '\')">' + f.name + '</a>'
+              : (f.type === 'nb' ? '<a href="notebook.html">' + f.name + '</a>' : '<a onclick="wbToast(\'已预览 ' + f.name + '（演示）\')">' + f.name + '</a>')) +
+          '</div></td>' +
+          '<td>' + status + '</td>' +
+          '<td class="mono muted">' + (f.size || '—') + '</td>' +
+          '<td class="muted">' + f.mtime + '</td>' +
+          '<td><div class="row-actions">' + open +
+            '<button class="wb-btn sm ghost" onclick="wbToast(\'演示环境：删除已模拟\')">删除</button></div></td>' +
+          '</tr>';
+      }).join('') || '<tr><td colspan="5" style="text-align:center;padding:40px;" class="muted">没有匹配的文件</td></tr>';
+    }
+
+    window.enterDir = function (pathStr) {
+      current = pathStr ? pathStr.split('/') : [];
+      document.getElementById('fSearch').value = '';
+      renderTree(); renderCrumb(); renderFiles();
+    };
+
+    function refreshList() {
+      created = [];
+      renderFiles();
+      wbToast('目录已刷新', 'ok');
+    }
+
+    document.getElementById('fSearch').addEventListener('input', renderFiles);
+
+    /* 初始化：默认进入 notebooks 目录（有运行中的文件更直观） */
+    enterDir('notebooks');
+  </script>
+</body>
+</html>

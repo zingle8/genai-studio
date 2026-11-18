@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>使用日志 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    /* Token 列与明细弹框 */
+    .tok { color: var(--primary); cursor: pointer; border-bottom: 1px dashed var(--primary); font-variant-numeric: tabular-nums; }
+    .tok:hover { opacity: 0.75; }
+    .tok-muted { color: var(--text-tertiary); border-bottom-color: var(--border); cursor: pointer; }
+    .tok-group { border: 1px solid var(--border-light); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+    .tok-group-head {
+      display: flex; align-items: center; gap: 8px; padding: 10px 16px;
+      background: var(--bg-soft); font-size: 13px; font-weight: 600;
+    }
+    .tok-group-head .sum { margin-left: auto; font-family: ui-monospace, Menlo, monospace; font-size: 13px; color: var(--primary); }
+    .tok-row {
+      display: flex; align-items: baseline; gap: 10px; padding: 9px 16px;
+      border-top: 1px solid var(--border-light); font-size: 12.5px;
+    }
+    .tok-row .lbl { width: 150px; flex-shrink: 0; color: var(--text-secondary); }
+    .tok-row .val { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; font-weight: 600; width: 76px; text-align: right; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+    .tok-row .note { color: var(--text-tertiary); font-size: 12px; line-height: 1.5; }
+    .tok-row.cache .val { color: var(--success); }
+    .tok-row.think .val { color: var(--warning); }
+    .tok-bar { display: flex; height: 6px; border-radius: 3px; overflow: hidden; margin: 4px 16px 12px; background: var(--bg-soft); }
+    .tok-bar i { height: 100%; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+    <main class="main">
+      <div class="content">
+        <div class="page-header">
+          <div>
+            <div class="page-title">使用日志</div>
+            <div class="page-subtitle">LLM 请求参数、回复日志、链路追踪（traceId）</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-secondary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+              链路监控
+            </button>
+            <button class="btn btn-secondary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              导出
+            </button>
+          </div>
+        </div>
+
+        <div class="filter-bar">
+          <input class="form-input" placeholder="搜索消息内容 / traceId" style="width:280px;" />
+          <select class="form-select" style="width:130px;"><option>全部用户</option></select>
+          <select class="form-select" style="width:130px;"><option>全部模块</option><option>智能客服</option><option>文档总结</option></select>
+          <select class="form-select" style="width:140px;"><option>全部业务</option></select>
+          <select class="form-select" style="width:140px;"><option>全部模型</option><option>GPT-4o</option><option>Claude 3.5</option></select>
+          <select class="form-select" style="width:130px;"><option>全部流式</option><option>流式</option><option>非流式</option></select>
+          <select class="form-select" style="width:130px;"><option>全部状态</option><option>成功</option><option>失败</option></select>
+          <input class="form-input" type="date" style="width:140px;" />
+          <button class="btn btn-secondary btn-sm">重置</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">请求列表</div>
+            <div class="flex gap-12 items-center text-sm muted">
+              <span>共 <b>128,420</b> 条</span>
+              <span>·</span>
+              <span>成功 <b style="color:var(--success);">127,862</b></span>
+              <span>失败 <b style="color:var(--danger);">558</b></span>
+            </div>
+          </div>
+          <div class="card-body no-pad">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>时间</th><th>用户</th><th>模块</th><th>业务</th><th>模型</th><th>类型</th><th>耗时</th><th>Input Tokens</th><th>Output Tokens</th><th>成本</th><th>状态</th><th>traceId</th><th>操作</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td class="muted text-sm">14:23:08.241</td>
+                    <td>张三 (dev-001)</td>
+                    <td>chat</td>
+                    <td>智能客服</td>
+                    <td><span class="tag primary tag-solid">GPT-4o</span></td>
+                    <td><span class="tag info tag-solid">流式</span></td>
+                    <td>1.24s</td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('7f2a8c3d')">286</span></td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('7f2a8c3d')">1,000</span></td>
+                    <td>¥ 0.024</td>
+                    <td><span class="tag success">成功</span></td>
+                    <td class="mono text-sm"><a style="color:var(--primary);">7f2a8c3d</a></td>
+                    <td><div class="row-actions"><button title="查看详情"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td class="muted text-sm">14:22:51.082</td>
+                    <td>李四 (dev-002)</td>
+                    <td>summarize</td>
+                    <td>文档总结</td>
+                    <td><span class="tag purple tag-solid">Claude 3.5</span></td>
+                    <td><span class="tag gray tag-solid">非流式</span></td>
+                    <td>0.86s</td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('3b8c1e9f')">3,120</span></td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('3b8c1e9f')">300</span></td>
+                    <td>¥ 0.052</td>
+                    <td><span class="tag success">成功</span></td>
+                    <td class="mono text-sm"><a style="color:var(--primary);">3b8c1e9f</a></td>
+                    <td><div class="row-actions"><button title="查看详情"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td class="muted text-sm">14:22:30.517</td>
+                    <td>王五 (dev-003)</td>
+                    <td>copywriting</td>
+                    <td>营销文案</td>
+                    <td><span class="tag warning tag-solid">文心 4.0</span></td>
+                    <td><span class="tag info tag-solid">流式</span></td>
+                    <td>2.31s</td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('9e1d4c2a')">420</span></td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('9e1d4c2a')">262</span></td>
+                    <td>¥ 0.012</td>
+                    <td><span class="tag success">成功</span></td>
+                    <td class="mono text-sm"><a style="color:var(--primary);">9e1d4c2a</a></td>
+                    <td><div class="row-actions"><button title="查看详情"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td class="muted text-sm">14:21:14.628</td>
+                    <td>赵六 (dev-001)</td>
+                    <td>code</td>
+                    <td>代码助手</td>
+                    <td><span class="tag cyan tag-solid">Llama 3.1</span></td>
+                    <td><span class="tag info tag-solid">流式</span></td>
+                    <td>3.42s</td>
+                    <td class="mono text-sm"><span class="tok tok-muted" onclick="openTok('1c5f3a8d')">1,520</span></td>
+                    <td class="mono text-sm"><span class="tok tok-muted" onclick="openTok('1c5f3a8d')">304</span></td>
+                    <td>¥ 0.000</td>
+                    <td><span class="tag danger">失败</span></td>
+                    <td class="mono text-sm"><a style="color:var(--primary);">1c5f3a8d</a></td>
+                    <td><div class="row-actions"><button title="查看详情"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td class="muted text-sm">14:20:02.391</td>
+                    <td>孙七 (dev-004)</td>
+                    <td>qa</td>
+                    <td>知识问答</td>
+                    <td><span class="tag primary tag-solid">GPT-4o</span></td>
+                    <td><span class="tag gray tag-solid">非流式</span></td>
+                    <td>2.18s</td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('8a2e4d2c')">2,340</span></td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('8a2e4d2c')">500</span></td>
+                    <td>¥ 0.048</td>
+                    <td><span class="tag success">成功</span></td>
+                    <td class="mono text-sm"><a style="color:var(--primary);">8a2e4d2c</a></td>
+                    <td><div class="row-actions"><button title="查看详情"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td class="muted text-sm">14:19:45.072</td>
+                    <td>周八 (dev-005)</td>
+                    <td>chat</td>
+                    <td>智能客服</td>
+                    <td><span class="tag purple tag-solid">Claude 3.5</span></td>
+                    <td><span class="tag info tag-solid">流式</span></td>
+                    <td>1.05s</td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('4d2c8e9a')">612</span></td>
+                    <td class="mono text-sm"><span class="tok" onclick="openTok('4d2c8e9a')">330</span></td>
+                    <td>¥ 0.014</td>
+                    <td><span class="tag success">成功</span></td>
+                    <td class="mono text-sm"><a style="color:var(--primary);">4d2c8e9a</a></td>
+                    <td><div class="row-actions"><button title="查看详情"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-footer">
+              <div class="text-sm muted">显示 1-6 / 128,420 条</div>
+              <div class="pagination">
+                <button class="page-btn">‹</button>
+                <button class="page-btn active">1</button>
+                <button class="page-btn">2</button>
+                <button class="page-btn">3</button>
+                <button class="page-btn">…</button>
+                <button class="page-btn">›</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 详情面板示意 -->
+        <div class="card mt-24">
+          <div class="card-header">
+            <div>
+              <div class="card-title">请求详情预览 · traceId <span class="mono" style="color:var(--primary);">7f2a8c3d</span></div>
+              <div class="card-subtitle">点击列表中的 traceId 查看完整链路</div>
+            </div>
+            <button class="btn btn-sm btn-ghost">收起</button>
+          </div>
+          <div class="card-body">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:20px;">
+              <div>
+                <div class="card-subtitle mb-8">📥 请求参数 (Request)</div>
+                <pre class="mono" style="background: var(--bg); padding: 14px; border-radius: 8px; font-size: 12px; overflow: auto; max-height: 320px;">{
+  "model": "gpt-4o",
+  "stream": true,
+  "temperature": 0.7,
+  "max_tokens": 2048,
+  "messages": [
+    { "role": "system", "content": "你是一个专业的智能客服助手..." },
+    { "role": "user", "content": "我的订单什么时候发货？" }
+  ],
+  "tools": [...]
+}</pre>
+              </div>
+              <div>
+                <div class="card-subtitle mb-8">📤 回复内容 (Response)</div>
+                <pre class="mono" style="background: var(--bg); padding: 14px; border-radius: 8px; font-size: 12px; overflow: auto; max-height: 320px;">{
+  "id": "chatcmpl-7f2a8c3d",
+  "object": "chat.completion.chunk",
+  "created": 1728532483,
+  "model": "gpt-4o-2024-08-06",
+  "choices": [
+    {
+      "delta": {
+        "content": "您好！您可在【我的订单】中查看..."
+      },
+      "finish_reason": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 286,
+    "completion_tokens": 1000,
+    "total_tokens": 1286
+  }
+}</pre>
+              </div>
+            </div>
+            <div class="mt-16">
+              <div class="card-subtitle mb-8">🔗 完整链路追踪</div>
+              <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                <span class="tag info tag-solid" style="padding:4px 10px;">网关鉴权</span>
+                <span style="color: var(--text-tertiary);">→</span>
+                <span class="tag info tag-solid" style="padding:4px 10px;">请求路由</span>
+                <span style="color: var(--text-tertiary);">→</span>
+                <span class="tag info tag-solid" style="padding:4px 10px;">RAG 检索</span>
+                <span style="color: var(--text-tertiary);">→</span>
+                <span class="tag info tag-solid" style="padding:4px 10px;">Prompt 拼装</span>
+                <span style="color: var(--text-tertiary);">→</span>
+                <span class="tag primary tag-solid" style="padding:4px 10px;">LLM 调用</span>
+                <span style="color: var(--text-tertiary);">→</span>
+                <span class="tag success tag-solid" style="padding:4px 10px;">计费上报</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Token 明细弹框 -->
+        <div class="modal-mask" id="tokModal" onclick="if(event.target===this)closeTok()">
+          <div class="modal modal-lg" style="max-width:620px;">
+            <div class="modal-header">
+              <div>
+                <div class="modal-title">Token 明细 · <span class="mono" id="tokTitle" style="color:var(--primary);"></span></div>
+                <div class="modal-subtitle" id="tokSub"></div>
+              </div>
+              <button class="modal-close" onclick="closeTok()">×</button>
+            </div>
+            <div class="modal-body" id="tokBody"></div>
+            <div class="modal-footer">
+              <div class="left text-sm muted" id="tokHint"></div>
+              <button class="btn btn-secondary btn-sm" onclick="closeTok()">关闭</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  </div>
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>initLayout('usage-logs', ['开发者', '使用日志']);</script>
+  <script>
+    /* Token 明细数据：input/output 与列表列对齐，点击行内数字查看细分 */
+    var TOK = {
+      '7f2a8c3d': {
+        model: 'GPT-4o', biz: '智能客服', time: '14:23:08', status: 'success',
+        input: 286, output: 1000, cost: '¥ 0.024',
+        inParts: [
+          { l: 'System Prompt', v: 86, n: '智能客服人设与话术规范' },
+          { l: '多轮历史消息', v: 118, n: '6 轮对话共 14 条消息' },
+          { l: '当前输入', v: 42, n: '"我的订单什么时候发货？"' },
+          { l: '知识库检索注入', v: 40, n: 'RAG top-3 片段，命中《发货时效说明》' }
+        ],
+        cacheHit: 204, cacheNote: 'System + 历史消息前缀命中缓存，命中部分按输入单价 10% 计费',
+        outParts: [
+          { l: '正文回复', v: 940, n: 'SSE 流式 42 帧' },
+          { l: '工具调用 tools', v: 60, n: '查订单工具入参 + 返回 JSON（计入输出计费）' }
+        ]
+      },
+      '3b8c1e9f': {
+        model: 'Claude 3.5', biz: '文档总结', time: '14:22:51', status: 'success',
+        input: 3120, output: 300, cost: '¥ 0.052',
+        inParts: [
+          { l: 'System Prompt', v: 120, n: '总结任务指令与输出格式约束' },
+          { l: '待总结文档', v: 2860, n: '《2026 Q3 运营报告.docx》解析后全文' },
+          { l: '当前输入', v: 140, n: '总结要求与关注点' }
+        ],
+        cacheHit: 2860, cacheNote: '文档前缀在上一轮已入缓存，本轮命中，仅按 10% 计费',
+        outParts: [
+          { l: '思考链 thinking', v: 45, n: '模型推理过程，按输出单价计费，不对用户展示' },
+          { l: '正文回复', v: 255, n: '结构化总结（要点 + 数据 + 建议）' }
+        ]
+      },
+      '9e1d4c2a': {
+        model: '文心 4.0', biz: '营销文案', time: '14:22:30', status: 'success',
+        input: 420, output: 262, cost: '¥ 0.012',
+        inParts: [
+          { l: 'System Prompt', v: 96, n: '营销文案风格设定' },
+          { l: '当前输入', v: 324, n: '产品卖点素材 + 目标人群描述' }
+        ],
+        cacheHit: 0, cacheNote: '',
+        outParts: [
+          { l: '正文回复', v: 262, n: '3 版文案 + 标题' }
+        ]
+      },
+      '1c5f3a8d': {
+        model: 'Llama 3.1', biz: '代码助手', time: '14:21:14', status: 'fail',
+        input: 1520, output: 304, cost: '¥ 0.000',
+        inParts: [
+          { l: 'System Prompt', v: 210, n: '代码助手角色与安全规范' },
+          { l: '代码上下文', v: 1240, n: '当前文件 + 引用模块（IDE 插件注入）' },
+          { l: '当前输入', v: 70, n: '选中函数的重构指令' }
+        ],
+        cacheHit: 0, cacheNote: '',
+        outParts: [
+          { l: '正文回复', v: 88, n: '中断前已流式输出的部分' },
+          { l: '工具调用 tools', v: 216, n: '代码索引检索工具返回，响应中断于第 2 次调用' }
+        ],
+        failNote: '该请求失败（上游 5xx 响应中断）：已产生的 token 仅作计量记录，不计入扣费，成本列显示为 ¥ 0.000。'
+      },
+      '8a2e4d2c': {
+        model: 'GPT-4o', biz: '知识问答', time: '14:20:02', status: 'success',
+        input: 2340, output: 500, cost: '¥ 0.048',
+        inParts: [
+          { l: 'System Prompt', v: 140, n: '知识问答角色 + 引用规范' },
+          { l: '多轮历史消息', v: 620, n: '4 轮对话共 9 条消息' },
+          { l: '当前输入', v: 48, n: '用户问题' },
+          { l: '知识库检索注入', v: 1532, n: 'RAG top-8 片段（混合检索 + rerank）' }
+        ],
+        cacheHit: 1980, cacheNote: 'System、历史消息与已缓存片段命中，命中部分按输入单价 10% 计费',
+        outParts: [
+          { l: '正文回复', v: 480, n: '带引用来源的回答' },
+          { l: '工具调用 tools', v: 20, n: '引用定位工具调用' }
+        ]
+      },
+      '4d2c8e9a': {
+        model: 'Claude 3.5', biz: '智能客服', time: '14:19:45', status: 'success',
+        input: 612, output: 330, cost: '¥ 0.014',
+        inParts: [
+          { l: 'System Prompt', v: 88, n: '智能客服人设与话术规范' },
+          { l: '多轮历史消息', v: 420, n: '8 轮对话共 16 条消息' },
+          { l: '当前输入', v: 104, n: '用户追问 + 补充信息' }
+        ],
+        cacheHit: 428, cacheNote: '历史消息前缀命中缓存，命中部分按输入单价 10% 计费',
+        outParts: [
+          { l: '思考链 thinking', v: 120, n: '多步骤问题拆解推理，按输出单价计费，不对用户展示' },
+          { l: '正文回复', v: 210, n: '最终答复' }
+        ]
+      }
+    };
+
+    function fmt(n) { return n.toLocaleString('en-US'); }
+    function esc(s) { return String(s).replace(/</g, '&lt;'); }
+
+    function rowHtml(p, cls) {
+      return '<div class="tok-row' + (cls ? ' ' + cls : '') + '">' +
+        '<span class="lbl">' + p.l + '</span>' +
+        '<span class="val">' + fmt(p.v) + '</span>' +
+        '<span class="note">' + esc(p.n || '') + '</span></div>';
+    }
+
+    window.openTok = function (traceId) {
+      var d = TOK[traceId];
+      if (!d) return;
+      document.getElementById('tokTitle').textContent = traceId;
+      document.getElementById('tokSub').innerHTML = d.model + ' · ' + d.biz + ' · ' + d.time +
+        ' · 输入 <b>' + fmt(d.input) + '</b> + 输出 <b>' + fmt(d.output) + '</b> = <b>' + fmt(d.input + d.output) + '</b> tokens · 成本 ' + d.cost;
+
+      var h = '';
+      /* 输入组 */
+      h += '<div class="tok-group"><div class="tok-group-head">📥 输入 Token（Input）<span class="sum">' + fmt(d.input) + '</span></div>';
+      d.inParts.forEach(function (p) { h += rowHtml(p); });
+      if (d.cacheHit > 0) {
+        h += rowHtml({ l: '缓存命中 cache', v: d.cacheHit, n: d.cacheNote }, 'cache');
+        var pct = Math.round(d.cacheHit / d.input * 100);
+        h += '<div class="tok-bar"><i style="width:' + pct + '%; background:var(--success);"></i><i style="flex:1; background:var(--primary);"></i></div>' +
+             '<div style="padding:0 16px 12px; font-size:11.5px; color:var(--text-tertiary);">缓存命中占输入 ' + pct + '%（绿），未命中按全价（蓝）</div>';
+      }
+      h += '</div>';
+
+      /* 输出组 */
+      h += '<div class="tok-group"><div class="tok-group-head">📤 输出 Token（Output）<span class="sum">' + fmt(d.output) + '</span></div>';
+      d.outParts.forEach(function (p) { h += rowHtml(p, /thinking/.test(p.l) ? 'think' : ''); });
+      h += '</div>';
+
+      if (d.failNote) h += '<div class="notice" style="margin:0; padding:10px 14px; font-size:12.5px;">' + d.failNote + '</div>';
+      document.getElementById('tokBody').innerHTML = h;
+
+      document.getElementById('tokHint').textContent = d.status === 'fail'
+        ? '失败请求不扣费'
+        : '计费规则：缓存命中按输入价 10% 计费；thinking、tools 均按输出单价计入扣费';
+      document.getElementById('tokModal').classList.add('show');
+    };
+    window.closeTok = function () { document.getElementById('tokModal').classList.remove('show'); };
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeTok(); });
+  </script>
+</body>
+</html>

@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>运维中心 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">运维中心</div>
+              <div class="page-subtitle">服务状态、配置管理、API 网关、访问日志、告警与资源监控</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary">告警规则</button>
+              <button class="btn btn-primary">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                健康检查
+              </button>
+            </div>
+          </div>
+
+          <div class="stat-grid">
+            <div class="stat-card"><div><div class="stat-label">在线服务</div><div class="stat-value">28 / 28</div><div class="stat-trend up">▲ 全部正常</div></div><div class="stat-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></div></div>
+            <div class="stat-card"><div><div class="stat-label">API 网关 QPS</div><div class="stat-value">12.8K</div><div class="stat-trend up">▲ 峰值 28K</div></div><div class="stat-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div></div>
+            <div class="stat-card"><div><div class="stat-label">P99 延迟</div><div class="stat-value">286ms</div><div class="stat-trend down">▼ 12ms</div></div><div class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div>
+            <div class="stat-card"><div><div class="stat-label">活跃告警</div><div class="stat-value">3</div><div class="stat-trend down">▼ 较昨日</div></div><div class="stat-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg></div></div>
+          </div>
+
+          <div class="tabs">
+            <div class="tab active" data-tab="service">服务发现</div>
+            <div class="tab" data-tab="config">配置中心</div>
+            <div class="tab" data-tab="gateway">API 网关</div>
+            <div class="tab" data-tab="logs">访问日志</div>
+            <div class="tab" data-tab="alerts">告警</div>
+            <div class="tab" data-tab="resource">资源监控</div>
+          </div>
+
+          <!-- ================= 服务发现 ================= -->
+          <section class="tab-panel active" id="tab-service">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">服务注册与发现</div>
+                  <div class="card-subtitle">注册中心：Nacos 2.3 · 集群 k8s-cluster-01 · 心跳间隔 5s</div>
+                </div>
+                <div class="flex gap-8">
+                  <button class="btn btn-sm btn-secondary">同步 Nacos</button>
+                  <button class="btn btn-sm btn-primary">+ 注册服务</button>
+                </div>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>服务名</th><th>实例数</th><th>健康</th><th>协议</th><th>注册中心</th><th>元数据</th><th>最近心跳</th><th>状态</th><th class="text-right">操作</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr>
+                        <td><b>ai-gateway</b><div class="muted text-sm">API 网关</div></td>
+                        <td>4 实例</td>
+                        <td><span style="color:var(--success);">4 / 4</span></td>
+                        <td>HTTP / gRPC</td>
+                        <td>Nacos · K8s</td>
+                        <td><code class="mono text-sm">v2.5.0, k8s-cluster-01</code></td>
+                        <td class="muted text-sm">3 秒前</td>
+                        <td><span class="tag tag-success">UP</span></td>
+                        <td class="text-right"><span class="link">详情</span></td>
+                      </tr>
+                      <tr>
+                        <td><b>llm-router</b><div class="muted text-sm">LLM 路由服务</div></td>
+                        <td>6 实例</td>
+                        <td><span style="color:var(--success);">6 / 6</span></td>
+                        <td>gRPC</td>
+                        <td>Nacos · K8s</td>
+                        <td><code class="mono text-sm">v3.2.0, load-balance</code></td>
+                        <td class="muted text-sm">2 秒前</td>
+                        <td><span class="tag tag-success">UP</span></td>
+                        <td class="text-right"><span class="link">详情</span></td>
+                      </tr>
+                      <tr>
+                        <td><b>rag-service</b><div class="muted text-sm">RAG 检索服务</div></td>
+                        <td>3 实例</td>
+                        <td><span style="color:var(--success);">3 / 3</span></td>
+                        <td>HTTP</td>
+                        <td>Nacos</td>
+                        <td><code class="mono text-sm">v2.0.1, milvus-conn</code></td>
+                        <td class="muted text-sm">5 秒前</td>
+                        <td><span class="tag tag-success">UP</span></td>
+                        <td class="text-right"><span class="link">详情</span></td>
+                      </tr>
+                      <tr>
+                        <td><b>knowledge-base</b><div class="muted text-sm">知识库服务</div></td>
+                        <td>4 实例</td>
+                        <td><span style="color:var(--success);">4 / 4</span></td>
+                        <td>gRPC</td>
+                        <td>Nacos · K8s</td>
+                        <td><code class="mono text-sm">v1.5.0</code></td>
+                        <td class="muted text-sm">1 秒前</td>
+                        <td><span class="tag tag-success">UP</span></td>
+                        <td class="text-right"><span class="link">详情</span></td>
+                      </tr>
+                      <tr>
+                        <td><b>agent-runtime</b><div class="muted text-sm">Agent 运行时</div></td>
+                        <td>5 实例</td>
+                        <td><span style="color:var(--warning);">4 / 5</span></td>
+                        <td>gRPC</td>
+                        <td>Nacos · K8s</td>
+                        <td><code class="mono text-sm">v2.0.0, distributed</code></td>
+                        <td class="muted text-sm">32 秒前</td>
+                        <td><span class="tag tag-warning">降级</span></td>
+                        <td class="text-right"><span class="link">详情</span></td>
+                      </tr>
+                      <tr>
+                        <td><b>embedding-svc</b><div class="muted text-sm">向量化服务</div></td>
+                        <td>3 实例</td>
+                        <td><span style="color:var(--success);">3 / 3</span></td>
+                        <td>gRPC</td>
+                        <td>Nacos</td>
+                        <td><code class="mono text-sm">v1.2.0, gpu-pool</code></td>
+                        <td class="muted text-sm">4 秒前</td>
+                        <td><span class="tag tag-success">UP</span></td>
+                        <td class="text-right"><span class="link">详情</span></td>
+                      </tr>
+                      <tr>
+                        <td><b>usage-billing</b><div class="muted text-sm">计费服务</div></td>
+                        <td>2 实例</td>
+                        <td><span style="color:var(--success);">2 / 2</span></td>
+                        <td>Kafka Consumer</td>
+                        <td>Nacos</td>
+                        <td><code class="mono text-sm">v1.8.0, kafka-consumer</code></td>
+                        <td class="muted text-sm">8 秒前</td>
+                        <td><span class="tag tag-success">UP</span></td>
+                        <td class="text-right"><span class="link">详情</span></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="text-sm muted">7 个服务 · 27 个实例 · 健康率 26/27（96.3%）· 30 秒前自动刷新</div>
+                <div class="pagination">
+                  <button class="page-btn">‹</button>
+                  <button class="page-btn active">1</button>
+                  <button class="page-btn">›</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= 配置中心 ================= -->
+          <section class="tab-panel" id="tab-config">
+            <div class="card mb-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">配置列表</div>
+                  <div class="card-subtitle">命名空间：prod · 配置变更即时推送至订阅服务</div>
+                </div>
+                <div class="flex gap-8">
+                  <button class="btn btn-sm btn-secondary">变更历史</button>
+                  <button class="btn btn-sm btn-primary">+ 新建配置</button>
+                </div>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>Data ID</th><th>配置内容</th><th>配置格式</th><th>Group</th><th>归属应用</th><th>修改人</th><th>修改时间</th><th class="text-right">操作</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="mono"><b>llm-router-timeout.properties</b></td><td><code class="mono text-sm">router.timeout=30s</code></td><td><span class="tag">properties</span></td><td>DEFAULT_GROUP</td><td>llm-router</td><td class="muted">wang.wu</td><td class="muted text-sm">2026-10-09 16:20</td><td class="text-right"><span class="link">编辑</span> <span class="link">推送</span></td></tr>
+                      <tr><td class="mono"><b>gateway-ratelimit.json</b></td><td><code class="mono text-sm">{"default":{"rpm":3000,"tpm":"1M","concurrent":500}}</code></td><td><span class="tag">json</span></td><td>DEFAULT_GROUP</td><td>ai-gateway</td><td class="muted">zhang.san</td><td class="muted text-sm">2026-10-08 11:02</td><td class="text-right"><span class="link">编辑</span> <span class="link">推送</span></td></tr>
+                      <tr><td class="mono"><b>rag-service.properties</b></td><td><code class="mono text-sm">rag.top-k=8</code></td><td><span class="tag">properties</span></td><td>DEFAULT_GROUP</td><td>rag-service</td><td class="muted">li.si</td><td class="muted text-sm">2026-10-05 09:48</td><td class="text-right"><span class="link">编辑</span> <span class="link">推送</span></td></tr>
+                      <tr><td class="mono"><b>knowledge-base.properties</b></td><td><code class="mono text-sm">kb.index.shards=12</code></td><td><span class="tag">properties</span></td><td>DEFAULT_GROUP</td><td>knowledge-base</td><td class="muted">li.si</td><td class="muted text-sm">2026-09-30 14:15</td><td class="text-right"><span class="link">编辑</span> <span class="link">推送</span></td></tr>
+                      <tr><td class="mono"><b>billing-price.json</b></td><td><code class="mono text-sm">{"deepseek-v32":{"in":2,"out":8}}  // 元/百万tokens</code></td><td><span class="tag">json</span></td><td>BILLING_GROUP</td><td>usage-billing</td><td class="muted">zhang.san</td><td class="muted text-sm">2026-09-28 10:00</td><td class="text-right"><span class="link">编辑</span> <span class="link">推送</span></td></tr>
+                      <tr><td class="mono"><b>llm-router-model.json</b></td><td><code class="mono text-sm">{"blacklist":["llama3.1-70b"]}</code></td><td><span class="tag">json</span></td><td>DEFAULT_GROUP</td><td>llm-router</td><td class="muted">wang.wu</td><td class="muted text-sm">2026-10-10 13:47</td><td class="text-right"><span class="link">编辑</span> <span class="link">推送</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><div class="card-title">最近变更历史</div></div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>版本</th><th>Data ID</th><th>变更内容</th><th>操作人</th><th>时间</th><th>状态</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="mono">v42</td><td class="mono">llm-router-model.json</td><td class="muted">摘流 llama3.1-70b（响应超时）</td><td>wang.wu</td><td class="muted text-sm">2026-10-10 13:47</td><td><span class="status-dot success">已发布</span></td></tr>
+                      <tr><td class="mono">v41</td><td class="mono">llm-router-timeout.properties</td><td class="muted">20s → 30s（P99 超时治理）</td><td>wang.wu</td><td class="muted text-sm">2026-10-09 16:20</td><td><span class="status-dot success">已发布</span></td></tr>
+                      <tr><td class="mono">v40</td><td class="mono">gateway-ratelimit.json</td><td class="muted">默认账号限流调整为 3000/1M/500</td><td>zhang.san</td><td class="muted text-sm">2026-10-08 11:02</td><td><span class="status-dot success">已发布</span></td></tr>
+                      <tr><td class="mono">v39</td><td class="mono">rag-service.properties</td><td class="muted">top-k 5 → 8（召回率优化）</td><td>li.si</td><td class="muted text-sm">2026-10-05 09:48</td><td><span class="status-dot success">已发布</span></td></tr>
+                      <tr><td class="mono">v38</td><td class="mono">knowledge-base.properties</td><td class="muted">shards 8 → 12</td><td>li.si</td><td class="muted text-sm">2026-09-30 14:15</td><td><span class="muted">已回滚</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= API 网关 ================= -->
+          <section class="tab-panel" id="tab-gateway">
+            <div class="stat-grid mb-16" style="grid-template-columns:repeat(4,1fr);">
+              <div class="stat-card"><div><div class="stat-label">当前 QPS</div><div class="stat-value">12.8K</div><div class="stat-trend up">▲ 峰值 28K (14:00)</div></div></div>
+              <div class="stat-card"><div><div class="stat-label">错误率</div><div class="stat-value">0.42%</div><div class="stat-trend down">▼ 0.08%</div></div></div>
+              <div class="stat-card"><div><div class="stat-label">活跃路由</div><div class="stat-value">36</div><div class="stat-trend up">▲ 新增 2 条</div></div></div>
+              <div class="stat-card"><div><div class="stat-label">上游 P99</div><div class="stat-value">286ms</div><div class="stat-trend down">▼ 12ms</div></div></div>
+            </div>
+
+            <div class="card mb-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">QPS 趋势（最近 24 小时）</div>
+                  <div class="card-subtitle">每分钟采样 · 网关入口流量</div>
+                </div>
+                <div class="flex gap-8">
+                  <button class="btn btn-sm btn-secondary">24h</button>
+                  <button class="btn btn-sm btn-ghost">7 天</button>
+                  <button class="btn btn-sm btn-ghost">30 天</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div id="qpsChart" style="width:100%;"></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">路由与策略</div>
+                  <div class="card-subtitle">限流按 AppCode 维度生效，命中熔断后自动摘除上游 60 秒</div>
+                </div>
+                <button class="btn btn-sm btn-primary">+ 新建路由</button>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>路由</th><th>上游服务</th><th>限流策略</th><th>熔断阈值</th><th>超时</th><th>重试</th><th>状态</th><th class="text-right">操作</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="mono"><b>/v1/chat/completions</b></td><td>llm-router</td><td class="mono text-sm">3000 RPM / 1M TPM</td><td class="mono text-sm">错误率 &gt; 50%</td><td>30s</td><td>2 次</td><td><span class="tag tag-success">启用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                      <tr><td class="mono"><b>/v1/embeddings</b></td><td>embedding-svc</td><td class="mono text-sm">5000 RPM / 2M TPM</td><td class="mono text-sm">错误率 &gt; 50%</td><td>10s</td><td>2 次</td><td><span class="tag tag-success">启用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                      <tr><td class="mono"><b>/v1/models</b></td><td>config-svc</td><td class="mono text-sm">600 RPM</td><td class="mono text-sm">错误率 &gt; 80%</td><td>3s</td><td>1 次</td><td><span class="tag tag-success">启用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                      <tr><td class="mono"><b>/v1/rag/query</b></td><td>rag-service</td><td class="mono text-sm">1000 RPM / 500K TPM</td><td class="mono text-sm">错误率 &gt; 50%</td><td>15s</td><td>2 次</td><td><span class="tag tag-success">启用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                      <tr><td class="mono"><b>/v1/kb/index</b></td><td>knowledge-base</td><td class="mono text-sm">100 RPM</td><td class="mono text-sm">错误率 &gt; 80%</td><td>300s</td><td>0 次</td><td><span class="tag tag-success">启用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                      <tr><td class="mono"><b>/v1/agent/run</b></td><td>agent-runtime</td><td class="mono text-sm">600 RPM / 200 并发</td><td class="mono text-sm">错误率 &gt; 50%</td><td>120s</td><td>1 次</td><td><span class="tag tag-warning">降级中</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                      <tr><td class="mono"><b>/v1/usage/stats</b></td><td>usage-billing</td><td class="mono text-sm">300 RPM</td><td class="mono text-sm">错误率 &gt; 80%</td><td>5s</td><td>1 次</td><td><span class="tag tag-success">启用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= 访问日志 ================= -->
+          <section class="tab-panel" id="tab-logs">
+            <div class="filter-bar" style="align-items:flex-end;">
+              <div>
+                <label class="form-label" style="margin-bottom:4px;">接口 URL</label>
+                <input class="form-input" id="logUrl" list="logUrlList" placeholder="如 /v1/chat/completions" style="width:200px;" />
+                <datalist id="logUrlList">
+                  <option value="/v1/chat/completions"></option>
+                  <option value="/v1/embeddings"></option>
+                  <option value="/v1/models"></option>
+                  <option value="/v1/rag/query"></option>
+                  <option value="/v1/kb/index"></option>
+                  <option value="/v1/agent/run"></option>
+                  <option value="/v1/usage/stats"></option>
+                </datalist>
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom:4px;">上游服务</label>
+                <select class="form-select" id="logSvc" style="width:158px;"></select>
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom:4px;">请求时间范围</label>
+                <div class="flex gap-8" style="align-items:center; margin-bottom:6px;">
+                  <input type="datetime-local" class="form-input" id="logFrom" style="width:166px;" />
+                  <span class="muted text-sm">~</span>
+                  <input type="datetime-local" class="form-input" id="logTo" style="width:166px;" />
+                </div>
+                <div class="flex gap-8" id="logQuick">
+                  <button class="btn btn-sm btn-ghost" data-h="1">近 1 小时</button>
+                  <button class="btn btn-sm btn-ghost" data-h="24">近 24 小时</button>
+                  <button class="btn btn-sm btn-ghost" data-h="168">近 7 天</button>
+                  <button class="btn btn-sm btn-secondary" data-h="0">全部</button>
+                </div>
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom:4px;">状态码</label>
+                <select class="form-select" id="logStatus" style="width:118px;">
+                  <option value="">全部状态</option><option value="2">2xx</option><option value="4">4xx</option><option value="5">5xx</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label" style="margin-bottom:4px;">关键字</label>
+                <input class="form-input" id="logKw" placeholder="TraceID / IP / AppCode" style="width:180px;" />
+              </div>
+              <div class="flex gap-8">
+                <button class="btn btn-primary" id="btnLogQuery">查询</button>
+                <button class="btn btn-secondary" id="btnLogReset">重置</button>
+              </div>
+              <div class="spacer"></div>
+              <button class="btn btn-secondary" id="btnLogExport">导出 CSV</button>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">网关访问日志</div>
+                  <div class="card-subtitle" id="logSummary">共 0 条 · 展示第 1 - 10 条</div>
+                </div>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>时间</th><th>方法</th><th>路径</th><th>状态</th><th>客户端</th><th>AppCode</th><th>上游</th><th>TraceID</th><th>耗时</th></tr>
+                    </thead>
+                    <tbody id="logBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="text-sm muted" id="logStat">—</div>
+                <div class="pagination" id="logPager"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= 告警 ================= -->
+          <section class="tab-panel" id="tab-alerts">
+            <div class="stat-grid mb-16" style="grid-template-columns:repeat(4,1fr);">
+              <div class="stat-card"><div><div class="stat-label">P1 紧急</div><div class="stat-value" style="color:var(--danger);">1</div><div class="stat-trend down">▼ 较昨日</div></div></div>
+              <div class="stat-card"><div><div class="stat-label">P2 警告</div><div class="stat-value" style="color:var(--warning);">1</div><div class="stat-trend down">▼ 较昨日</div></div></div>
+              <div class="stat-card"><div><div class="stat-label">P3 提示</div><div class="stat-value" style="color:var(--accent);">1</div><div class="stat-trend up">▲ 较昨日</div></div></div>
+              <div class="stat-card"><div><div class="stat-label">本周已恢复</div><div class="stat-value" style="color:var(--success);">12</div><div class="stat-trend up">▲ 平均处理 8 分钟</div></div></div>
+            </div>
+
+            <div class="card mb-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">活跃告警</div>
+                  <div class="card-subtitle">未恢复告警需在 30 分钟内响应</div>
+                </div>
+                <button class="btn btn-sm btn-secondary">全部确认</button>
+              </div>
+              <div class="card-body">
+                <div class="alert-item danger">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="tag tag-danger tag-solid">P1</span>
+                    <span class="muted text-sm">5 分钟前 · 持续 5 分钟</span>
+                  </div>
+                  <div style="font-size:13.5px; font-weight:500; margin-top:6px;">agent-runtime 节点异常</div>
+                  <div class="muted text-sm mt-1">节点 agent-runtime-04 心跳超时 30 秒，已自动隔离并转移流量</div>
+                  <div class="mt-1 flex gap-8"><span class="link">处理</span><span class="link">静默 1 小时</span></div>
+                </div>
+                <div class="alert-item warning">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="tag tag-warning tag-solid">P2</span>
+                    <span class="muted text-sm">15 分钟前 · 持续 15 分钟</span>
+                  </div>
+                  <div style="font-size:13.5px; font-weight:500; margin-top:6px;">Llama 3.1 模型响应超时</div>
+                  <div class="muted text-sm mt-1">平均响应 3.4s 超阈值 3s，已自动摘流并通知创建人</div>
+                  <div class="mt-1 flex gap-8"><span class="link">处理</span><span class="link">静默 1 小时</span></div>
+                </div>
+                <div class="alert-item info">
+                  <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <span class="tag tag-info tag-solid">P3</span>
+                    <span class="muted text-sm">1 小时前 · 持续 1 小时</span>
+                  </div>
+                  <div style="font-size:13.5px; font-weight:500; margin-top:6px;">日志盘使用率 78%</div>
+                  <div class="muted text-sm mt-1">ops-log-02 磁盘使用率接近 80% 阈值，建议清理或扩容</div>
+                  <div class="mt-1 flex gap-8"><span class="link">处理</span><span class="link">静默 1 小时</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mb-16">
+              <div class="card-header">
+                <div class="card-title">告警规则</div>
+                <button class="btn btn-sm btn-primary">+ 新建规则</button>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>规则名称</th><th>监控对象</th><th>触发条件</th><th>级别</th><th>通知方式</th><th>近 7 天触发</th><th>状态</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><b>节点心跳超时</b></td><td>全部服务实例</td><td class="muted">心跳间隔 &gt; 30s</td><td><span class="tag tag-danger">P1</span></td><td>短信 + 电话 + 群机器人</td><td class="mono">2</td><td><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></td></tr>
+                      <tr><td><b>模型响应超时</b></td><td>llm-router</td><td class="muted">P95 响应 &gt; 3s，持续 5 分钟</td><td><span class="tag tag-warning">P2</span></td><td>群机器人 + 邮件</td><td class="mono">5</td><td><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></td></tr>
+                      <tr><td><b>API Key 即将过期</b></td><td>usage-billing</td><td class="muted">过期前 7 天</td><td><span class="tag tag-info">P3</span></td><td>站内信 + 邮件（创建人）</td><td class="mono">1</td><td><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></td></tr>
+                      <tr><td><b>网关 5xx 比例</b></td><td>ai-gateway</td><td class="muted">5xx 占比 &gt; 1%，持续 3 分钟</td><td><span class="tag tag-danger">P1</span></td><td>短信 + 群机器人</td><td class="mono">0</td><td><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></td></tr>
+                      <tr><td><b>磁盘使用率</b></td><td>全部节点</td><td class="muted">使用率 &gt; 80%</td><td><span class="tag tag-info">P3</span></td><td>群机器人</td><td class="mono">3</td><td><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></td></tr>
+                      <tr><td><b>Kafka 消费积压</b></td><td>usage-billing</td><td class="muted">Lag &gt; 100,000</td><td><span class="tag tag-warning">P2</span></td><td>群机器人 + 邮件</td><td class="mono">0</td><td><label class="switch"><input type="checkbox" /><span class="switch-slider"></span></label></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header"><div class="card-title">历史告警</div></div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>时间</th><th>级别</th><th>内容</th><th>持续时间</th><th>处理人</th><th>状态</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="muted text-sm">2026-10-09 21:18</td><td><span class="tag tag-warning">P2</span></td><td>embedding-svc 突发流量（QPS 8.2K）</td><td class="mono">12 分钟</td><td>wang.wu</td><td><span class="status-dot success">已恢复</span></td></tr>
+                      <tr><td class="muted text-sm">2026-10-08 15:40</td><td><span class="tag tag-info">P3</span></td><td>config-svc 配置推送延迟</td><td class="mono">3 分钟</td><td>zhang.san</td><td><span class="status-dot success">已恢复</span></td></tr>
+                      <tr><td class="muted text-sm">2026-10-07 09:02</td><td><span class="tag tag-danger">P1</span></td><td>milvus-03 副本失联</td><td class="mono">26 分钟</td><td>li.si</td><td><span class="status-dot success">已恢复</span></td></tr>
+                      <tr><td class="muted text-sm">2026-10-06 11:22</td><td><span class="tag tag-warning">P2</span></td><td>redis 内存使用率 92%</td><td class="mono">41 分钟</td><td>wang.wu</td><td><span class="status-dot success">已恢复</span></td></tr>
+                      <tr><td class="muted text-sm">2026-10-05 18:05</td><td><span class="tag tag-info">P3</span></td><td>测试环境节点发布通知</td><td class="mono">—</td><td>—</td><td><span class="muted">已忽略</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= 资源监控 ================= -->
+          <section class="tab-panel" id="tab-resource">
+            <div class="card mb-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">计算节点</div>
+                  <div class="card-subtitle">K8s 集群 k8s-cluster-01 · 12 节点 · GPU 池 8 卡</div>
+                </div>
+                <button class="btn btn-sm btn-secondary">扩缩容</button>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>节点</th><th>角色</th><th>CPU</th><th>内存</th><th>GPU</th><th>磁盘</th><th>状态</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="mono"><b>gw-node-01</b></td><td>网关</td><td><div class="res-bar"><div style="width:42%;"></div></div><span class="text-sm muted">42%</span></td><td><div class="res-bar"><div style="width:55%;"></div></div><span class="text-sm muted">55%</span></td><td>—</td><td><div class="res-bar"><div style="width:38%;"></div></div><span class="text-sm muted">38%</span></td><td><span class="status-dot success">正常</span></td></tr>
+                      <tr><td class="mono"><b>gw-node-02</b></td><td>网关</td><td><div class="res-bar"><div style="width:47%;"></div></div><span class="text-sm muted">47%</span></td><td><div class="res-bar"><div style="width:58%;"></div></div><span class="text-sm muted">58%</span></td><td>—</td><td><div class="res-bar"><div style="width:40%;"></div></div><span class="text-sm muted">40%</span></td><td><span class="status-dot success">正常</span></td></tr>
+                      <tr><td class="mono"><b>llm-node-01</b></td><td>LLM 路由</td><td><div class="res-bar"><div style="width:61%;"></div></div><span class="text-sm muted">61%</span></td><td><div class="res-bar"><div style="width:64%;"></div></div><span class="text-sm muted">64%</span></td><td>—</td><td><div class="res-bar"><div style="width:52%;"></div></div><span class="text-sm muted">52%</span></td><td><span class="status-dot success">正常</span></td></tr>
+                      <tr><td class="mono"><b>gpu-node-01</b></td><td>推理 / 向量化</td><td><div class="res-bar"><div style="width:72%;"></div></div><span class="text-sm muted">72%</span></td><td><div class="res-bar"><div style="width:76%;"></div></div><span class="text-sm muted">76%</span></td><td><div class="res-bar"><div style="width:88%; background:var(--warning);"></div></div><span class="text-sm" style="color:var(--warning);">88%</span></td><td><div class="res-bar"><div style="width:44%;"></div></div><span class="text-sm muted">44%</span></td><td><span class="status-dot warning">高负载</span></td></tr>
+                      <tr><td class="mono"><b>gpu-node-02</b></td><td>推理 / 向量化</td><td><div class="res-bar"><div style="width:58%;"></div></div><span class="text-sm muted">58%</span></td><td><div class="res-bar"><div style="width:60%;"></div></div><span class="text-sm muted">60%</span></td><td><div class="res-bar"><div style="width:63%;"></div></div><span class="text-sm muted">63%</span></td><td><div class="res-bar"><div style="width:41%;"></div></div><span class="text-sm muted">41%</span></td><td><span class="status-dot success">正常</span></td></tr>
+                      <tr><td class="mono"><b>ops-log-02</b></td><td>日志 / 监控</td><td><div class="res-bar"><div style="width:35%;"></div></div><span class="text-sm muted">35%</span></td><td><div class="res-bar"><div style="width:48%;"></div></div><span class="text-sm muted">48%</span></td><td>—</td><td><div class="res-bar"><div style="width:78%; background:var(--warning);"></div></div><span class="text-sm" style="color:var(--warning);">78%</span></td><td><span class="status-dot warning">磁盘将满</span></td></tr>
+                      <tr><td class="mono"><b>agent-node-04</b></td><td>Agent 运行时</td><td><div class="res-bar"><div style="width:0%;"></div></div><span class="text-sm muted">—</span></td><td><div class="res-bar"><div style="width:0%;"></div></div><span class="text-sm muted">—</span></td><td>—</td><td><div class="res-bar"><div style="width:12%;"></div></div><span class="text-sm muted">12%</span></td><td><span class="status-dot danger">已隔离</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">中间件与存储</div>
+                  <div class="card-subtitle">连接数、积压与健康状态</div>
+                </div>
+                <button class="btn btn-sm btn-secondary">刷新</button>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>组件</th><th>用途</th><th>关键指标</th><th>容量</th><th>副本</th><th>状态</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><b>Milvus</b></td><td class="muted">向量检索（知识库 / RAG）</td><td class="mono text-sm">QPS 2.4K · P99 86ms</td><td>68 GB / 100 GB</td><td>3</td><td><span class="status-dot success">正常</span></td></tr>
+                      <tr><td><b>Kafka</b></td><td class="muted">调用量计量流水</td><td class="mono text-sm">Lag 3,240</td><td>峰值 220K msg/s</td><td>3</td><td><span class="status-dot success">正常</span></td></tr>
+                      <tr><td><b>Redis</b></td><td class="muted">限流计数 / 会话缓存</td><td class="mono text-sm">连接 1.2K · 命中率 98.6%</td><td>内存 21 GB / 32 GB</td><td>2（主从）</td><td><span class="status-dot success">正常</span></td></tr>
+                      <tr><td><b>MinIO</b></td><td class="muted">文档 / 图片对象存储</td><td class="mono text-sm">PUT 118/s · GET 642/s</td><td>1.8 TB / 4 TB</td><td>EC 4+2</td><td><span class="status-dot success">正常</span></td></tr>
+                      <tr><td><b>MySQL</b></td><td class="muted">业务库（密钥 / 账单 / 权限）</td><td class="mono text-sm">连接 210 · 慢查询 0</td><td>420 GB / 1 TB</td><td>1 主 2 从</td><td><span class="status-dot success">正常</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div class="card-footer">
+                <div class="text-sm muted">数据每 15 秒刷新 · 上次刷新：14:23:05</div>
+              </div>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <style>
+    .alert-item { padding: 12px; border-radius: 8px; margin-bottom: 8px; border-left: 3px solid var(--text-tertiary); background: var(--bg); }
+    .alert-item.danger { border-left-color: var(--danger); background: rgba(239,68,89,0.05); }
+    .alert-item.warning { border-left-color: var(--warning); background: rgba(237,123,47,0.05); }
+    .alert-item.info { border-left-color: var(--info); background: rgba(77,107,254,0.05); }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    .res-bar { display: inline-block; vertical-align: middle; width: 80px; height: 6px; border-radius: 3px; background: var(--bg-soft); overflow: hidden; margin-right: 8px; }
+    .res-bar > div { height: 100%; background: var(--accent); border-radius: 3px; }
+    #tab-logs .filter-bar > div { flex: 0 0 auto; }
+    #tab-logs .filter-bar .form-input, #tab-logs .filter-bar .form-select { min-width: 110px; }
+    @media (max-width: 1100px) { .ops-grid { grid-template-columns: 1fr !important; } }
+  </style>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('ops');
+
+    /* 标签页切换 */
+    document.querySelectorAll('.tabs .tab').forEach(function (t) {
+      t.addEventListener('click', function () {
+        document.querySelectorAll('.tabs .tab').forEach(function (x) { x.classList.remove('active'); });
+        t.classList.add('active');
+        document.querySelectorAll('.tab-panel').forEach(function (p) {
+          p.classList.toggle('active', p.id === 'tab-' + t.dataset.tab);
+        });
+      });
+    });
+
+    /* QPS 趋势图 */
+    (function () {
+      const el = document.getElementById('qpsChart');
+      if (!el) return;
+      const data = [3.2, 2.8, 2.5, 2.1, 1.8, 2.0, 2.6, 4.8, 7.2, 9.6, 11.4, 12.8, 12.1, 13.6, 15.2, 14.8, 16.4, 18.2, 21.5, 24.8, 28.0, 25.4, 20.8, 16.2];
+      const max = 30;
+      const w = 900, ht = 240, padL = 44, padR = 16, padT = 16, padB = 28;
+      const iw = w - padL - padR, ih = ht - padT - padB;
+      const x = i => padL + (iw * i / (data.length - 1));
+      const y = v => padT + ih - (v / max) * ih;
+      const pts = data.map((v, i) => [x(i), y(v)]);
+      let d = `M${pts[0][0]},${pts[0][1]}`;
+      for (let i = 1; i < pts.length; i++) {
+        const [px, py] = pts[i - 1], [cx, cy] = pts[i], mx = (px + cx) / 2;
+        d += ` C${mx},${py} ${mx},${cy} ${cx},${cy}`;
+      }
+      const area = `${d} L${pts[pts.length - 1][0]},${padT + ih} L${pts[0][0]},${padT + ih} Z`;
+      const grid = [0, 10, 20, 30].map(v => {
+        const gy = y(v);
+        return `<line x1="${padL}" x2="${w - padR}" y1="${gy}" y2="${gy}" stroke="#F2F2F3"/>`
+          + `<text x="${padL - 10}" y="${gy + 4}" text-anchor="end" font-size="11" fill="#9CA3AF">${v}K</text>`;
+      }).join('');
+      const labels = ['14:00', '17:00', '20:00', '23:00', '02:00', '05:00', '08:00', '11:00', '14:00'];
+      const xLabels = labels.map((t, idx) => {
+        const i = Math.round(idx * (data.length - 1) / (labels.length - 1));
+        return `<text x="${x(i)}" y="${ht - 8}" text-anchor="middle" font-size="11" fill="#9CA3AF">${t}</text>`;
+      }).join('');
+      el.innerHTML = `<svg viewBox="0 0 ${w} ${ht}" style="width:100%;height:auto;display:block;">
+        <defs><linearGradient id="qg" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#4D6BFE" stop-opacity="0.16"/>
+          <stop offset="100%" stop-color="#4D6BFE" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${grid}
+        <path d="${area}" fill="url(#qg)"/>
+        <path d="${d}" stroke="#4D6BFE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        ${xLabels}
+      </svg>`;
+    })();
+
+    /* ==================== 访问日志：接口 URL / 上游服务 / 时间范围 过滤 ==================== */
+    var ACCESS_LOG = [
+      { t: '2026-10-21 14:23:08', m: 'POST', p: '/v1/chat/completions', s: 200, ip: '10.0.32.18', app: 'sk-604b...AKwx', up: 'llm-router-03', svc: 'llm-router', trace: 'tr8f2a…c41d', cost: '182ms' },
+      { t: '2026-10-21 14:23:07', m: 'POST', p: '/v1/chat/completions', s: 200, ip: '10.0.32.18', app: 'sk-604b...AKwx', up: 'llm-router-02', svc: 'llm-router', trace: 'tr2b9e…7a0f', cost: '124ms' },
+      { t: '2026-10-21 14:23:06', m: 'POST', p: '/v1/embeddings', s: 200, ip: '10.0.32.21', app: 'sk-d4e5...3Kjm', up: 'embedding-svc-01', svc: 'embedding-svc', trace: 'trc31d…9e28', cost: '82ms' },
+      { t: '2026-10-21 14:23:05', m: 'GET', p: '/v1/models', s: 200, ip: '10.0.32.18', app: 'sk-604b...AKwx', up: 'config-svc', svc: 'config-svc', trace: 'tra07f…11bc', cost: '12ms' },
+      { t: '2026-10-21 14:23:04', m: 'POST', p: '/v1/chat/completions', s: 429, ip: '10.0.32.42', app: 'sk-b2c3...7m2x', up: 'llm-router-01', svc: 'llm-router', trace: 'tr5d2c…8f90', cost: '8ms' },
+      { t: '2026-10-21 14:23:03', m: 'POST', p: '/v1/chat/completions', s: 500, ip: '10.0.32.42', app: 'sk-b2c3...7m2x', up: 'llm-router-03', svc: 'llm-router', trace: 'tr9910…23de', cost: '3,420ms' },
+      { t: '2026-10-21 14:23:02', m: 'GET', p: '/v1/usage/stats', s: 200, ip: '10.0.32.18', app: 'sk-604b...AKwx', up: 'usage-billing', svc: 'usage-billing', trace: 'tr77ab…5c12', cost: '32ms' },
+      { t: '2026-10-21 14:22:58', m: 'POST', p: '/v1/rag/query', s: 200, ip: '10.0.44.7', app: 'sk-7c03...ii7m', up: 'rag-service-02', svc: 'rag-service', trace: 'tr3f8d…0a97', cost: '466ms' },
+      { t: '2026-10-21 14:22:55', m: 'POST', p: '/v1/agent/run', s: 503, ip: '10.0.44.12', app: 'sk-c3d4...9Pqw', up: 'agent-runtime-04', svc: 'agent-runtime', trace: 'tr10cc…b4e1', cost: 'timeout' },
+      { t: '2026-10-21 14:22:51', m: 'POST', p: '/v1/chat/completions', s: 200, ip: '10.0.32.18', app: 'sk-604b...AKwx', up: 'llm-router-05', svc: 'llm-router', trace: 'tr6d41…f0a8', cost: '96ms' },
+      { t: '2026-10-21 13:58:41', m: 'POST', p: '/v1/kb/index', s: 200, ip: '10.0.44.7', app: 'sk-7c03...ii7m', up: 'knowledge-base-02', svc: 'knowledge-base', trace: 'tr4aa1…d90c', cost: '2,140ms' },
+      { t: '2026-10-21 13:47:22', m: 'POST', p: '/v1/embeddings', s: 429, ip: '10.0.32.21', app: 'sk-d4e5...3Kjm', up: 'embedding-svc-01', svc: 'embedding-svc', trace: 'tr9f02…1b7e', cost: '6ms' },
+      { t: '2026-10-21 13:26:10', m: 'GET', p: '/v1/models', s: 200, ip: '10.0.32.42', app: 'sk-b2c3...7m2x', up: 'config-svc', svc: 'config-svc', trace: 'trb3c7…5e19', cost: '15ms' },
+      { t: '2026-10-21 12:41:33', m: 'POST', p: '/v1/agent/run', s: 200, ip: '10.0.44.12', app: 'sk-c3d4...9Pqw', up: 'agent-runtime-02', svc: 'agent-runtime', trace: 'tr5e88…a204', cost: '1,268ms' },
+      { t: '2026-10-21 12:05:19', m: 'POST', p: '/v1/chat/completions', s: 200, ip: '10.0.32.18', app: 'sk-604b...AKwx', up: 'llm-router-01', svc: 'llm-router', trace: 'tr2c14…8871', cost: '156ms' },
+      { t: '2026-10-20 22:18:47', m: 'POST', p: '/v1/rag/query', s: 200, ip: '10.0.44.7', app: 'sk-7c03...ii7m', up: 'rag-service-01', svc: 'rag-service', trace: 'tr7d21…3fa6', cost: '512ms' },
+      { t: '2026-10-20 21:52:04', m: 'POST', p: '/v1/chat/completions', s: 502, ip: '10.0.32.42', app: 'sk-b2c3...7m2x', up: 'llm-router-04', svc: 'llm-router', trace: 'tr0a99…c7b2', cost: '30,000ms' },
+      { t: '2026-10-20 20:36:58', m: 'POST', p: '/v1/kb/index', s: 200, ip: '10.0.44.7', app: 'sk-7c03...ii7m', up: 'knowledge-base-01', svc: 'knowledge-base', trace: 'tre512…40ad', cost: '1,860ms' },
+      { t: '2026-10-20 19:12:26', m: 'GET', p: '/v1/usage/stats', s: 200, ip: '10.0.32.18', app: 'sk-604b...AKwx', up: 'usage-billing', svc: 'usage-billing', trace: 'tr3b6c…9d3f', cost: '28ms' },
+      { t: '2026-10-20 17:44:12', m: 'POST', p: '/v1/embeddings', s: 200, ip: '10.0.32.21', app: 'sk-d4e5...3Kjm', up: 'embedding-svc-02', svc: 'embedding-svc', trace: 'tr6f30…2c85', cost: '91ms' },
+      { t: '2026-10-20 16:20:39', m: 'POST', p: '/v1/agent/run', s: 504, ip: '10.0.44.12', app: 'sk-c3d4...9Pqw', up: 'agent-runtime-04', svc: 'agent-runtime', trace: 'tr8c22…71be', cost: 'timeout' },
+      { t: '2026-10-20 14:08:53', m: 'POST', p: '/v1/chat/completions', s: 200, ip: '10.0.32.18', app: 'sk-604b...AKwx', up: 'llm-router-02', svc: 'llm-router', trace: 'tr1d54…6e90', cost: '203ms' },
+      { t: '2026-10-20 11:31:17', m: 'GET', p: '/v1/models', s: 200, ip: '10.0.32.42', app: 'sk-b2c3...7m2x', up: 'config-svc', svc: 'config-svc', trace: 'tr4e77…a531', cost: '11ms' },
+      { t: '2026-10-20 09:15:44', m: 'POST', p: '/v1/usage/stats', s: 401, ip: '10.0.55.31', app: 'sk-ee91...Q2za', up: 'usage-billing', svc: 'usage-billing', trace: 'tr9a08…5f4d', cost: '4ms' }
+    ];
+    var LOG_NOW = '2026-10-21 14:23:08';
+    var LOG_PAGE = 1, LOG_SIZE = 10;
+
+    function toastOps(msg) {
+      var el = document.createElement('div');
+      el.textContent = msg;
+      el.style.cssText = 'position:fixed; left:50%; top:24px; transform:translateX(-50%); z-index:9999;'
+        + 'background:rgba(17,24,39,.92); color:#fff; padding:9px 18px; border-radius:8px; font-size:13px;'
+        + 'box-shadow:0 6px 20px rgba(0,0,0,.16);';
+      document.body.appendChild(el);
+      setTimeout(function () { el.remove(); }, 1800);
+    }
+    function pad2(n) { return n < 10 ? '0' + n : String(n); }
+    function dtStr(d) {
+      return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + 'T' + pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+    }
+    function nowDate() { return new Date(LOG_NOW.replace(' ', 'T')); }
+
+    /* 上游服务下拉 */
+    (function fillSvc() {
+      var seen = {}, list = [];
+      ACCESS_LOG.forEach(function (r) { if (!seen[r.svc]) { seen[r.svc] = 1; list.push(r.svc); } });
+      list.sort();
+      document.getElementById('logSvc').innerHTML =
+        '<option value="">全部上游服务</option>' + list.map(function (v) { return '<option value="' + v + '">' + v + '</option>'; }).join('');
+    })();
+
+    function filteredLogs() {
+      var url = document.getElementById('logUrl').value.trim().toLowerCase();
+      var svc = document.getElementById('logSvc').value;
+      var from = document.getElementById('logFrom').value.replace('T', ' ');
+      var to = document.getElementById('logTo').value.replace('T', ' ');
+      var st = document.getElementById('logStatus').value;
+      var kw = document.getElementById('logKw').value.trim().toLowerCase();
+      return ACCESS_LOG.filter(function (r) {
+        if (url && r.p.toLowerCase().indexOf(url) === -1) return false;
+        if (svc && r.svc !== svc) return false;
+        var mm = r.t.slice(0, 16);           /* 精确到分钟比较 */
+        if (from && mm < from) return false;
+        if (to && mm > to) return false;
+        if (st && String(r.s).charAt(0) !== st) return false;
+        if (kw && (r.trace + ' ' + r.ip + ' ' + r.app).toLowerCase().indexOf(kw) === -1) return false;
+        return true;
+      });
+    }
+    function statusTag(s) {
+      var cls = s < 300 ? 'tag-success' : s < 400 ? 'tag-primary' : s < 500 ? 'tag-warning' : 'tag-danger';
+      return '<span class="tag ' + cls + ' tag-solid">' + s + '</span>';
+    }
+    function renderLogs() {
+      var rows = filteredLogs();
+      var pages = Math.max(1, Math.ceil(rows.length / LOG_SIZE));
+      if (LOG_PAGE > pages) LOG_PAGE = pages;
+      var start = (LOG_PAGE - 1) * LOG_SIZE;
+      var page = rows.slice(start, start + LOG_SIZE);
+
+      document.getElementById('logBody').innerHTML = page.length ? page.map(function (r) {
+        return '<tr>'
+          + '<td class="muted text-sm">' + r.t.slice(5) + '</td>'
+          + '<td><span class="tag ' + (r.m === 'GET' ? 'tag-purple' : 'tag-primary') + ' tag-solid">' + r.m + '</span></td>'
+          + '<td class="mono text-sm">' + r.p + '</td>'
+          + '<td>' + statusTag(r.s) + '</td>'
+          + '<td>' + r.ip + '</td>'
+          + '<td class="mono text-sm">' + r.app + '</td>'
+          + '<td>' + r.up + '</td>'
+          + '<td class="mono text-sm">' + r.trace + '</td>'
+          + '<td>' + r.cost + '</td></tr>';
+      }).join('') : '<tr><td colspan="9" class="muted text-sm" style="padding:22px 16px;">无匹配的访问日志，请调整过滤条件</td></tr>';
+
+      var err = rows.filter(function (r) { return r.s >= 400; }).length;
+      var e429 = rows.filter(function (r) { return r.s === 429; }).length;
+      var e5xx = rows.filter(function (r) { return r.s >= 500; }).length;
+      var rate = rows.length ? (err / rows.length * 100).toFixed(2) : '0.00';
+      document.getElementById('logSummary').textContent =
+        '命中 ' + rows.length + ' 条 / 共 ' + ACCESS_LOG.length + ' 条 · 展示第 ' + (rows.length ? start + 1 : 0) + ' - ' + (start + page.length) + ' 条';
+      document.getElementById('logStat').textContent =
+        '当前筛选样本：错误率 ' + rate + '%（' + err + ' / ' + rows.length + '）· 429 共 ' + e429 + ' 条 · 5xx 共 ' + e5xx + ' 条';
+
+      var pg = '<button class="page-btn" data-pg="prev"' + (LOG_PAGE <= 1 ? ' disabled' : '') + '>‹</button>';
+      for (var i = 1; i <= pages; i++) {
+        pg += '<button class="page-btn' + (i === LOG_PAGE ? ' active' : '') + '" data-pg="' + i + '">' + i + '</button>';
+      }
+      pg += '<button class="page-btn" data-pg="next"' + (LOG_PAGE >= pages ? ' disabled' : '') + '>›</button>';
+      document.getElementById('logPager').innerHTML = pg;
+      document.querySelectorAll('#logPager [data-pg]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var v = b.getAttribute('data-pg');
+          if (v === 'prev') LOG_PAGE = Math.max(1, LOG_PAGE - 1);
+          else if (v === 'next') LOG_PAGE = Math.min(pages, LOG_PAGE + 1);
+          else LOG_PAGE = parseInt(v, 10);
+          renderLogs();
+        });
+      });
+    }
+    document.getElementById('btnLogQuery').addEventListener('click', function () {
+      LOG_PAGE = 1;
+      var n = filteredLogs().length;
+      renderLogs();
+      toastOps('查询完成：命中 ' + n + ' 条访问日志');
+    });
+    document.getElementById('btnLogReset').addEventListener('click', function () {
+      document.getElementById('logUrl').value = '';
+      document.getElementById('logSvc').value = '';
+      document.getElementById('logFrom').value = '';
+      document.getElementById('logTo').value = '';
+      document.getElementById('logStatus').value = '';
+      document.getElementById('logKw').value = '';
+      document.querySelectorAll('#logQuick .btn').forEach(function (b) {
+        b.className = 'btn btn-sm ' + (b.getAttribute('data-h') === '0' ? 'btn-secondary' : 'btn-ghost');
+      });
+      LOG_PAGE = 1;
+      renderLogs();
+      toastOps('已重置过滤条件');
+    });
+    ['logUrl', 'logKw'].forEach(function (id) {
+      document.getElementById(id).addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { LOG_PAGE = 1; renderLogs(); toastOps('查询完成：命中 ' + filteredLogs().length + ' 条访问日志'); }
+      });
+    });
+    ['logSvc', 'logStatus', 'logFrom', 'logTo'].forEach(function (id) {
+      document.getElementById(id).addEventListener('change', function () { LOG_PAGE = 1; renderLogs(); });
+    });
+    document.querySelectorAll('#logQuick .btn').forEach(function (b) {
+      b.addEventListener('click', function () {
+        document.querySelectorAll('#logQuick .btn').forEach(function (x) { x.className = 'btn btn-sm btn-ghost'; });
+        b.className = 'btn btn-sm btn-secondary';
+        var h = parseInt(b.getAttribute('data-h'), 10);
+        if (h === 0) {
+          document.getElementById('logFrom').value = '';
+          document.getElementById('logTo').value = '';
+        } else {
+          var end = nowDate();
+          var beginD = new Date(end.getTime() - h * 3600 * 1000);
+          document.getElementById('logFrom').value = dtStr(beginD);
+          document.getElementById('logTo').value = dtStr(end);
+        }
+        LOG_PAGE = 1;
+        renderLogs();
+        toastOps(h === 0 ? '时间范围：全部' : '时间范围：近 ' + h + ' 小时');
+      });
+    });
+    document.getElementById('btnLogExport').addEventListener('click', function () {
+      var rows = filteredLogs();
+      if (!rows.length) { toastOps('当前无数据可导出'); return; }
+      var csv = ['时间,方法,路径,状态码,客户端,AppCode,上游,TraceID,耗时'].concat(rows.map(function (r) {
+        return [r.t, r.m, r.p, r.s, r.ip, r.app, r.up, r.trace, r.cost].join(',');
+      })).join('\n');
+      var blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'gateway-access-log.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+      toastOps('已导出 ' + rows.length + ' 条访问日志');
+    });
+    renderLogs();
+  </script>
+</body>
+</html>

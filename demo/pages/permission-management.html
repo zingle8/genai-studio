@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>权限管理 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+    <main class="main">
+      <div class="content">
+        <div class="page-header">
+          <div>
+            <div class="page-title">权限管理</div>
+            <div class="page-subtitle">角色权限矩阵：业务用户 / 管理用户 / 超级用户</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-secondary">导出</button>
+            <button class="btn btn-primary">+ 新建角色</button>
+          </div>
+        </div>
+
+        <!-- 角色分类 -->
+        <div class="stat-grid">
+          <div class="stat-card" style="border-left: 4px solid var(--primary);">
+            <div>
+              <div class="stat-label">业务用户</div>
+              <div class="stat-value" style="font-size:22px;">开发者 / 提示词 / 知识库</div>
+              <div class="muted text-sm mt-8">仅可使用现有能力，不涉及系统配置</div>
+            </div>
+            <div class="stat-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div>
+          </div>
+          <div class="stat-card" style="border-left: 4px solid var(--warning);">
+            <div>
+              <div class="stat-label">管理用户</div>
+              <div class="stat-value" style="font-size:22px;">模型 / RAG / MCP / Agent</div>
+              <div class="muted text-sm mt-8">可配置平台底层能力</div>
+            </div>
+            <div class="stat-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+          </div>
+          <div class="stat-card" style="border-left: 4px solid var(--danger);">
+            <div>
+              <div class="stat-label">超级用户</div>
+              <div class="stat-value" style="font-size:22px;">平台配置 / 权限管理</div>
+              <div class="muted text-sm mt-8">拥有最高权限，可管理整个平台</div>
+            </div>
+            <div class="stat-icon" style="background:rgba(239,68,68,0.12); color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5M2 12l10 5 10-5"/></svg></div>
+          </div>
+        </div>
+
+        <!-- 角色列表 -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">角色列表</div>
+          </div>
+          <div class="card-body no-pad">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>角色名</th><th>角色编码</th><th>类型</th><th>用户数</th><th>权限范围</th><th>说明</th><th>创建时间</th><th>操作</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><b>超级管理员</b></td>
+                    <td class="mono">SUPER_ADMIN</td>
+                    <td><span class="tag danger tag-solid">超级用户</span></td>
+                    <td>3</td>
+                    <td>全部模块</td>
+                    <td class="muted text-sm">系统最高权限</td>
+                    <td class="muted text-sm">2026-01-01</td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>平台管理员</b></td>
+                    <td class="mono">PLATFORM_ADMIN</td>
+                    <td><span class="tag danger tag-solid">超级用户</span></td>
+                    <td>5</td>
+                    <td>平台配置、权限、用户管理</td>
+                    <td class="muted text-sm">负责平台运维</td>
+                    <td class="muted text-sm">2026-02-15</td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>模型管理员</b></td>
+                    <td class="mono">MODEL_ADMIN</td>
+                    <td><span class="tag warning tag-solid">管理用户</span></td>
+                    <td>8</td>
+                    <td>模型配置</td>
+                    <td class="muted text-sm">管理 LLM / 向量模型</td>
+                    <td class="muted text-sm">2026-03-10</td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>RAG 工程师</b></td>
+                    <td class="mono">RAG_ENGINEER</td>
+                    <td><span class="tag warning tag-solid">管理用户</span></td>
+                    <td>6</td>
+                    <td>RAG / 知识库 / 知识图谱Graph / 本体图谱Onto</td>
+                    <td class="muted text-sm">负责检索系统建设</td>
+                    <td class="muted text-sm">2026-04-22</td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>Agent 开发者</b></td>
+                    <td class="mono">AGENT_DEVELOPER</td>
+                    <td><span class="tag warning tag-solid">管理用户</span></td>
+                    <td>12</td>
+                    <td>MCP / Agent / Skill</td>
+                    <td class="muted text-sm">负责 Agent 工程化</td>
+                    <td class="muted text-sm">2026-05-08</td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>业务开发者</b></td>
+                    <td class="mono">DEV_USER</td>
+                    <td><span class="tag primary tag-solid">业务用户</span></td>
+                    <td>238</td>
+                    <td>开发者管理 / 用户中心 / 订单</td>
+                    <td class="muted text-sm">业务方开发者</td>
+                    <td class="muted text-sm">2026-01-15</td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>提示词工程师</b></td>
+                    <td class="mono">PROMPT_ENGINEER</td>
+                    <td><span class="tag primary tag-solid">业务用户</span></td>
+                    <td>24</td>
+                    <td>提示词管理</td>
+                    <td class="muted text-sm">负责 Prompt 调优</td>
+                    <td class="muted text-sm">2026-03-22</td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>知识库管理员</b></td>
+                    <td class="mono">KB_ADMIN</td>
+                    <td><span class="tag primary tag-solid">业务用户</span></td>
+                    <td>18</td>
+                    <td>知识库中心 / 知识空间</td>
+                    <td class="muted text-sm">知识库维护人员</td>
+                    <td class="muted text-sm">2026-04-10</td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 权限矩阵 -->
+        <div class="card mt-24">
+          <div class="card-header">
+            <div>
+              <div class="card-title">权限矩阵 · 业务开发者</div>
+              <div class="card-subtitle">勾选可访问的菜单与操作</div>
+            </div>
+            <button class="btn btn-sm btn-primary">保存权限</button>
+          </div>
+          <div class="card-body no-pad">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>模块</th>
+                    <th class="text-center">查看</th>
+                    <th class="text-center">新增</th>
+                    <th class="text-center">编辑</th>
+                    <th class="text-center">删除</th>
+                    <th class="text-center">导出</th>
+                    <th class="text-center">启用/禁用</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr><td>开发者管理</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td></tr>
+                  <tr><td>用户中心</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" /></td></tr>
+                  <tr><td>订单管理</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" /></td></tr>
+                  <tr><td>成本统计</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center">—</td></tr>
+                  <tr><td>使用日志</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center">—</td></tr>
+                  <tr><td>提示词管理</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" checked /></td></tr>
+                  <tr><td>知识库中心</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" /></td></tr>
+                  <tr><td>聊天工作台</td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" checked /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center"><input type="checkbox" /></td><td class="text-center">—</td><td class="text-center">—</td></tr>
+                  <tr><td>模型配置</td><td class="text-center"><input type="checkbox" /></td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td></tr>
+                  <tr><td>RAG 管理</td><td class="text-center"><input type="checkbox" /></td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td></tr>
+                  <tr><td>MCP 管理</td><td class="text-center"><input type="checkbox" /></td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td></tr>
+                  <tr><td>Agent 管理</td><td class="text-center"><input type="checkbox" /></td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td><td class="text-center">—</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  </div>
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>initLayout('permission');</script>
+</body>
+</html>

@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>平台配置 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    .cfg-grid { display: grid; grid-template-columns: 220px 1fr; gap: 20px; align-items: start; }
+    .cfg-menu { padding: 9px 14px; border-radius: var(--radius); cursor: pointer; font-size: 13.5px; color: var(--text-secondary); }
+    .cfg-menu:hover { background: var(--bg-soft); color: var(--text-primary); }
+    .cfg-menu.active { background: var(--sidebar-active); color: var(--text-primary); font-weight: 500; }
+    .cfg-panel { display: none; }
+    .cfg-panel.active { display: block; }
+    .cfg-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; background: var(--bg-soft); border-radius: var(--radius-md); gap: 16px; }
+    .cfg-row .cfg-row-t { font-size: 13.5px; font-weight: 500; }
+    .cfg-row .cfg-row-d { font-size: 12.5px; color: var(--text-secondary); margin-top: 3px; }
+    .cfg-list { display: flex; flex-direction: column; gap: 12px; }
+    .kbd { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--bg-soft); border: 1px solid var(--border); border-radius: 5px; padding: 2px 6px; }
+    @media (max-width: 900px) { .cfg-grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">平台配置</div>
+              <div class="page-subtitle">全局参数、品牌定制、计费规则、安全策略</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary">恢复默认</button>
+              <button class="btn btn-primary">保存配置</button>
+            </div>
+          </div>
+
+          <div class="cfg-grid">
+            <div class="card" style="padding:8px;">
+              <div class="cfg-menu active" data-panel="basic">基础信息</div>
+              <div class="cfg-menu" data-panel="brand">品牌定制</div>
+              <div class="cfg-menu" data-panel="billing">计费规则</div>
+              <div class="cfg-menu" data-panel="ratelimit">限流策略</div>
+              <div class="cfg-menu" data-panel="security">安全策略</div>
+              <div class="cfg-menu" data-panel="notify">通知告警</div>
+              <div class="cfg-menu" data-panel="log">日志保留</div>
+              <div class="cfg-menu" data-panel="sso">SSO / 单点登录</div>
+              <div class="cfg-menu" data-panel="webhook">Webhook</div>
+              <div class="cfg-menu" data-panel="openapi">开放 API</div>
+            </div>
+
+            <div>
+              <!-- 基础信息 -->
+              <div class="cfg-panel active" id="panel-basic">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">基础信息</div></div>
+                  <div class="card-body">
+                    <div class="form-row row-2">
+                      <div><label class="form-label">平台名称</label><input class="form-input" value="AI Studio" /></div>
+                      <div><label class="form-label">平台英文名</label><input class="form-input" value="AI Studio Platform" /></div>
+                    </div>
+                    <div class="form-row">
+                      <label class="form-label">平台 Logo</label>
+                      <div class="flex items-center gap-16">
+                        <div style="width:64px;height:64px;border-radius:14px;background:var(--text-primary);display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;font-weight:700;">AI</div>
+                        <button class="btn btn-secondary">上传 Logo</button>
+                        <span class="muted text-sm">建议尺寸 256×256，PNG/SVG</span>
+                      </div>
+                    </div>
+                    <div class="form-row row-2">
+                      <div><label class="form-label">主域名</label><input class="form-input mono" value="https://ai-studio.example.com" /></div>
+                      <div><label class="form-label">API 网关域名</label><input class="form-input mono" value="https://api.ai-studio.example.com" /></div>
+                    </div>
+                    <div class="form-row row-3">
+                      <div><label class="form-label">默认时区</label><select class="form-select"><option>Asia/Shanghai (UTC+8)</option><option>UTC</option><option>America/Los_Angeles</option></select></div>
+                      <div><label class="form-label">默认语言</label><select class="form-select"><option>简体中文</option><option>English</option></select></div>
+                      <div><label class="form-label">多租户模式</label><select class="form-select"><option>启用</option><option>禁用</option></select></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 品牌定制 -->
+              <div class="cfg-panel" id="panel-brand">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">品牌定制</div></div>
+                  <div class="card-body">
+                    <div class="form-row row-2">
+                      <div><label class="form-label">主题色</label>
+                        <div class="flex items-center gap-12">
+                          <input class="form-input" value="#1A1A1A" style="width:120px;" />
+                          <div style="width:36px;height:36px;border-radius:8px;background:#1A1A1A;"></div>
+                        </div>
+                      </div>
+                      <div><label class="form-label">强调色</label>
+                        <div class="flex items-center gap-12">
+                          <input class="form-input" value="#4D6BFE" style="width:120px;" />
+                          <div style="width:36px;height:36px;border-radius:8px;background:#4D6BFE;"></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="form-row row-2">
+                      <div><label class="form-label">登录页标题</label><input class="form-input" value="AI Studio · 企业级 AI 微服务平台" /></div>
+                      <div><label class="form-label">浏览器标题后缀</label><input class="form-input" value=" · AI Studio" /></div>
+                    </div>
+                    <div class="form-row">
+                      <label class="form-label">页脚版权信息</label>
+                      <input class="form-input" value="© 2026 AI Studio · 保留所有权利" />
+                    </div>
+                    <div class="form-row">
+                      <label class="form-label">登录页背景图</label>
+                      <div style="height:110px;border-radius:var(--radius-md);background:linear-gradient(135deg,#EEF1FE,#F0EBFF);display:flex;align-items:center;justify-content:center;">
+                        <button class="btn btn-secondary btn-sm">更换背景图</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 计费规则 -->
+              <div class="cfg-panel" id="panel-billing">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">计费规则</div></div>
+                  <div class="card-body">
+                    <div class="form-row row-3">
+                      <div><label class="form-label">计费货币</label><select class="form-select"><option>CNY ¥</option><option>USD $</option></select></div>
+                      <div><label class="form-label">Token 单价系数</label><input class="form-input" value="1.0" /></div>
+                      <div><label class="form-label">最低充值金额</label><input class="form-input" value="10" /></div>
+                    </div>
+                    <div class="form-row">
+                      <label class="form-label">峰谷计费</label>
+                      <div class="cfg-list">
+                        <div class="cfg-row"><div><div class="cfg-row-t">空闲时段折扣</div><div class="cfg-row-d">00:30 - 08:30 按 50% 计费</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                        <div class="cfg-row"><div><div class="cfg-row-t">节假日全天优惠</div><div class="cfg-row-d">法定节假日全天按空闲时段计费</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                        <div class="cfg-row"><div><div class="cfg-row-t">余额低于阈值告警</div><div class="cfg-row-d">低于 10 元时向用户发送通知</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 限流策略 -->
+              <div class="cfg-panel" id="panel-ratelimit">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">限流策略</div></div>
+                  <div class="card-body">
+                    <div class="form-row row-3">
+                      <div><label class="form-label">全局 QPS 上限</label><input class="form-input" type="number" value="10000" /></div>
+                      <div><label class="form-label">单用户 QPS</label><input class="form-input" type="number" value="500" /></div>
+                      <div><label class="form-label">单用户 TPM</label><input class="form-input" type="number" value="200000" /></div>
+                    </div>
+                    <div class="form-row row-3">
+                      <div><label class="form-label">单 Key 并发上限</label><input class="form-input" type="number" value="64" /></div>
+                      <div><label class="form-label">超限返回码</label><input class="form-input" type="number" value="429" /></div>
+                      <div><label class="form-label">限流窗口（秒）</label><input class="form-input" type="number" value="60" /></div>
+                    </div>
+                    <div class="cfg-list">
+                      <div class="cfg-row"><div><div class="cfg-row-t">启用熔断降级</div><div class="cfg-row-d">上游连续失败达到阈值时自动熔断</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">排队等待</div><div class="cfg-row-d">超限请求进入队列等待而非直接拒绝</div></div><label class="switch"><input type="checkbox" /><span class="switch-slider"></span></label></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 安全策略 -->
+              <div class="cfg-panel" id="panel-security">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">安全策略</div></div>
+                  <div class="card-body">
+                    <div class="cfg-list">
+                      <div class="cfg-row"><div><div class="cfg-row-t">敏感数据脱敏</div><div class="cfg-row-d">自动识别身份证、手机号、银行卡等敏感信息</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">输入输出审计</div><div class="cfg-row-d">记录所有 LLM 请求与响应的完整内容</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">IP 白名单</div><div class="cfg-row-d">限制仅允许特定 IP 调用 API</div></div><label class="switch"><input type="checkbox" /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">内容安全审核</div><div class="cfg-row-d">请求前与回复后调用审核 API</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">API Key 泄露自动失效</div><div class="cfg-row-d">检测到公开泄露风险时自动轮换密钥</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                    </div>
+                    <div class="form-row mt-16">
+                      <label class="form-label">允许的 IP 段</label>
+                      <textarea class="form-textarea" placeholder="每行一个 CIDR，例如 10.0.0.0/8">10.0.0.0/8
+192.168.0.0/16</textarea>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 通知告警 -->
+              <div class="cfg-panel" id="panel-notify">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">通知告警</div></div>
+                  <div class="card-body">
+                    <div class="cfg-list">
+                      <div class="cfg-row"><div><div class="cfg-row-t">服务异常告警</div><div class="cfg-row-d">模型服务不可用 / 错误率超阈值时通知</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">成本异常告警</div><div class="cfg-row-d">单日消费环比增长超过 200% 时通知</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">Key 即将过期提醒</div><div class="cfg-row-d">过期前 7 天提醒创建人</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                    </div>
+                    <div class="form-row row-2 mt-16">
+                      <div><label class="form-label">告警通知渠道</label><select class="form-select"><option>邮件 + 站内信 + 企业微信</option><option>仅邮件</option><option>Webhook</option></select></div>
+                      <div><label class="form-label">告警接收人</label><input class="form-input" value="ops@example.com; admin@example.com" /></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 日志保留 -->
+              <div class="cfg-panel" id="panel-log">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">日志保留</div></div>
+                  <div class="card-body">
+                    <div class="form-row row-3">
+                      <div><label class="form-label">请求日志保留（天）</label><input class="form-input" type="number" value="180" /></div>
+                      <div><label class="form-label">审计日志保留（天）</label><input class="form-input" type="number" value="365" /></div>
+                      <div><label class="form-label">访问日志保留（天）</label><input class="form-input" type="number" value="90" /></div>
+                    </div>
+                    <div class="cfg-list">
+                      <div class="cfg-row"><div><div class="cfg-row-t">日志脱敏存储</div><div class="cfg-row-d">落库前对敏感字段进行加密/脱敏</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">归档到对象存储</div><div class="cfg-row-d">超过保留期自动归档至 OSS / S3</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- SSO -->
+              <div class="cfg-panel" id="panel-sso">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">SSO / 单点登录</div></div>
+                  <div class="card-body">
+                    <div class="form-row row-2">
+                      <div><label class="form-label">协议</label><select class="form-select"><option>OIDC</option><option>SAML 2.0</option><option>CAS</option><option>LDAP</option></select></div>
+                      <div><label class="form-label">状态</label><select class="form-select"><option>已启用</option><option>已停用</option></select></div>
+                    </div>
+                    <div class="form-row"><label class="form-label">Issuer / 登录地址</label><input class="form-input mono" value="https://sso.example.com/realms/ai-studio" /></div>
+                    <div class="form-row row-2">
+                      <div><label class="form-label">Client ID</label><input class="form-input mono" value="ai-studio-portal" /></div>
+                      <div><label class="form-label">Client Secret</label><input class="form-input mono" type="password" value="••••••••••••••••" /></div>
+                    </div>
+                    <div class="cfg-list">
+                      <div class="cfg-row"><div><div class="cfg-row-t">强制 SSO 登录</div><div class="cfg-row-d">禁用账号密码登录，仅允许 SSO</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">自动创建用户</div><div class="cfg-row-d">首次 SSO 登录时自动创建平台账号</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Webhook -->
+              <div class="cfg-panel" id="panel-webhook">
+                <div class="card">
+                  <div class="card-header">
+                    <div class="card-title">Webhook</div>
+                    <button class="btn btn-sm btn-primary">新增 Webhook</button>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead><tr><th>名称</th><th>回调地址</th><th>订阅事件</th><th>状态</th><th class="text-right">操作</th></tr></thead>
+                        <tbody>
+                          <tr><td><b>订单通知</b></td><td class="mono">https://api.example.com/hooks/order</td><td><span class="tag">order.paid</span> <span class="tag">order.refunded</span></td><td><span class="status-dot success">启用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                          <tr><td><b>用量推送</b></td><td class="mono">https://api.example.com/hooks/usage</td><td><span class="tag">usage.daily</span></td><td><span class="status-dot success">启用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                          <tr><td><b>告警回调</b></td><td class="mono">https://ops.example.com/hooks/alert</td><td><span class="tag">service.down</span> <span class="tag">cost.spike</span></td><td><span class="status-dot danger">停用</span></td><td class="text-right"><span class="link">编辑</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+                <div class="card mt-24">
+                  <div class="card-header"><div class="card-title">签名与重试</div></div>
+                  <div class="card-body">
+                    <div class="form-row row-2">
+                      <div><label class="form-label">签名密钥</label><input class="form-input mono" value="whsec_9f2a7c4b1e8d6a3f" /></div>
+                      <div><label class="form-label">失败重试次数</label><input class="form-input" type="number" value="3" /></div>
+                    </div>
+                    <div class="form-row"><label class="form-label">重试退避策略</label><input class="form-input" value="指数退避 1s / 5s / 30s" /></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 开放 API -->
+              <div class="cfg-panel" id="panel-openapi">
+                <div class="card">
+                  <div class="card-header"><div class="card-title">开放 API</div></div>
+                  <div class="card-body">
+                    <div class="cfg-list">
+                      <div class="cfg-row"><div><div class="cfg-row-t">启用开放 API</div><div class="cfg-row-d">允许第三方系统通过 OpenAPI 调用平台能力</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">强制 HTTPS</div><div class="cfg-row-d">所有开放接口仅允许 HTTPS 访问</div></div><label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label></div>
+                      <div class="cfg-row"><div><div class="cfg-row-t">IP 白名单</div><div class="cfg-row-d">仅允许白名单 IP 访问开放 API</div></div><label class="switch"><input type="checkbox" /><span class="switch-slider"></span></label></div>
+                    </div>
+                    <div class="form-row mt-16">
+                      <label class="form-label">限流（次/分钟）</label>
+                      <input class="form-input" type="number" value="6000" style="max-width:220px;" />
+                    </div>
+                    <div class="form-row">
+                      <label class="form-label">接口文档地址</label>
+                      <div class="flex items-center gap-12">
+                        <input class="form-input mono" value="https://docs.ai-studio.example.com/openapi" readonly />
+                        <button class="btn btn-secondary">复制</button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('platform-config');
+    document.querySelectorAll('.cfg-menu').forEach(function (m) {
+      m.addEventListener('click', function () {
+        document.querySelectorAll('.cfg-menu').forEach(function (x) { x.classList.remove('active'); });
+        document.querySelectorAll('.cfg-panel').forEach(function (p) { p.classList.remove('active'); });
+        m.classList.add('active');
+        var panel = document.getElementById('panel-' + m.dataset.panel);
+        if (panel) panel.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

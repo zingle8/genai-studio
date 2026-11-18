@@ -1,0 +1,11 @@
+# 公共模型加载模块（loadmodel）：run.sh 已通过 PYTHONPATH 引入 ../py-genai-loadmodel，无需安装
+# 如需 IDE 补全/单独运行，可：pip install -e ../py-genai-loadmodel
+
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+httpx>=0.27
+# 本地生成模型推理（可选：未配置 INFER_MODEL_DIR 时走上游转发，无需安装）
+# transformers>=4.40  torch>=2.2  accelerate  safetensors
+# 网关平台接入 SDK（暂不接网关）
+# -e ../py-genai-apigateway-client-sdk

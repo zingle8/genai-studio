@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.zimo.genai</groupId>
+        <artifactId>genai-studio</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>jv-genai-chats</artifactId>
+    <packaging>jar</packaging>
+    <name>jv-genai-chats</name>
+    <description>会话对话服务</description>
+
+    <dependencies>
+        <!-- 公共二方库 -->
+        <dependency>
+            <groupId>com.zimo.genai</groupId>
+            <artifactId>jv-genai-comm</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 网关平台接入 SDK（日志采集/埋点上报） -->
+        <dependency>
+            <groupId>com.zimo.genai</groupId>
+            <artifactId>jv-genai-apigateway-client-sdk</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>${mybatis-spring-boot.version}</version>
+        </dependency>
+        <!-- MySQL 5.7 服务端；驱动用 8.x 客户端兼容 -->
+        <dependency>
+            <groupId>com.mysql</groupId>
+            <artifactId>mysql-connector-j</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

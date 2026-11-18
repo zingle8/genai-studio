@@ -1,0 +1,30 @@
+server:
+  port: 38083
+
+spring:
+  application:
+    name: jv-genai-aigateway
+  datasource:
+    # MySQL 5.7（按实际环境修改 host/db 名/账号密码）
+    url: jdbc:mysql://localhost:3306/genai_aigateway?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai
+    username: root
+    password: Root@123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# 网关平台接入（jv-api-gateway-client-starter：服务注册/心跳/调用采集上报）
+zimo:
+  gateway:
+    client:
+      enabled: true
+      # 统一入口：jv-api-gateway-proxy（按前缀转发 /discovery /trace 等）
+      server-addr: http://127.0.0.1:28090/api
+      client-token: ${GATEWAY_CLIENT_TOKEN:dev-gateway-token}
+      app-id: app-genai-studio
+      app-name: GenAI Studio
+      service-id: jv-genai-aigateway
+      service-name: AI 推理网关
+      ip: 127.0.0.1
+      port: 38083
+      registry:
+        enabled: true
+        heartbeat-interval: 30000

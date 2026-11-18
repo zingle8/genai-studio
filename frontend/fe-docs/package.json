@@ -1,0 +1,24 @@
+{
+  "name": "fe-docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vite-plugin-qiankun": "^1.0.15",
+    "vue": "^3.4.0",
+    "vue-router": "^4.3.0",
+    "cheerio": "0.22.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.0",
+    "vite": "^5.2.0"
+  },
+  "overrides": {
+    "cheerio": "0.22.0"
+  }
+}

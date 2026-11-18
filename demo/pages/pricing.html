@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>产品定价 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    .price-now { font-size: 15px; font-weight: 600; }
+    .price-unit { font-size: 12px; color: var(--text-secondary); font-weight: 400; }
+    .price-old { font-size: 12px; color: var(--text-tertiary); text-decoration: line-through; margin-left: 4px; }
+
+    /* 计算器 */
+    .calc-grid { display: grid; grid-template-columns: 1.2fr 1fr; gap: 24px; align-items: start; }
+    .calc-result {
+      background: var(--bg-soft); border-radius: var(--radius-md);
+      padding: 16px 18px;
+    }
+    .calc-result .row { display: flex; justify-content: space-between; font-size: 13px; padding: 6px 0; }
+    .calc-result .row.total { border-top: 1px solid var(--border); margin-top: 8px; padding-top: 12px; font-size: 15px; font-weight: 600; }
+    .calc-total-num { color: var(--accent); }
+
+    /* 免费额度卡 */
+    .free-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .free-card {
+      border: 1px solid var(--border); border-radius: var(--radius-md);
+      padding: 16px 18px; background: #fff;
+    }
+    .free-card .fc-value { font-size: 22px; font-weight: 700; margin: 4px 0; }
+    .free-card .fc-label { font-size: 12.5px; color: var(--text-secondary); }
+    .free-card .fc-note { font-size: 12px; color: var(--text-tertiary); margin-top: 6px; }
+
+    /* 计费规则 */
+    .rule-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border-light); }
+    .rule-item:last-child { border-bottom: 0; }
+    .rule-num {
+      width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0;
+      background: var(--accent-soft); color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    @media (max-width: 1080px) {
+      .calc-grid { grid-template-columns: 1fr !important; }
+      .free-grid { grid-template-columns: 1fr; }
+      .price-2col { grid-template-columns: 1fr !important; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">产品定价</div>
+              <div class="page-subtitle">按 Token 计费 · 充值与赠金抵扣顺序：赠金 → 充值余额</div>
+            </div>
+            <div class="page-actions">
+              <a class="btn btn-secondary" href="cost-statistics.html">成本统计</a>
+              <a class="btn btn-primary" href="topup.html">去充值</a>
+            </div>
+          </div>
+
+          <div class="notice">
+            <span>2026-10-01 起 <b>DeepSeek-V3.2</b> 输出价下调至 ¥8 / 百万 Token；调休上班的周末与法定节假日全天按<b>空闲时段价</b>（8 折）计费。</span>
+            <button class="notice-close">知道了</button>
+          </div>
+
+          <!-- 免费额度 -->
+          <div class="free-grid mb-16">
+            <div class="free-card">
+              <div class="fc-label">新用户赠金</div>
+              <div class="fc-value">¥100</div>
+              <div class="fc-note">注册即送，永久有效，优先抵扣</div>
+            </div>
+            <div class="free-card">
+              <div class="fc-label">嵌入模型免费额度</div>
+              <div class="fc-value">2,000,000</div>
+              <div class="fc-note">Token，有效期至 2026-12-31</div>
+            </div>
+            <div class="free-card">
+              <div class="fc-label">企业认证试用额度</div>
+              <div class="fc-value">¥500</div>
+              <div class="fc-note">认证后 30 天内有效，可开专票</div>
+            </div>
+          </div>
+
+          <!-- 文本模型价格 -->
+          <div class="card mb-16">
+            <div class="card-header">
+              <div>
+                <div class="card-title">文本模型价格</div>
+                <div class="card-subtitle">单位：元 / 百万 Token（¥/M Tokens）· 输入含系统提示与历史上下文</div>
+              </div>
+              <div class="segmented">
+                <div class="seg active">全部</div>
+                <div class="seg">文本生成</div>
+                <div class="seg">多模态</div>
+                <div class="seg">向量</div>
+              </div>
+            </div>
+            <div class="card-body no-pad">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>模型</th><th>厂商</th><th>上下文</th><th>输入价</th><th>输出价</th><th>缓存命中</th><th>最大输出</th><th>状态</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td><b>DeepSeek-V3.2</b><div class="muted text-sm">通用对话 / 高性价比</div></td>
+                      <td>深度求索</td><td class="mono">128K</td>
+                      <td><span class="price-now">¥2</span><span class="price-unit"> / M</span></td>
+                      <td><span class="price-now">¥8</span><span class="price-unit"> / M</span><span class="price-old">¥12</span></td>
+                      <td class="mono">¥0.5 / M</td><td class="mono">8K</td>
+                      <td><span class="tag tag-success">可用</span></td>
+                    </tr>
+                    <tr>
+                      <td><b>DeepSeek-R1</b><div class="muted text-sm">深度推理 / 数学代码</div></td>
+                      <td>深度求索</td><td class="mono">128K</td>
+                      <td><span class="price-now">¥4</span><span class="price-unit"> / M</span></td>
+                      <td><span class="price-now">¥16</span><span class="price-unit"> / M</span></td>
+                      <td class="mono">¥1 / M</td><td class="mono">32K</td>
+                      <td><span class="tag tag-success">可用</span></td>
+                    </tr>
+                    <tr>
+                      <td><b>GLM-4.7</b><div class="muted text-sm">中文长文 / 工具调用</div></td>
+                      <td>智谱</td><td class="mono">128K</td>
+                      <td><span class="price-now">¥5</span><span class="price-unit"> / M</span></td>
+                      <td><span class="price-now">¥15</span><span class="price-unit"> / M</span></td>
+                      <td class="mono">¥1 / M</td><td class="mono">16K</td>
+                      <td><span class="tag tag-success">可用</span></td>
+                    </tr>
+                    <tr>
+                      <td><b>GLM-4.5-Air</b><div class="muted text-sm">轻量 / 低延迟</div></td>
+                      <td>智谱</td><td class="mono">64K</td>
+                      <td><span class="price-now">¥0.8</span><span class="price-unit"> / M</span></td>
+                      <td><span class="price-now">¥2</span><span class="price-unit"> / M</span></td>
+                      <td class="mono">¥0.2 / M</td><td class="mono">8K</td>
+                      <td><span class="tag tag-success">可用</span></td>
+                    </tr>
+                    <tr>
+                      <td><b>GPT-4o</b><div class="muted text-sm">多模态 / 英文强</div></td>
+                      <td>OpenAI</td><td class="mono">128K</td>
+                      <td><span class="price-now">¥18</span><span class="price-unit"> / M</span></td>
+                      <td><span class="price-now">¥72</span><span class="price-unit"> / M</span></td>
+                      <td class="mono">¥9 / M</td><td class="mono">16K</td>
+                      <td><span class="tag tag-success">可用</span></td>
+                    </tr>
+                    <tr>
+                      <td><b>Claude 3.5 Sonnet</b><div class="muted text-sm">长文写作 / 代码</div></td>
+                      <td>Anthropic</td><td class="mono">200K</td>
+                      <td><span class="price-now">¥21</span><span class="price-unit"> / M</span></td>
+                      <td><span class="price-now">¥105</span><span class="price-unit"> / M</span></td>
+                      <td class="mono">¥10.5 / M</td><td class="mono">8K</td>
+                      <td><span class="tag tag-success">可用</span></td>
+                    </tr>
+                    <tr>
+                      <td><b>通义千问 Max</b><div class="muted text-sm">中文理解 / 电商场景</div></td>
+                      <td>阿里云</td><td class="mono">32K</td>
+                      <td><span class="price-now">¥20</span><span class="price-unit"> / M</span></td>
+                      <td><span class="price-now">¥60</span><span class="price-unit"> / M</span></td>
+                      <td class="mono">—</td><td class="mono">8K</td>
+                      <td><span class="tag tag-success">可用</span></td>
+                    </tr>
+                    <tr>
+                      <td><b>Llama 3.1 70B</b><div class="muted text-sm">私有化 / 低成本</div></td>
+                      <td>Meta</td><td class="mono">128K</td>
+                      <td><span class="price-now">¥3.5</span><span class="price-unit"> / M</span></td>
+                      <td><span class="price-now">¥10</span><span class="price-unit"> / M</span></td>
+                      <td class="mono">¥0.8 / M</td><td class="mono">4K</td>
+                      <td><span class="tag tag-danger">已摘流</span></td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:2fr 1fr; gap:16px;" class="price-2col">
+            <div>
+              <!-- 多模态与向量 -->
+              <div class="card mb-16">
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">多模态与向量化计价</div>
+                    <div class="card-subtitle">图片按视觉 Token 折算，向量按输入 Token 计价</div>
+                  </div>
+                </div>
+                <div class="card-body no-pad">
+                  <div class="table-wrap">
+                    <table>
+                      <thead><tr><th>模型</th><th>类型</th><th>计价方式</th><th>单价</th><th>说明</th></tr></thead>
+                      <tbody>
+                        <tr><td><b>GLM-4V</b></td><td>图像理解</td><td class="muted">视觉 Token + 文本 Token</td><td class="mono">¥10 / M</td><td class="muted">图片折算 ⌈长×宽 / 750⌉ Token，输入输出同价</td></tr>
+                        <tr><td><b>GLM-4V-Flash</b></td><td>图像理解</td><td class="muted">按次</td><td class="mono">免费</td><td class="muted">限 1000 次 / 天，超量按 GLM-4V 计价</td></tr>
+                        <tr><td><b>GLM-Embedding-3</b></td><td>向量化</td><td class="muted">输入 Token</td><td class="mono">¥0.5 / M</td><td class="muted">2048 维，批最多 64 条</td></tr>
+                        <tr><td><b>BGE-Large</b></td><td>向量化</td><td class="muted">输入 Token</td><td class="mono">¥0.3 / M</td><td class="muted">1024 维，中英文通用</td></tr>
+                        <tr><td><b>BGE-Reranker</b></td><td>重排序</td><td class="muted">输入 Token</td><td class="mono">¥0.8 / M</td><td class="muted">用于 RAG 召回后精排</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div class="card-footer">
+                  <div class="text-sm muted">示例：1920 × 1080 的图片 ≈ ⌈1920×1080 / 750⌉ = 2,765 视觉 Token，按 GLM-4V 输入价约 ¥0.028 / 张。</div>
+                </div>
+              </div>
+
+              <!-- 计费规则 -->
+              <div class="card">
+                <div class="card-header"><div class="card-title">计费规则</div></div>
+                <div class="card-body">
+                  <div class="rule-item">
+                    <div class="rule-num">1</div>
+                    <div>
+                      <div style="font-size:13.5px; font-weight:500;">按实际 Token 计费，不足 1 Token 不进位</div>
+                      <div class="text-sm muted" style="margin-top:4px;">输入与输出分别计价；<code class="mono">usage</code> 字段即扣费依据，与<a class="link" href="usage-logs.html">使用日志</a>逐条对齐。</div>
+                    </div>
+                  </div>
+                  <div class="rule-item">
+                    <div class="rule-num">2</div>
+                    <div>
+                      <div style="font-size:13.5px; font-weight:500;">缓存命中享折扣</div>
+                      <div class="text-sm muted" style="margin-top:4px;">重复前缀命中上下文缓存时，该部分输入按「缓存命中价」计费（约为输入价的 25%）。</div>
+                    </div>
+                  </div>
+                  <div class="rule-item">
+                    <div class="rule-num">3</div>
+                    <div>
+                      <div style="font-size:13.5px; font-weight:500;">空闲时段 8 折</div>
+                      <div class="text-sm muted" style="margin-top:4px;">空闲时段（每日 00:30–08:30）、调休上班的周末及法定节假日全天自动打折，无需配置。</div>
+                    </div>
+                  </div>
+                  <div class="rule-item">
+                    <div class="rule-num">4</div>
+                    <div>
+                      <div style="font-size:13.5px; font-weight:500;">失败请求不计费</div>
+                      <div class="text-sm muted" style="margin-top:4px;">服务端 5xx 与限流 429 不产生费用；流式请求中途断开时，已生成部分正常计费。</div>
+                    </div>
+                  </div>
+                  <div class="rule-item">
+                    <div class="rule-num">5</div>
+                    <div>
+                      <div style="font-size:13.5px; font-weight:500;">扣费优先级</div>
+                      <div class="text-sm muted" style="margin-top:4px;">免费赠金 → 充值余额 → 企业后付费额度（需签约）。余额为 0 时返回 <code class="mono">402</code>。</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 费用估算器 -->
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">费用估算器</div>
+                  <div class="card-subtitle">按所选模型单价试算单次 / 月费用</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="form-row">
+                  <label class="form-label">模型</label>
+                  <select class="form-select" id="calcModel">
+                    <option value="2,8">DeepSeek-V3.2</option>
+                    <option value="4,16">DeepSeek-R1</option>
+                    <option value="5,15">GLM-4.7</option>
+                    <option value="0.8,2">GLM-4.5-Air</option>
+                    <option value="18,72">GPT-4o</option>
+                    <option value="21,105">Claude 3.5 Sonnet</option>
+                    <option value="20,60">通义千问 Max</option>
+                  </select>
+                </div>
+                <div class="form-row">
+                  <label class="form-label">单次输入 Token</label>
+                  <input class="form-input" id="calcIn" type="number" value="2000" min="0" oninput="calc()" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">单次输出 Token</label>
+                  <input class="form-input" id="calcOut" type="number" value="800" min="0" oninput="calc()" />
+                </div>
+                <div class="form-row">
+                  <label class="form-label">日均调用次数</label>
+                  <input class="form-input" id="calcCalls" type="number" value="5000" min="0" oninput="calc()" />
+                </div>
+                <div class="form-row" style="margin-bottom:12px;">
+                  <label class="form-label">缓存命中率</label>
+                  <div class="calc-grid" style="grid-template-columns:1fr; gap:6px;">
+                    <input type="range" id="calcCache" min="0" max="90" value="30" step="5" oninput="calc()" style="width:100%;" />
+                    <div class="text-sm muted">当前命中率：<b id="calcCacheVal">30%</b>（命中部分按输入价 25% 计费）</div>
+                  </div>
+                </div>
+
+                <div class="calc-result">
+                  <div class="row"><span class="muted">单次输入</span><span id="rIn">¥0.0040</span></div>
+                  <div class="row"><span class="muted">单次输出</span><span id="rOut">¥0.0064</span></div>
+                  <div class="row"><span class="muted">单次合计</span><span id="rOnce">¥0.0104</span></div>
+                  <div class="row"><span class="muted">预估日费用</span><span id="rDay">¥52.00</span></div>
+                  <div class="row total"><span>预估月费用</span><span class="calc-total-num" id="rMonth">¥1,560.00</span></div>
+                </div>
+                <div class="form-help" style="margin-top:12px;">估算值仅供参考，实际以<a class="link" href="cost-statistics.html">成本统计</a>为准。</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('pricing');
+
+    function money(n) {
+      return '¥' + n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+    }
+
+    function calc() {
+      var sel = document.getElementById('calcModel');
+      var parts = sel.value.split(',');
+      var priceIn = parseFloat(parts[0]), priceOut = parseFloat(parts[1]);
+      var tokIn = parseFloat(document.getElementById('calcIn').value) || 0;
+      var tokOut = parseFloat(document.getElementById('calcOut').value) || 0;
+      var calls = parseFloat(document.getElementById('calcCalls').value) || 0;
+      var cache = parseFloat(document.getElementById('calcCache').value) / 100;
+
+      /* 缓存命中部分按输入价 25% 计费 */
+      var inCost = (tokIn * (1 - cache) + tokIn * cache * 0.25) / 1000000 * priceIn;
+      var outCost = tokOut / 1000000 * priceOut;
+      var once = inCost + outCost;
+      var day = once * calls;
+
+      document.getElementById('calcCacheVal').textContent = Math.round(cache * 100) + '%';
+      document.getElementById('rIn').textContent = money(inCost);
+      document.getElementById('rOut').textContent = money(outCost);
+      document.getElementById('rOnce').textContent = money(once);
+      document.getElementById('rDay').textContent = money(day);
+      document.getElementById('rMonth').textContent = money(day * 30);
+    }
+
+    document.getElementById('calcModel').addEventListener('change', calc);
+    calc();
+
+    /* 分类切换（演示：仅切换选中态） */
+    document.querySelectorAll('.segmented .seg').forEach(function (s) {
+      s.addEventListener('click', function () {
+        s.parentElement.querySelectorAll('.seg').forEach(function (x) { x.classList.remove('active'); });
+        s.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>运行中的会话 · AI Workbench</title>
+  <link rel="stylesheet" href="assets/css/workbench.css" />
+</head>
+<body>
+  <div id="wb-header-root"></div>
+
+  <div class="wb-main">
+    <div class="wb-page-head">
+      <div>
+        <div class="wb-page-title">运行中的会话</div>
+        <div class="wb-page-sub">管理 Notebook 内核、终端与 GPU 计算任务 · 闲置内核 1 小时后自动回收</div>
+      </div>
+      <button class="wb-btn danger" onclick="stopAll()">全部停止</button>
+    </div>
+
+    <!-- Notebook 内核 -->
+    <div class="wb-card">
+      <div class="wb-card-head">
+        <div class="wb-card-title">Notebook 内核</div>
+        <span class="wb-tag ok" id="nbCount"></span>
+      </div>
+      <div class="wb-card-body" style="display:flex; flex-direction:column; gap:12px;" id="nbList"></div>
+    </div>
+
+    <!-- 终端会话 -->
+    <div class="wb-card">
+      <div class="wb-card-head">
+        <div class="wb-card-title">终端会话</div>
+        <span class="wb-tag" id="termCount"></span>
+      </div>
+      <div class="wb-card-body" style="display:flex; flex-direction:column; gap:12px;" id="termList"></div>
+    </div>
+
+    <!-- GPU 任务 -->
+    <div class="wb-card">
+      <div class="wb-card-head">
+        <div>
+          <div class="wb-card-title">GPU 计算任务</div>
+          <div class="wb-card-sub">配额：每日 8 GPU 时 · 今日已用 1.6 小时</div>
+        </div>
+        <div class="wb-bar" style="width:160px;"><i style="width:20%;"></i></div>
+      </div>
+      <div class="wb-card-body" style="display:flex; flex-direction:column; gap:12px;" id="gpuList"></div>
+    </div>
+  </div>
+
+  <script src="assets/js/wb.js"></script>
+  <script>
+    initWb('sessions');
+
+    var sessions = [
+      { kind: 'nb', icon: 'nb', name: 'notebooks/02-模型训练.ipynb', kernel: 'Python 3.11 · conda base', mem: '1.8 GB', cpu: '18%', since: '今天 11:08', act: '2 分钟前', running: true },
+      { kind: 'nb', icon: 'nb', name: 'notebooks/01-数据探索.ipynb', kernel: 'Python 3.11 · conda base', mem: '640 MB', cpu: '2%', since: '今天 12:05', act: '26 分钟前' },
+      { kind: 'nb', icon: 'nb', name: 'notebooks/03-模型评估.ipynb', kernel: 'Python 3.11 · conda base', mem: '312 MB', cpu: '1%', since: '昨天 19:20', act: '1 小时前' },
+      { kind: 'term', icon: 'term', name: 'terminal-1 · bash', kernel: 'bash · 持久会话', mem: '36 MB', cpu: '0.2%', since: '今天 13:40', act: '8 分钟前' },
+      { kind: 'term', icon: 'term', name: 'terminal-2 · 训练日志', kernel: 'bash · tail -f', mem: '24 MB', cpu: '0.1%', since: '今天 14:32', act: '刚刚' },
+      { kind: 'gpu', icon: 'gpu', name: 'finetune-llm.py · LoRA 微调', kernel: 'A100 40GB · CUDA 12.2', mem: '23.4 GB / 40 GB', cpu: '96%', since: '今天 09:15', act: '运行中', gpu: true }
+    ];
+
+    function iconSvg(s) {
+      return wbIcon(s.icon === 'nb' ? 'book' : (s.icon === 'term' ? 'terminal' : 'gpu'), 19);
+    }
+
+    function cardHTML(s, idx) {
+      var memPct = s.gpu ? 57 : 0;
+      return '<div class="session-card" id="sess-' + idx + '">' +
+        '<span class="session-icon ' + s.icon + '">' + iconSvg(s) + '</span>' +
+        '<div style="min-width:0; flex:1;">' +
+          '<div class="mono" style="font-size:13px; font-weight:550;">' + s.name + '</div>' +
+          '<div class="text-sm muted" style="margin-top:3px;">' + s.kernel + ' · 启动于 ' + s.since + ' · 最后活动 ' + s.act + '</div>' +
+        '</div>' +
+        '<div style="width:150px;">' +
+          '<div class="flex text-sm" style="justify-content:space-between; margin-bottom:5px;"><span class="muted">内存</span><span class="mono">' + s.mem + '</span></div>' +
+          '<div class="wb-bar ' + (s.gpu ? 'warn' : 'blue') + '"><i style="width:' + (memPct || (s.kind === 'nb' ? 28 : 6)) + '%"></i></div>' +
+        '</div>' +
+        (s.running ? '<span class="wb-tag ok">' + wbIcon('activity', 11) + '运行中</span>' : '<span class="wb-tag">空闲</span>') +
+        '<div class="row-actions">' +
+          '<a class="wb-btn sm" href="' + (s.kind === 'nb' ? 'notebook.html' : (s.kind === 'term' ? 'terminals.html' : 'resources.html')) + '">打开</a>' +
+          '<button class="wb-btn sm danger" onclick="stopSession(' + idx + ')">停止</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    function render() {
+      var items = sessions.map(function (s, i) { return s ? { s: s, i: i } : null; }).filter(function (x) { return !!x; });
+      var nbs = items.filter(function (x) { return x.s.kind === 'nb'; });
+      var terms = items.filter(function (x) { return x.s.kind === 'term'; });
+      var gpus = items.filter(function (x) { return x.s.kind === 'gpu'; });
+
+      document.getElementById('nbList').innerHTML = nbs.map(function (x) { return cardHTML(x.s, x.i); }).join('') || '<div class="muted text-sm" style="padding:8px 2px;">暂无 Notebook 内核</div>';
+      document.getElementById('termList').innerHTML = terms.map(function (x) { return cardHTML(x.s, x.i); }).join('') || '<div class="muted text-sm" style="padding:8px 2px;">暂无终端会话</div>';
+      document.getElementById('gpuList').innerHTML = gpus.map(function (x) { return cardHTML(x.s, x.i); }).join('') || '<div class="muted text-sm" style="padding:8px 2px;">暂无 GPU 任务</div>';
+
+      document.getElementById('nbCount').textContent = nbs.length + ' 个内核';
+      document.getElementById('termCount').textContent = terms.length + ' 个会话';
+    }
+
+    window.stopSession = function (idx) {
+      var card = document.getElementById('sess-' + idx);
+      var name = sessions[idx].name;
+      card.classList.add('stopping');
+      setTimeout(function () {
+        sessions[idx] = null;
+        render();
+        wbToast('已停止：' + name, 'ok');
+      }, 280);
+    };
+
+    window.stopAll = function () {
+      var alive = sessions.filter(function (s) { return s; });
+      sessions = [];
+      render();
+      wbToast('已停止全部 ' + alive.length + ' 个会话', 'ok');
+    };
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.zimo.genai</groupId>
+        <artifactId>genai-studio</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>jv-genai-apigateway-client-sdk</artifactId>
+    <packaging>jar</packaging>
+    <name>jv-genai-apigateway-client-sdk</name>
+    <description>网关接入 SDK（Java）：封装 jv-api-gateway-client-starter，供各 Java 微服务统一接入网关平台（应用 ID：app-genai-studio）</description>
+
+    <dependencies>
+        <!-- 复用 api-gateway 项目的采集客户端 starter（日志采集/埋点上报） -->
+        <dependency>
+            <groupId>com.zimo.gateway</groupId>
+            <artifactId>jv-api-gateway-client-starter</artifactId>
+        </dependency>
+    </dependencies>
+</project>

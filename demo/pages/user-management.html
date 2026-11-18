@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>用户管理 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+    <main class="main">
+      <div class="content">
+        <div class="page-header">
+          <div>
+            <div class="page-title">用户管理</div>
+            <div class="page-subtitle">注册审核、用户列表、封控管理</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-secondary">导入</button>
+            <button class="btn btn-secondary">导出</button>
+            <button class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              新建用户
+            </button>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card"><div><div class="stat-label">用户总数</div><div class="stat-value">1,284</div><div class="stat-trend up">▲ +56</div></div><div class="stat-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="7" r="4"/><path d="M5 21v-2a7 7 0 0 1 14 0v2"/></svg></div></div>
+          <div class="stat-card"><div><div class="stat-label">今日注册</div><div class="stat-value">12</div><div class="stat-trend up">待审核 3</div></div><div class="stat-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/></svg></div></div>
+          <div class="stat-card"><div><div class="stat-label">活跃用户</div><div class="stat-value">862</div><div class="stat-trend up">67.1%</div></div><div class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div>
+          <div class="stat-card"><div><div class="stat-label">已封控</div><div class="stat-value">17</div><div class="stat-trend down">违规用户</div></div><div class="stat-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></div></div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active">用户列表 <span class="muted">(1,284)</span></div>
+          <div class="tab">注册审核 <span class="tag warning tag-solid" style="margin-left:6px;">3</span></div>
+          <div class="tab">已封控 <span class="muted">(17)</span></div>
+          <div class="tab">部门管理</div>
+        </div>
+
+        <div class="filter-bar">
+          <input class="form-input" placeholder="搜索用户名 / 邮箱 / 手机号" />
+          <select class="form-select" style="width:140px;"><option>全部角色</option><option>业务用户</option><option>管理用户</option><option>超级用户</option></select>
+          <select class="form-select" style="width:140px;"><option>全部状态</option><option>正常</option><option>禁用</option><option>封控</option></select>
+          <select class="form-select" style="width:140px;"><option>全部部门</option><option>研发部</option><option>产品部</option><option>运营部</option></select>
+          <input class="form-input" type="date" style="width:140px;" />
+          <button class="btn btn-secondary btn-sm">重置</button>
+        </div>
+
+        <div class="card">
+          <div class="card-body no-pad">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th><input type="checkbox" /></th><th>用户</th><th>账号</th><th>角色</th><th>部门</th><th>邮箱</th><th>最后登录</th><th>本月消耗</th><th>状态</th><th>操作</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><input type="checkbox" /></td>
+                    <td><div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:linear-gradient(135deg,#6366F1,#8B5CF6);">ZS</div><div><b>张三</b><div class="muted text-sm">zhangsan</div></div></div></td>
+                    <td class="mono">dev-001</td>
+                    <td><span class="tag danger tag-solid">超级用户</span></td>
+                    <td>研发部</td>
+                    <td>zhangsan@example.com</td>
+                    <td class="muted text-sm">2 分钟前</td>
+                    <td>¥ 4,287.50</td>
+                    <td><span class="tag success">正常</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button><button style="color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox" /></td>
+                    <td><div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:linear-gradient(135deg,#10B981,#06B6D4);">LS</div><div><b>李四</b><div class="muted text-sm">lisi</div></div></div></td>
+                    <td class="mono">dev-002</td>
+                    <td><span class="tag warning tag-solid">管理用户</span></td>
+                    <td>模型组</td>
+                    <td>lisi@example.com</td>
+                    <td class="muted text-sm">10 分钟前</td>
+                    <td>¥ 286.20</td>
+                    <td><span class="tag success">正常</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button><button style="color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox" /></td>
+                    <td><div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:linear-gradient(135deg,#F59E0B,#EF4444);">WW</div><div><b>王五</b><div class="muted text-sm">wangwu</div></div></div></td>
+                    <td class="mono">dev-003</td>
+                    <td><span class="tag primary tag-solid">业务用户</span></td>
+                    <td>运营部</td>
+                    <td>wangwu@example.com</td>
+                    <td class="muted text-sm">1 小时前</td>
+                    <td>¥ 0</td>
+                    <td><span class="tag warning">禁用</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button><button style="color:var(--success);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox" /></td>
+                    <td><div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:linear-gradient(135deg,#EC4899,#8B5CF6);">ZL</div><div><b>赵六</b><div class="muted text-sm">zhaoliu</div></div></div></td>
+                    <td class="mono">dev-001</td>
+                    <td><span class="tag primary tag-solid">业务用户</span></td>
+                    <td>研发部</td>
+                    <td>zhaoliu@example.com</td>
+                    <td class="muted text-sm">昨天 23:48</td>
+                    <td>¥ 8,420.00</td>
+                    <td><span class="tag danger">封控</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button><button style="color:var(--success);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox" /></td>
+                    <td><div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:linear-gradient(135deg,#3B82F6,#06B6D4);">SQ</div><div><b>孙七</b><div class="muted text-sm">sunqi</div></div></div></td>
+                    <td class="mono">dev-004</td>
+                    <td><span class="tag primary tag-solid">业务用户</span></td>
+                    <td>产品部</td>
+                    <td>sunqi@example.com</td>
+                    <td class="muted text-sm">3 小时前</td>
+                    <td>¥ 1,820.30</td>
+                    <td><span class="tag success">正常</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button><button style="color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><input type="checkbox" /></td>
+                    <td><div style="display:flex; align-items:center; gap:10px;"><div class="avatar" style="background:linear-gradient(135deg,#06B6D4,#10B981);">ZB</div><div><b>周八</b><div class="muted text-sm">zhouba</div></div></div></td>
+                    <td class="mono">dev-005</td>
+                    <td><span class="tag primary tag-solid">业务用户</span></td>
+                    <td>市场部</td>
+                    <td>zhouba@example.com</td>
+                    <td class="muted text-sm">2 天前</td>
+                    <td>¥ 482.00</td>
+                    <td><span class="tag success">正常</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/></svg></button><button style="color:var(--danger);"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg></button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="card-footer">
+              <div class="text-sm muted">显示 1-6 / 1,284 条</div>
+              <div class="pagination">
+                <button class="page-btn">‹</button>
+                <button class="page-btn active">1</button>
+                <button class="page-btn">2</button>
+                <button class="page-btn">3</button>
+                <button class="page-btn">…</button>
+                <button class="page-btn">214</button>
+                <button class="page-btn">›</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  </div>
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>initLayout('user-management', ['系统', '用户管理']);</script>
+</body>
+</html>

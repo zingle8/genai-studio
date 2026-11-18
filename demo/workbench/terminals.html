@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>终端 · AI Workbench</title>
+  <link rel="stylesheet" href="assets/css/workbench.css" />
+</head>
+<body>
+  <div id="wb-header-root"></div>
+
+  <div class="wb-main">
+    <div class="wb-page-head">
+      <div>
+        <div class="wb-page-title">终端</div>
+        <div class="wb-page-sub">持久化 bash 会话 · 关闭页面后任务继续在后台运行（演示环境为模拟终端）</div>
+      </div>
+      <div class="flex gap-8">
+        <button class="wb-btn" onclick="clearTerm()">清屏</button>
+        <button class="wb-btn danger" onclick="closeTerm()">关闭当前终端</button>
+      </div>
+    </div>
+
+    <div class="term-window">
+      <div class="term-tabs" id="termTabs">
+        <div class="term-tab active" onclick="switchTerm(0,this)"><span class="dot"></span>terminal-1 · bash</div>
+        <div class="term-tab" onclick="switchTerm(1,this)"><span class="dot" style="background:#E8B85C;"></span>terminal-2 · 训练日志</div>
+        <span class="spacer"></span>
+        <button class="term-new" onclick="newTerm()">＋ 新建终端</button>
+      </div>
+      <div class="term-body" id="termBody" onclick="document.getElementById('termInput').focus()"></div>
+    </div>
+
+    <div class="wb-card mt-24">
+      <div class="wb-card-head">
+        <div class="wb-card-title">可用命令（演示）</div>
+        <span class="wb-tag accent">试试看</span>
+      </div>
+      <div class="wb-card-body flex gap-8" style="flex-wrap:wrap;" id="cmdChips"></div>
+    </div>
+  </div>
+
+  <script src="assets/js/wb.js"></script>
+  <script>
+    initWb('terminals');
+
+    /* ==================== 命令响应（演示） ==================== */
+    var CMDS = {
+      'help': '<span class="t-dim">可用命令：ls · pwd · whoami · python --version · pip list · nvidia-smi · date · clear · echo …</span>',
+      'ls': 'data/  models/  notebooks/  eval.py  train.py  requirements.txt  README.md',
+      'pwd': '/home/admin',
+      'whoami': 'admin',
+      'date': new Date().toString(),
+      'python --version': 'Python 3.11.8',
+      'pip list': 'pandas          2.2.1\nnumpy           1.26.4\nscikit-learn    1.5.1\nxgboost         2.0.3\nmatplotlib      3.9.0\njupyter         1.0.0\n… 共 86 个包',
+      'nvidia-smi': '+-----------------------------------------------------------------------------+\n| NVIDIA-SMI 535.129    Driver Version: 535.129    CUDA Version: 12.2         |\n|-------------------------------+----------------------+----------------------+\n| GPU  Name        Persistence-M| Bus-Id        Disp.A | Volatile Uncorr. ECC |\n| Fan  Temp  Perf  Pwr:Usage/Cap|         Memory-Usage | GPU-Util  Compute M. |\n|===============================+======================+======================|\n|   0  A100-SXM4-40GB      Off  | 00000000:07:00.0 Off |                    0 |\n| 30%  52C    P0    88W / 400W |  23456MiB / 40960MiB |     96%      Default |\n|-------------------------------+----------------------+----------------------+\n\n+-----------------------------------------------------------------------------+\n| Processes:                                                                  |\n|  GPU   PID   Type   Process name                 GPU Memory               |\n|    0   4721   C   python finetune-llm.py          23340MiB               |\n+-----------------------------------------------------------------------------+',
+      'echo': ''
+    };
+
+    /* ==================== 终端会话数据 ==================== */
+    var sessions = [
+      {
+        name: 'terminal-1 · bash',
+        boot: [
+          ['prompt', 'ls'],
+          ['out', 'data/  models/  notebooks/  eval.py  train.py  requirements.txt  README.md'],
+          ['prompt', 'python --version'],
+          ['out', 'Python 3.11.8'],
+          ['dim', '# 输入 help 查看演示命令，直接回车执行']
+        ],
+        log: []
+      },
+      {
+        name: 'terminal-2 · 训练日志',
+        boot: [
+          ['prompt', 'python train.py --model xgb_v3 --epochs 50'],
+          ['out', '[14:32:01] 加载数据 data/sales_2026.csv … 118,204 行'],
+          ['out', '[14:32:04] 特征工程：lag_7 / rolling_28 / holiday 标记'],
+          ['ok',   '[14:32:07] 开始训练 epoch 1/50 …'],
+          ['out', '[14:32:11] epoch 12/50 · train_rmse=182.4 · val_rmse=196.7'],
+          ['ok',   '[14:32:15] epoch 26/50 · train_rmse=143.1 · val_rmse=157.2'],
+          ['out', '[14:32:19] epoch 41/50 · train_rmse=128.6 · val_rmse=141.8'],
+          ['ok',   '[14:32:22] 训练完成：val_rmse=139.2 · 已保存 models/xgb_v3.pkl'],
+          ['dim', '# 训练任务已完成（exit 0）']
+        ],
+        log: []
+      }
+    ];
+    var current = 0;
+
+    /* ==================== 渲染 ==================== */
+    var PROMPT = '<span class="t-prompt">(wb) </span><span class="t-prompt">admin@ai-workbench:~$</span> ';
+
+    function lineHTML(type, text) {
+      if (type === 'prompt') return '<div class="term-line">' + PROMPT + '<span class="t-cmd">' + esc(text) + '</span></div>';
+      var cls = { out: 't-out', ok: 't-ok', warn: 't-warn', err: 't-err', dim: 't-dim' }[type] || 't-out';
+      return '<div class="term-line"><span class="' + cls + '">' + esc(text) + '</span></div>';
+    }
+    function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;'); }
+
+    function renderLog() {
+      var body = document.getElementById('termBody');
+      var html = sessions[current].log.map(function (l) { return lineHTML(l[0], l[1]); }).join('');
+      /* 输入行 */
+      html += '<div class="term-line term-input-row">' + PROMPT +
+        '<input class="term-input" id="termInput" autocomplete="off" spellcheck="false" />' +
+        '<span class="term-caret"></span></div>';
+      body.innerHTML = html;
+      var input = document.getElementById('termInput');
+      input.focus();
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          var cmd = input.value.trim();
+          sessions[current].log.push(['prompt', cmd]);
+          if (cmd) exec(cmd);
+          renderLog();
+        }
+      });
+      body.scrollTop = body.scrollHeight;
+    }
+
+    function exec(cmd) {
+      if (cmd === 'clear') { sessions[current].log = []; return; }
+      var out = CMDS[cmd];
+      if (out === undefined) {
+        if (cmd.indexOf('echo ') === 0) { sessions[current].log.push(['out', cmd.slice(5)]); return; }
+        sessions[current].log.push(['err', 'bash: ' + cmd.split(' ')[0] + ': command not found（演示环境仅支持 help 中的命令）']);
+        return;
+      }
+      sessions[current].log.push(out === '' ? ['dim', ''] : ['out', out]);
+    }
+
+    /* ==================== 打字机启动 ==================== */
+    function bootSession(idx) {
+      var s = sessions[idx];
+      s.log = [];
+      var steps = s.boot, i = 0;
+      (function step() {
+        if (i >= steps.length) { renderLog(); return; }
+        s.log.push(steps[i]);
+        /* 渲染中间态：无输入行 */
+        var body = document.getElementById('termBody');
+        body.innerHTML = s.log.map(function (l) { return lineHTML(l[0], l[1]); }).join('');
+        body.scrollTop = body.scrollHeight;
+        i++;
+        setTimeout(step, 260);
+      })();
+    }
+
+    /* ==================== 交互 ==================== */
+    window.switchTerm = function (idx, el) {
+      current = idx;
+      document.querySelectorAll('.term-tab').forEach(function (t) { t.classList.remove('active'); });
+      el.classList.add('active');
+      if (!sessions[idx].booted) { sessions[idx].booted = true; bootSession(idx); }
+      else renderLog();
+    };
+
+    window.newTerm = function () {
+      var idx = sessions.length;
+      sessions.push({ name: 'terminal-' + (idx + 1) + ' · bash', boot: [['dim', '# 新终端会话已启动']], log: [], booted: true });
+      var tab = document.createElement('div');
+      tab.className = 'term-tab';
+      tab.setAttribute('onclick', 'switchTerm(' + idx + ',this)');
+      tab.innerHTML = '<span class="dot"></span>' + sessions[idx].name;
+      document.querySelector('.term-new').parentNode.insertBefore(tab, document.querySelector('.term-new'));
+      switchTerm(idx, tab);
+      wbToast('已新建 terminal-' + (idx + 1), 'ok');
+    };
+
+    window.clearTerm = function () { sessions[current].log = []; renderLog(); };
+
+    window.closeTerm = function () {
+      if (sessions.length <= 1) { wbToast('至少保留一个终端', 'err'); return; }
+      var name = sessions[current].name;
+      sessions.splice(current, 1);
+      current = 0;
+      document.querySelectorAll('.term-tab')[0].classList.add('active');
+      renderLog();
+      wbToast('已关闭 ' + name, 'ok');
+    };
+
+    /* 命令提示 chips */
+    var chips = ['help', 'ls', 'nvidia-smi', 'pip list', 'python --version', 'date'];
+    document.getElementById('cmdChips').innerHTML = chips.map(function (c) {
+      return '<button class="wb-btn sm mono" onclick="runChip(\'' + c + '\')">$ ' + c + '</button>';
+    }).join('');
+    window.runChip = function (c) {
+      sessions[current].log.push(['prompt', c]);
+      exec(c);
+      renderLog();
+    };
+
+    /* 启动第一个终端的打字动画 */
+    sessions[0].booted = true;
+    bootSession(0);
+  </script>
+</body>
+</html>

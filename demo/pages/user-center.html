@@ -1,0 +1,1018 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>个人中心 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">个人中心</div>
+              <div class="page-subtitle">管理账号信息、安全设置、权限额度与工单</div>
+            </div>
+            <div class="page-actions">
+              <div class="seg-group" id="roleSwitch" title="演示：切换视角">
+                <div class="seg active" data-role="user">普通用户</div>
+                <div class="seg" data-role="admin">管理员</div>
+              </div>
+              <div class="finance-menu" id="financeMenu">
+                <span>财务</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                <div class="finance-drop">
+                  <a href="topup.html">充值</a>
+                  <a href="orders.html">账单</a>
+                  <a href="#" data-tab-jump="usage">用量信息</a>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="account-layout">
+            <!-- 二级导航 -->
+            <nav class="subnav">
+              <a class="subnav-back" href="user-center.html">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+                个人中心
+              </a>
+
+              <div class="subnav-group">
+                <div class="subnav-title">设置</div>
+                <a class="subnav-item active" data-tab="account">账号设置</a>
+                <a class="subnav-item" data-tab="verify">实名认证</a>
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">项目与权限</div>
+                <a class="subnav-item" data-tab="permission">权限管理</a>
+                <a class="subnav-item" data-tab="ratelimit">速率限制</a>
+                <a class="subnav-item" data-tab="project">项目管理</a>
+                <a class="subnav-item" data-tab="benefit">用户权益</a>
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">用量与账单</div>
+                <a class="subnav-item" data-tab="usage">用量信息</a>
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">安全管理</div>
+                <a class="subnav-item" data-tab="security">安全管理</a>
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">工单记录</div>
+                <a class="subnav-item" data-tab="ticket">工单记录</a>
+              </div>
+
+              <div class="subnav-group admin-only" style="display:none;">
+                <div class="subnav-title">管理员</div>
+                <a class="subnav-item" data-tab="admin">用户与权限</a>
+              </div>
+            </nav>
+
+            <!-- 内容区 -->
+            <div class="account-main">
+              <div class="panel-head">
+                <div class="panel-title" id="panelTitle">账号设置</div>
+                <div class="panel-sub" id="panelSub">账号的基本信息与安全设置</div>
+              </div>
+
+              <!-- ========== 账号设置 ========== -->
+              <section class="tab-panel active" id="tab-account">
+                <div class="card mb-16">
+                  <div class="card-header"><div class="card-title">基本信息</div></div>
+                  <div class="card-body">
+                    <div class="profile-flex">
+                      <div class="avatar">lamvsgai</div>
+                      <div class="info-grid">
+                        <div class="info-item">
+                          <div class="info-label">用户名称</div>
+                          <div class="info-value">lamvsgai <a class="link">✎</a></div>
+                        </div>
+                        <div class="info-item">
+                          <div class="info-label">账号 ID</div>
+                          <div class="info-value mono">62031768842907229 <a class="link" title="复制">⧉</a></div>
+                        </div>
+                        <div class="info-item">
+                          <div class="info-label">手机号码</div>
+                          <div class="info-value">+86-185****9632 <a class="link">✎</a></div>
+                        </div>
+                        <div class="info-item">
+                          <div class="info-label">账号属性</div>
+                          <div class="info-value">个人</div>
+                        </div>
+                        <div class="info-item">
+                          <div class="info-label">联系邮箱</div>
+                          <div class="info-value muted">未设置 <a class="link">绑定邮箱</a></div>
+                        </div>
+                        <div class="info-item">
+                          <div class="info-label">可用余额</div>
+                          <div class="info-value"><b>22.2803094</b> 元</div>
+                        </div>
+                        <div class="info-item">
+                          <div class="info-label">注册时间</div>
+                          <div class="info-value muted">2026-01-20 01:15:07</div>
+                        </div>
+                        <div class="info-item">
+                          <div class="info-label">双重认证</div>
+                          <div class="info-value">
+                            <label class="switch"><input type="checkbox" /><span class="switch-slider"></span></label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card mb-16">
+                  <div class="card-header"><div class="card-title">安全设置</div></div>
+                  <div class="card-body">
+                    <div class="sec-row">
+                      <div class="sec-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      </div>
+                      <div class="sec-text">
+                        <div class="sec-title">登录密码</div>
+                        <div class="sec-desc">安全性高的密码可以使账号更安全，建议您定期更换密码</div>
+                      </div>
+                      <button class="btn btn-accent btn-sm">修改</button>
+                    </div>
+
+                    <div class="sec-row">
+                      <div class="sec-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>
+                      </div>
+                      <div class="sec-text">
+                        <div class="sec-title">实名认证</div>
+                        <div class="sec-desc">您已完成<b>个人认证</b></div>
+                      </div>
+                      <span class="tag tag-success">已认证</span>
+                    </div>
+
+                    <div class="sec-row">
+                      <div class="sec-icon green">
+                        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8.7 3C4.9 3 2 5.5 2 8.6c0 1.7.9 3.2 2.4 4.2l-.6 2 2.2-1.2c.8.2 1.7.3 2.7.3h.5c-.1-.4-.2-.9-.2-1.4 0-3 2.9-5.4 6.5-5.4h.6C15.7 4.7 12.5 3 8.7 3z"/><path d="M22 12.5c0-2.6-2.6-4.7-5.8-4.7s-5.8 2.1-5.8 4.7 2.6 4.7 5.8 4.7c.7 0 1.4-.1 2-.3l1.8 1-.5-1.6c1.5-.9 2.5-2.3 2.5-3.8z"/></svg>
+                      </div>
+                      <div class="sec-text">
+                        <div class="sec-title">微信快捷登录 <span class="tag tag-success">已绑定</span></div>
+                        <div class="sec-desc">您已绑定微信号，支持微信扫码快速登录</div>
+                      </div>
+                      <button class="btn btn-danger-soft btn-sm">解绑</button>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-body">
+                    <div class="sec-row" style="border:0; padding-top:0;">
+                      <div class="sec-icon gray">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg>
+                      </div>
+                      <div class="sec-text">
+                        <div class="sec-title">注销账号</div>
+                        <div class="sec-desc">如果您不再使用此账号，可以将其注销，账号成功注销后，其下所有服务、数据及隐私信息将会被删除并将无法恢复。</div>
+                      </div>
+                      <button class="btn btn-danger btn-sm">注销</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 实名认证 ========== -->
+              <section class="tab-panel" id="tab-verify">
+                <div class="card mb-16">
+                  <div class="card-header"><div class="card-title">个人认证</div><span class="tag tag-success">已认证</span></div>
+                  <div class="card-body">
+                    <div class="info-grid grid-2">
+                      <div class="info-item"><div class="info-label">认证姓名</div><div class="info-value">张*</div></div>
+                      <div class="info-item"><div class="info-label">证件类型</div><div class="info-value">中国大陆居民身份证</div></div>
+                      <div class="info-item"><div class="info-label">证件号码</div><div class="info-value mono">3301**********1234</div></div>
+                      <div class="info-item"><div class="info-label">认证时间</div><div class="info-value muted">2026-01-21 10:22:06</div></div>
+                      <div class="info-item"><div class="info-label">认证方式</div><div class="info-value">人脸识别</div></div>
+                      <div class="info-item"><div class="info-label">状态</div><div class="info-value"><span class="status-dot success">认证通过</span></div></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-header"><div class="card-title">企业认证</div></div>
+                  <div class="card-body">
+                    <div class="sec-row" style="border:0; padding-top:0;">
+                      <div class="sec-icon gray">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5"/></svg>
+                      </div>
+                      <div class="sec-text">
+                        <div class="sec-title">企业认证后可解锁</div>
+                        <div class="sec-desc">对公转账充值、增值税专用发票、企业级速率额度（TPM 提升至 10,000,000）、专属技术支持与 SLA</div>
+                      </div>
+                      <button class="btn btn-primary btn-sm">立即认证</button>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 权限管理 ========== -->
+              <section class="tab-panel" id="tab-permission">
+                <div class="card mb-16">
+                  <div class="card-header"><div class="card-title">我的角色</div></div>
+                  <div class="card-body">
+                    <div class="sec-row" style="border:0; padding:0;">
+                      <div class="sec-icon blue">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                      </div>
+                      <div class="sec-text">
+                        <div class="sec-title">超级管理员 <span class="tag tag-primary">系统角色</span></div>
+                        <div class="sec-desc">当前账号为租户超级管理员，拥有全部资源的读写权限，可管理成员与审批工单</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-header">
+                    <div class="card-title">功能权限清单</div>
+                    <span class="text-sm muted">共 6 项，已开通 5 项</span>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>权限项</th><th>说明</th><th>生效范围</th><th>状态</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr><td><b>模型调用</b></td><td class="muted">调用全部在线模型（含多模态与嵌入）</td><td>全部模型</td><td><span class="status-dot success">已开通</span></td></tr>
+                          <tr><td><b>知识库管理</b></td><td class="muted">创建知识库、上传文档、重建索引</td><td>全部知识空间</td><td><span class="status-dot success">已开通</span></td></tr>
+                          <tr><td><b>API Key 管理</b></td><td class="muted">创建、更新、延期与删除密钥</td><td>全部密钥</td><td><span class="status-dot success">已开通</span></td></tr>
+                          <tr><td><b>成员与权限</b></td><td class="muted">邀请成员、分配角色、审批权限申请</td><td>本租户</td><td><span class="status-dot success">已开通</span></td></tr>
+                          <tr><td><b>成本与账单</b></td><td class="muted">查看消费明细、导出账单、开发票</td><td>本租户</td><td><span class="status-dot success">已开通</span></td></tr>
+                          <tr><td><b>运维与监控</b></td><td class="muted">查看服务健康、处理告警、配置限流</td><td>—</td><td><span class="tag tag-warning">待开通</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 速率限制 ========== -->
+              <section class="tab-panel" id="tab-ratelimit">
+                <div class="notice" style="align-items:flex-start;">
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-top:3px; color:var(--accent);">
+                    <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+                  </svg>
+                  <div style="flex:1;">
+                    速率限制按<b>账号维度</b>统一计算，超出后请求将返回 429。企业认证后可提交提额申请。
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-header">
+                    <div class="card-title">模型速率额度</div>
+                    <button class="btn btn-primary btn-sm">申请提额</button>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>模型</th><th>RPM（次/分钟）</th><th>TPM（Token/分钟）</th><th>并发上限</th><th>当前用量</th><th>状态</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr><td><b>DeepSeek-V3.2</b></td><td class="mono">3,000</td><td class="mono">1,000,000</td><td class="mono">500</td><td><b>138</b> / 500</td><td><span class="status-dot success">正常</span></td></tr>
+                          <tr><td><b>GLM-4.7</b></td><td class="mono">3,000</td><td class="mono">1,000,000</td><td class="mono">500</td><td><b>92</b> / 500</td><td><span class="status-dot success">正常</span></td></tr>
+                          <tr><td><b>GPT-4o</b></td><td class="mono">1,000</td><td class="mono">400,000</td><td class="mono">200</td><td><b>186</b> / 200</td><td><span class="status-dot warning">接近上限</span></td></tr>
+                          <tr><td><b>Claude 3.5</b></td><td class="mono">1,000</td><td class="mono">400,000</td><td class="mono">200</td><td><b>74</b> / 200</td><td><span class="status-dot success">正常</span></td></tr>
+                          <tr><td><b>GLM-Embedding-3</b></td><td class="mono">5,000</td><td class="mono">2,000,000</td><td class="mono">800</td><td><b>210</b> / 800</td><td><span class="status-dot success">正常</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <div class="card-footer">
+                    <div class="text-sm muted">额度每日 00:00（GMT+8）重置 · 最近一次调整：2026-09-28</div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 项目管理 ========== -->
+              <section class="tab-panel" id="tab-project">
+                <div class="card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">我的项目</div>
+                      <div class="card-subtitle">项目用于隔离不同业务线的密钥、配额与用量</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm">新建项目</button>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>项目名称</th><th>项目 ID</th><th>成员</th><th>本月调用</th><th>创建时间</th><th class="text-right">操作</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr><td><b>默认项目(907229)</b> <span class="tag">默认</span></td><td class="mono">proj-62031768842907229</td><td>3</td><td>482,103</td><td class="muted">2026-01-20 01:15</td><td class="text-right"><span class="link">管理</span></td></tr>
+                          <tr><td><b>zcode-api-key</b></td><td class="mono">proj-62031768842907188</td><td>2</td><td>326,842</td><td class="muted">2026-02-16 00:15</td><td class="text-right"><span class="link">管理</span></td></tr>
+                          <tr><td><b>zhipu_glm_4_7</b></td><td class="mono">proj-62031768842907312</td><td>1</td><td>164,905</td><td class="muted">2026-01-21 00:28</td><td class="text-right"><span class="link">管理</span></td></tr>
+                          <tr><td><b>prod-main-key</b> <span class="tag tag-warning">即将过期</span></td><td class="mono">proj-62031768842907524</td><td>5</td><td>258,417</td><td class="muted">2026-03-12 14:32</td><td class="text-right"><span class="link">管理</span></td></tr>
+                          <tr><td><b>analytics-svc</b></td><td class="mono">proj-62031768842907690</td><td>2</td><td>52,236</td><td class="muted">2026-06-15 11:05</td><td class="text-right"><span class="link">管理</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 用户权益 ========== -->
+              <section class="tab-panel" id="tab-benefit">
+                <div class="balance-grid mb-16">
+                  <div class="balance-card">
+                    <div>
+                      <div class="balance-label">可用余额</div>
+                      <div class="balance-value">22.2803094 <small>CNY</small></div>
+                    </div>
+                    <a class="btn btn-primary" href="topup.html">去充值</a>
+                  </div>
+                  <div class="balance-card">
+                    <div>
+                      <div class="balance-label">累计获赠</div>
+                      <div class="balance-value">¥120.00 <small>CNY</small></div>
+                    </div>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-header"><div class="card-title">权益明细</div></div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>权益名称</th><th>来源</th><th>额度 / 金额</th><th>有效期</th><th>状态</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr><td><b>新用户注册礼包</b></td><td class="muted">平台赠送</td><td>¥100.00</td><td class="muted">永久</td><td><span class="status-dot success">已生效</span></td></tr>
+                          <tr><td><b>邀请返利</b></td><td class="muted">邀请 2 位好友注册</td><td>¥20.00</td><td class="muted">至 2027-01-20</td><td><span class="status-dot success">已生效</span></td></tr>
+                          <tr><td><b>企业试用额度</b></td><td class="muted">待企业认证解锁</td><td>¥500.00</td><td class="muted">认证后 30 天</td><td><span class="tag tag-warning">未解锁</span></td></tr>
+                          <tr><td><b>嵌入模型免费额度</b></td><td class="muted">平台活动</td><td>2,000,000 Tokens</td><td class="muted">至 2026-12-31</td><td><span class="status-dot success">已生效</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 用量信息 ========== -->
+              <section class="tab-panel" id="tab-usage">
+                <div class="notice">
+                  <span>AI Studio 峰谷时间说明：调休上班的周末、中国法定节假日全天均按空闲时段计费。</span>
+                  <button class="notice-close">知道了</button>
+                </div>
+
+                <div class="balance-grid">
+                  <div class="balance-card">
+                    <div>
+                      <div class="balance-label">
+                        充值余额 ⓘ
+                        <span class="balance-warn">余额预警未开启 <a>去设置</a></span>
+                      </div>
+                      <div class="balance-value">¥1,318.57 <small>CNY</small></div>
+                    </div>
+                    <a class="btn btn-primary" href="topup.html">去充值</a>
+                  </div>
+                  <div class="balance-card">
+                    <div>
+                      <div class="balance-label">累计消费金额</div>
+                      <div class="balance-value">¥1,284.36 <small>CNY</small></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="filter-bar">
+                  <div class="filter-pill">
+                    <span class="label">时间维度</span>
+                    <span>近 30 天</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="filter-pill">
+                    <span class="label">API Key</span>
+                    <span>全部</span>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+                  </div>
+                  <div class="spacer"></div>
+                  <button class="btn btn-primary">导出</button>
+                </div>
+
+                <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+                  <div class="stat-card" style="flex-direction:column; align-items:flex-start;">
+                    <div class="stat-label">消费金额</div>
+                    <div class="stat-value">¥86.42 <small>CNY</small></div>
+                    <div class="stat-trend up">▲ 12.4% 较上一周期</div>
+                  </div>
+                  <div class="stat-card" style="flex-direction:column; align-items:flex-start;">
+                    <div class="stat-label">API 请求次数</div>
+                    <div class="stat-value">12,480</div>
+                    <div class="stat-trend up">▲ 8.1% 较上一周期</div>
+                  </div>
+                  <div class="stat-card" style="flex-direction:column; align-items:flex-start;">
+                    <div class="stat-label">Tokens</div>
+                    <div class="stat-value">3,246,880</div>
+                    <div class="stat-trend down">▼ 2.3% 较上一周期</div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header">
+                    <div class="card-title">消费金额</div>
+                    <div class="segmented">
+                      <div class="seg active">模型</div>
+                      <div class="seg">API Key</div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div id="usageChart" style="width:100%;"></div>
+                    <div class="flex items-center gap-16 mt-16" style="font-size:12.5px; color:var(--text-secondary);">
+                      <span class="flex items-center gap-8"><i style="width:10px;height:10px;border-radius:2px;background:#4D6BFE;display:inline-block;"></i> 消费金额（CNY）</span>
+                      <span class="muted">统计周期：2026-09-11 ~ 2026-10-10 · 共 30 天</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="mt-24"></div>
+
+                <div class="card">
+                  <div class="card-header">
+                    <div class="card-title">我的 API Key</div>
+                    <a class="btn btn-sm btn-secondary" href="developer.html">管理</a>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>名称</th><th>API Key</th><th>创建时间</th><th>上次使用</th><th>可用模型</th><th>状态</th><th class="text-right">操作</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr>
+                            <td><b>默认项目(907229)</b></td>
+                            <td class="mono">sk-604b...AKwx</td>
+                            <td class="muted text-sm">2026-01-20 01:15</td>
+                            <td class="muted text-sm">未使用</td>
+                            <td><span class="tag tag-accent">模型不限制</span></td>
+                            <td><span class="status-dot success">正常</span></td>
+                            <td class="text-right"><a class="link" href="developer.html">更新</a></td>
+                          </tr>
+                          <tr>
+                            <td><b>zcode-api-key</b></td>
+                            <td class="mono">sk-7c03...ii7m</td>
+                            <td class="muted text-sm">2026-02-16 00:15</td>
+                            <td class="muted text-sm">2026-04-25</td>
+                            <td><span class="tag tag-accent">模型不限制</span></td>
+                            <td><span class="status-dot success">正常</span></td>
+                            <td class="text-right"><a class="link" href="developer.html">更新</a></td>
+                          </tr>
+                          <tr>
+                            <td><b>prod-main-key</b></td>
+                            <td class="mono">sk-a1b2...8Kwx</td>
+                            <td class="muted text-sm">2026-03-12 14:32</td>
+                            <td class="muted text-sm">2026-10-09</td>
+                            <td><span class="tag">DeepSeek-V3.2</span> <span class="tag">DeepSeek-R1</span></td>
+                            <td><span class="status-dot success">正常</span></td>
+                            <td class="text-right"><a class="link" href="developer.html">更新</a></td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 安全管理 ========== -->
+              <section class="tab-panel" id="tab-security">
+                <div class="card mb-16">
+                  <div class="card-header"><div class="card-title">安全防护</div></div>
+                  <div class="card-body">
+                    <div class="sec-row">
+                      <div class="sec-text">
+                        <div class="sec-title">登录保护</div>
+                        <div class="sec-desc">异地登录时需通过手机短信二次验证</div>
+                      </div>
+                      <label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label>
+                    </div>
+                    <div class="sec-row">
+                      <div class="sec-text">
+                        <div class="sec-title">异地登录提醒</div>
+                        <div class="sec-desc">检测到陌生设备或地区登录时，发送邮件与站内信提醒</div>
+                      </div>
+                      <label class="switch"><input type="checkbox" checked /><span class="switch-slider"></span></label>
+                    </div>
+                    <div class="sec-row">
+                      <div class="sec-text">
+                        <div class="sec-title">API Key 泄露检测</div>
+                        <div class="sec-desc">在公开代码仓库中检测到密钥时自动告警并建议轮换</div>
+                      </div>
+                      <label class="switch"><input type="checkbox" /><span class="switch-slider"></span></label>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header">
+                    <div class="card-title">最近登录记录</div>
+                    <span class="text-sm muted">仅展示最近 30 天</span>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>登录时间</th><th>设备 / 浏览器</th><th>IP 地址</th><th>登录地点</th><th>方式</th><th>状态</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr><td class="muted">2026-10-10 14:23:08</td><td>macOS · Chrome 141</td><td class="mono">114.86.23.17</td><td>浙江 杭州</td><td>密码登录</td><td><span class="status-dot success">成功</span></td></tr>
+                          <tr><td class="muted">2026-10-10 09:02:41</td><td>iPhone · 微信内置浏览器</td><td class="mono">114.86.23.17</td><td>浙江 杭州</td><td>微信扫码</td><td><span class="status-dot success">成功</span></td></tr>
+                          <tr><td class="muted">2026-10-09 21:18:55</td><td>macOS · Chrome 141</td><td class="mono">114.86.23.17</td><td>浙江 杭州</td><td>密码登录</td><td><span class="status-dot success">成功</span></td></tr>
+                          <tr><td class="muted">2026-10-08 03:12:09</td><td>Windows · Edge 141</td><td class="mono">203.0.113.88</td><td>广东 深圳</td><td>密码登录</td><td><span class="status-dot danger">已拦截</span></td></tr>
+                          <tr><td class="muted">2026-10-07 18:44:30</td><td>macOS · Safari 26</td><td class="mono">114.86.23.17</td><td>浙江 杭州</td><td>密码登录</td><td><span class="status-dot success">成功</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 工单记录 ========== -->
+              <section class="tab-panel" id="tab-ticket">
+                <div class="card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">我的工单</div>
+                      <div class="card-subtitle">共 4 条 · 1 条处理中</div>
+                    </div>
+                    <button class="btn btn-primary btn-sm">新建工单</button>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>工单号</th><th>标题</th><th>类型</th><th>优先级</th><th>提交时间</th><th>状态</th><th class="text-right">操作</th></tr>
+                        </thead>
+                        <tbody>
+                          <tr><td class="mono">TK20261008001</td><td><b>申请提升 GPT-4o 并发上限</b></td><td>额度申请</td><td><span class="tag tag-danger">高</span></td><td class="muted">2026-10-08 10:12</td><td><span class="status-dot warning">处理中</span></td><td class="text-right"><span class="link">查看</span></td></tr>
+                          <tr><td class="mono">TK20261002014</td><td><b>发票开具申请（¥1,284.36）</b></td><td>财务</td><td><span class="tag tag-info">中</span></td><td class="muted">2026-10-02 15:40</td><td><span class="status-dot success">已完成</span></td><td class="text-right"><span class="link">查看</span></td></tr>
+                          <tr><td class="mono">TK20260928007</td><td><b>GLM-4.7 接入参数咨询</b></td><td>技术支持</td><td><span class="tag tag-info">中</span></td><td class="muted">2026-09-28 09:05</td><td><span class="status-dot success">已完成</span></td><td class="text-right"><span class="link">查看</span></td></tr>
+                          <tr><td class="mono">TK20260915003</td><td><b>充值未到账核查</b></td><td>财务</td><td><span class="tag tag-warning">低</span></td><td class="muted">2026-09-15 20:31</td><td><span class="muted">已关闭</span></td><td class="text-right"><span class="link">查看</span></td></tr>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              <!-- ========== 用户与权限（仅管理员） ========== -->
+              <section class="tab-panel" id="tab-admin">
+                <div class="card mb-16">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">搜索用户</div>
+                      <div class="card-subtitle">按用户名 / 账号 ID / 手机号搜索，为指定用户设置用户等级与菜单权限</div>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <div class="admin-filter">
+                      <input class="form-input" id="adminSearch" placeholder="搜索用户名 / 账号 ID / 手机号" style="width:260px;" />
+                      <select class="form-select" id="adminLevelFilter" style="width:150px;">
+                        <option value="">全部等级</option>
+                        <option value="free">体验版 L0</option>
+                        <option value="basic">基础版 L1</option>
+                        <option value="pro">专业版 L2</option>
+                        <option value="enterprise">企业版 L3</option>
+                      </select>
+                      <select class="form-select" id="adminRoleFilter" style="width:130px;">
+                        <option value="">全部角色</option>
+                        <option value="user">普通用户</option>
+                        <option value="admin">管理员</option>
+                      </select>
+                      <button class="btn btn-secondary btn-sm" id="adminReset">重置</button>
+                      <span class="text-sm muted" style="margin-left:auto;" id="adminCount"></span>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">用户列表</div>
+                      <div class="card-subtitle">共 <b id="adminTotal">0</b> 个注册用户 · 点击「设置权限」调整等级与菜单访问范围</div>
+                    </div>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>用户名</th><th>账号 ID</th><th>手机号</th><th>用户等级</th><th>角色</th><th>状态</th><th>菜单权限</th><th class="text-right">操作</th></tr>
+                        </thead>
+                        <tbody id="adminRows"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </section>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 用户等级与权限设置弹框（管理员） -->
+  <div class="modal-mask" id="permModal" onclick="if(event.target===this)closePerm()">
+    <div class="modal modal-lg" style="max-width:640px;">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title">用户等级与权限设置 · <span class="mono" id="permUserName" style="color:var(--primary);"></span></div>
+          <div class="modal-subtitle" id="permUserMeta"></div>
+        </div>
+        <button class="modal-close" onclick="closePerm()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="perm-sec-title">用户等级 <span class="muted text-sm" style="font-weight:400;">决定默认速率限制与模型范围</span></div>
+        <div class="perm-levels" id="permLevelGroup"></div>
+
+        <div class="perm-sec-title" style="margin-top:18px;">菜单与功能访问权限 <span class="muted text-sm" style="font-weight:400;">未勾选的菜单对该用户隐藏</span></div>
+        <div id="permMenuTree"></div>
+      </div>
+      <div class="modal-footer">
+        <div class="left text-sm muted" id="permHint">保存后立即生效，用户下次进入平台即按新权限展示菜单</div>
+        <button class="btn btn-secondary btn-sm" onclick="closePerm()">取消</button>
+        <button class="btn btn-primary btn-sm" onclick="savePerm()">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* 个人中心两栏布局 */
+    .account-layout { display: grid; grid-template-columns: 200px 1fr; gap: 28px; align-items: start; }
+    .subnav { position: sticky; top: 16px; font-size: 13px; }
+    .subnav-back {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 600; color: var(--text-primary);
+      padding: 3px 8px 14px 8px;
+    }
+    .subnav-back svg { width: 15px; height: 15px; }
+    .subnav-group { margin-bottom: 14px; }
+    .subnav-title { font-size: 12px; color: var(--text-tertiary); padding: 6px 8px; }
+    .subnav-item {
+      display: block; padding: 7px 8px; border-radius: var(--radius);
+      color: var(--text-secondary); cursor: pointer; transition: all .15s;
+    }
+    .subnav-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+    .subnav-item.active { background: var(--sidebar-active); color: var(--text-primary); font-weight: 500; }
+
+    .account-main { min-width: 0; }
+    .panel-head { margin-bottom: 16px; }
+    .panel-title { font-size: 18px; font-weight: 600; }
+    .panel-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* 基本信息 */
+    .profile-flex { display: flex; gap: 24px; align-items: flex-start; }
+    .avatar {
+      width: 72px; height: 72px; border-radius: 50%; flex-shrink: 0;
+      background: var(--bg-soft); color: var(--text-tertiary);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; border: 1px solid var(--border-light);
+    }
+    .info-grid { flex: 1; display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px 24px; }
+    .info-grid.grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .info-item { min-width: 0; }
+    .info-label { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 5px; }
+    .info-value { font-size: 13.5px; color: var(--text-primary); display: flex; align-items: center; gap: 6px; }
+    .info-value.mono { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .info-value .link { font-style: normal; color: var(--accent); cursor: pointer; }
+
+    /* 安全设置行 */
+    .sec-row { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border-light); }
+    .sec-row:last-child { border-bottom: 0; }
+    .sec-icon {
+      width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; color: #fff;
+    }
+    .sec-icon svg { width: 17px; height: 17px; }
+    .sec-icon.blue { background: var(--accent); }
+    .sec-icon.green { background: #07C160; }
+    .sec-icon.gray { background: var(--text-quaternary); }
+    .sec-text { flex: 1; min-width: 0; }
+    .sec-title { font-size: 13.5px; font-weight: 500; display: flex; align-items: center; gap: 6px; }
+    .sec-desc { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.6; }
+
+    .btn-danger-soft { background: var(--danger-soft); color: var(--danger); }
+    .btn-danger-soft:hover { background: #FBDDE1; }
+
+    /* 右上角财务菜单 */
+    .finance-menu {
+      position: relative; display: flex; align-items: center; gap: 4px;
+      font-size: 13.5px; color: var(--text-primary); cursor: pointer; padding: 6px 10px;
+      border-radius: var(--radius); transition: background .15s;
+    }
+    .finance-menu:hover { background: var(--bg-soft); }
+    .finance-menu svg { width: 14px; height: 14px; color: var(--text-tertiary); }
+    .finance-drop {
+      display: none; position: absolute; top: 100%; right: 0; margin-top: 6px;
+      min-width: 132px; background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius-md); box-shadow: var(--shadow); padding: 6px; z-index: 30;
+    }
+    .finance-menu.open .finance-drop { display: block; }
+    .finance-drop a { display: block; padding: 7px 10px; border-radius: var(--radius-sm); font-size: 13px; color: var(--text-secondary); }
+    .finance-drop a:hover { background: var(--bg-soft); color: var(--text-primary); }
+
+    /* 角色切换（演示用） */
+    .seg-group { display: flex; background: var(--bg-soft); border-radius: 8px; padding: 3px; gap: 2px; }
+    .seg { padding: 5px 14px; font-size: 12.5px; border-radius: 6px; cursor: pointer; color: var(--text-secondary); }
+    .seg:hover { color: var(--text-primary); }
+    .seg.active { background: #fff; color: var(--text-primary); font-weight: 500; box-shadow: 0 1px 4px rgba(0, 0, 0, 0.1); }
+
+    /* 用户与权限（管理员） */
+    .admin-filter { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .perm-sec-title { font-size: 13.5px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: baseline; gap: 6px; }
+    .perm-levels { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+    .perm-level {
+      display: block; height: auto; padding: 10px 14px; line-height: 1.5;
+      border: 1px solid var(--border-light); border-radius: 10px; cursor: pointer;
+    }
+    .perm-level:hover { border-color: var(--border); }
+    .perm-level.active { border-color: var(--primary); background: var(--bg-soft); box-shadow: none; }
+    .perm-level .lv-name { font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+    .perm-level .lv-desc { font-size: 11.5px; color: var(--text-tertiary); margin-top: 3px; }
+    .perm-level input { display: none; }
+    .perm-menu-group { border: 1px solid var(--border-light); border-radius: 10px; margin-bottom: 10px; overflow: hidden; }
+    .perm-menu-head {
+      display: flex; align-items: center; gap: 8px; padding: 9px 14px; background: var(--bg-soft);
+      font-size: 12.5px; font-weight: 600; cursor: pointer; user-select: none;
+    }
+    .perm-menu-head .cnt { margin-left: auto; font-weight: 400; font-size: 11.5px; color: var(--text-tertiary); }
+    .perm-menu-items { display: flex; flex-wrap: wrap; gap: 8px 20px; padding: 10px 14px; }
+    .perm-menu-items label {
+      display: flex; align-items: center; gap: 6px; font-size: 12.5px;
+      color: var(--text-secondary); cursor: pointer; user-select: none;
+    }
+    .perm-menu-items input { accent-color: var(--primary); }
+
+    @media (max-width: 1080px) {
+      .account-layout { grid-template-columns: 1fr; }
+      .subnav { position: static; }
+      .info-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+    @media (max-width: 720px) {
+      .profile-flex { flex-direction: column; }
+      .info-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('user-center');
+
+    /* ================= 二级导航切换 ================= */
+    var PANEL_META = {
+      account:   ['账号设置', '账号的基本信息与安全设置'],
+      verify:    ['实名认证', '个人 / 企业认证状态与认证信息'],
+      permission:['权限管理', '当前账号的角色与功能权限清单'],
+      ratelimit: ['速率限制', '各模型的 RPM / TPM 与并发额度'],
+      project:   ['项目管理', '业务项目隔离、成员与用量归属'],
+      benefit:   ['用户权益', '赠金、试用额度与权益有效期'],
+      usage:     ['用量信息', '消费金额、请求次数与 Token 消耗'],
+      security:  ['安全管理', '登录保护、异地提醒与登录记录'],
+      ticket:    ['工单记录', '提交与跟踪技术支持 / 财务工单'],
+      admin:     ['用户与权限', '搜索用户并设置用户等级与菜单访问权限（仅管理员）']
+    };
+
+    document.querySelectorAll('.subnav-item').forEach(function (el) {
+      el.addEventListener('click', function () { switchTab(el.dataset.tab); });
+    });
+
+    function switchTab(key) {
+      var meta = PANEL_META[key];
+      if (!meta) return;
+      document.querySelectorAll('.subnav-item').forEach(function (x) {
+        x.classList.toggle('active', x.dataset.tab === key);
+      });
+      document.querySelectorAll('.tab-panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'tab-' + key);
+      });
+      document.getElementById('panelTitle').textContent = meta[0];
+      document.getElementById('panelSub').textContent = meta[1];
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* 财务下拉 */
+    var financeMenu = document.getElementById('financeMenu');
+    financeMenu.addEventListener('click', function (e) {
+      if (e.target.closest('.finance-drop')) return;
+      financeMenu.classList.toggle('open');
+    });
+    document.addEventListener('click', function (e) {
+      if (!financeMenu.contains(e.target)) financeMenu.classList.remove('open');
+    });
+    document.querySelectorAll('[data-tab-jump]').forEach(function (a) {
+      a.addEventListener('click', function (e) {
+        e.preventDefault();
+        switchTab(a.dataset.tabJump);
+        financeMenu.classList.remove('open');
+      });
+    });
+
+    /* ================= 用户与权限管理（管理员） ================= */
+    var LEVELS = [
+      { k: 'free',       name: '体验版 L0', desc: '赠金 ¥10 · 60 RPM · 基础对话模型',    tag: 'gray' },
+      { k: 'basic',      name: '基础版 L1', desc: '600 RPM · 全部文本模型 · 优先队列',    tag: 'info' },
+      { k: 'pro',        name: '专业版 L2', desc: '3000 RPM / 1M TPM · 含向量与视觉模型', tag: 'primary' },
+      { k: 'enterprise', name: '企业版 L3', desc: '6000 RPM · SLA 99.9% · 专属支持',      tag: 'warning' }
+    ];
+    var MENU_TREE = [
+      { group: '门户与文档',   items: ['模型广场', '接口文档', '产品定价', '帮助反馈'] },
+      { group: '开发者中心',   items: ['API Key 管理', '使用日志', '成本统计', '账单与充值'] },
+      { group: 'AI 能力资产', items: ['提示词管理', '知识库', 'RAG 管理', 'OCR', '知识图谱Graph', '本体图谱Onto', 'MCP 管理', 'Skill / Agent'] },
+      { group: '工作台',       items: ['Notebook', '终端', '文件管理', '会话管理'] },
+      { group: '系统管理',     items: ['用户管理', '权限管理', '平台配置', '运维中心'] }
+    ];
+    var ALL_MENUS = MENU_TREE.reduce(function (a, g) { return a.concat(g.items); }, []);
+
+    var USERS = [
+      { name: 'lamvsgai', id: '62031768842907229', phone: '+86-185****9632', level: 'pro', role: 'admin', status: 'active',
+        menus: ALL_MENUS.slice() },
+      { name: 'zhang.san', id: '62031768842907231', phone: '+86-138****2231', level: 'basic', role: 'user', status: 'active',
+        menus: ['模型广场', '接口文档', '产品定价', '帮助反馈', 'API Key 管理', '使用日志', '成本统计', '账单与充值', '提示词管理', '知识库', 'RAG 管理'] },
+      { name: 'li.si', id: '62031768842907233', phone: '+86-139****8845', level: 'pro', role: 'user', status: 'active',
+        menus: ['模型广场', '接口文档', '产品定价', 'API Key 管理', '使用日志', '成本统计', '账单与充值', '提示词管理', '知识库', 'RAG 管理', 'OCR', '知识图谱Graph', '本体图谱Onto', 'MCP 管理', 'Skill / Agent', 'Notebook', '终端', '文件管理'] },
+      { name: 'wang.wu', id: '62031768842907235', phone: '+86-137****5562', level: 'basic', role: 'user', status: 'active',
+        menus: ['模型广场', '接口文档', 'API Key 管理', '使用日志', '知识库', 'RAG 管理', 'Notebook', '文件管理'] },
+      { name: 'zhao.liu', id: '62031768842907237', phone: '+86-136****9910', level: 'free', role: 'user', status: 'active',
+        menus: ['模型广场', '产品定价', '帮助反馈', 'API Key 管理', '使用日志'] },
+      { name: 'sun.qi', id: '62031768842907239', phone: '+86-135****3307', level: 'enterprise', role: 'user', status: 'active',
+        menus: ALL_MENUS.filter(function (m) { return ['用户管理', '权限管理', '平台配置', '运维中心'].indexOf(m) < 0; }) },
+      { name: 'chen.ba', id: '62031768842907241', phone: '+86-150****7719', level: 'free', role: 'user', status: 'banned',
+        menus: [] }
+    ];
+
+    function levelOf(k) { return LEVELS.filter(function (l) { return l.k === k; })[0] || LEVELS[0]; }
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function renderAdmin() {
+      var q = (document.getElementById('adminSearch').value || '').trim().toLowerCase();
+      var lf = document.getElementById('adminLevelFilter').value;
+      var rf = document.getElementById('adminRoleFilter').value;
+      var list = USERS.filter(function (u) {
+        var hit = !q || u.name.toLowerCase().indexOf(q) > -1 || u.id.indexOf(q) > -1 || (u.phone || '').replace(/\*/g, '').indexOf(q.replace(/\*/g, '')) > -1;
+        return hit && (!lf || u.level === lf) && (!rf || u.role === rf);
+      });
+      document.getElementById('adminCount').textContent = '命中 ' + list.length + ' / ' + USERS.length + ' 个用户';
+      document.getElementById('adminTotal').textContent = USERS.length;
+      document.getElementById('adminRows').innerHTML = list.map(function (u) {
+        var lv = levelOf(u.level);
+        return '<tr>'
+          + '<td><b>' + esc(u.name) + '</b></td>'
+          + '<td class="mono text-sm muted">' + esc(u.id) + '</td>'
+          + '<td class="text-sm muted">' + esc(u.phone) + '</td>'
+          + '<td><span class="tag tag-' + lv.tag + '">' + lv.name + '</span></td>'
+          + '<td class="text-sm">' + (u.role === 'admin' ? '<span class="tag tag-accent">管理员</span>' : '普通用户') + '</td>'
+          + '<td>' + (u.status === 'active' ? '<span class="status-dot success">正常</span>' : '<span class="status-dot danger">已封禁</span>') + '</td>'
+          + '<td class="text-sm">' + (u.menus.length ? '已开通 <b>' + u.menus.length + '</b> / ' + ALL_MENUS.length + ' 个菜单' : '<span class="muted">无访问权限</span>') + '</td>'
+          + '<td class="text-right"><span class="link" onclick="openPerm(\'' + u.id + '\')">设置权限</span></td>'
+          + '</tr>';
+      }).join('') || '<tr><td colspan="8"><div class="empty" style="padding:40px 0;">未找到匹配用户</div></td></tr>';
+    }
+
+    ['adminSearch', 'adminLevelFilter', 'adminRoleFilter'].forEach(function (id) {
+      document.getElementById(id).addEventListener('input', renderAdmin);
+    });
+    document.getElementById('adminReset').addEventListener('click', function () {
+      document.getElementById('adminSearch').value = '';
+      document.getElementById('adminLevelFilter').value = '';
+      document.getElementById('adminRoleFilter').value = '';
+      renderAdmin();
+    });
+
+    /* ---- 权限设置弹框 ---- */
+    var permUser = null;
+
+    function openPerm(id) {
+      permUser = USERS.filter(function (u) { return u.id === id; })[0];
+      if (!permUser) return;
+      document.getElementById('permUserName').textContent = permUser.name;
+      document.getElementById('permUserMeta').textContent = '账号 ID ' + permUser.id + ' · ' + permUser.phone + ' · 当前等级 ' + levelOf(permUser.level).name;
+
+      /* 等级选择 */
+      document.getElementById('permLevelGroup').innerHTML = LEVELS.map(function (l) {
+        return '<label class="radio-opt perm-level' + (permUser.level === l.k ? ' active' : '') + '" data-level="' + l.k + '">'
+          + '<span class="lv-name"><span class="radio-dot"></span>' + l.name + '</span>'
+          + '<span class="lv-desc">' + l.desc + '</span></label>';
+      }).join('');
+      document.querySelectorAll('#permLevelGroup .perm-level').forEach(function (el) {
+        el.addEventListener('click', function () {
+          document.querySelectorAll('#permLevelGroup .perm-level').forEach(function (x) { x.classList.remove('active'); });
+          el.classList.add('active');
+        });
+      });
+
+      /* 菜单权限树 */
+      document.getElementById('permMenuTree').innerHTML = MENU_TREE.map(function (g, gi) {
+        var checkedCnt = g.items.filter(function (m) { return permUser.menus.indexOf(m) > -1; }).length;
+        return '<div class="perm-menu-group">'
+          + '<div class="perm-menu-head" data-group="' + gi + '"><span class="gcheck"></span>' + g.group
+          + '<span class="cnt">' + checkedCnt + ' / ' + g.items.length + '</span></div>'
+          + '<div class="perm-menu-items">'
+          + g.items.map(function (m) {
+              return '<label><input type="checkbox" data-menu="' + esc(m) + '"' + (permUser.menus.indexOf(m) > -1 ? ' checked' : '') + ' /> ' + esc(m) + '</label>';
+            }).join('')
+          + '</div></div>';
+      }).join('');
+
+      /* 组头：点击全选 / 全不选 */
+      document.querySelectorAll('.perm-menu-head').forEach(function (head) {
+        var gi = +head.dataset.group;
+        var box = head.parentElement.querySelectorAll('.perm-menu-items input');
+        var cnt = head.querySelector('.cnt');
+        function syncCnt() {
+          var n = head.parentElement.querySelectorAll('.perm-menu-items input:checked').length;
+          cnt.textContent = n + ' / ' + box.length;
+        }
+        head.addEventListener('click', function () {
+          var all = head.parentElement.querySelectorAll('.perm-menu-items input:checked').length === box.length;
+          box.forEach(function (c) { c.checked = !all; });
+          syncCnt();
+        });
+        box.forEach(function (c) { c.addEventListener('change', syncCnt); });
+      });
+
+      document.getElementById('permModal').classList.add('show');
+    }
+
+    function closePerm() { document.getElementById('permModal').classList.remove('show'); }
+
+    function savePerm() {
+      if (!permUser) return;
+      permUser.level = document.querySelector('#permLevelGroup .perm-level.active').dataset.level;
+      permUser.menus = Array.prototype.map.call(document.querySelectorAll('#permMenuTree input:checked'), function (c) {
+        return c.dataset.menu;
+      });
+      closePerm();
+      renderAdmin();
+    }
+
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closePerm(); });
+
+    /* ---- 角色切换（页头演示按钮） ---- */
+    var curRole = 'user';
+    document.querySelectorAll('#roleSwitch .seg').forEach(function (s) {
+      s.addEventListener('click', function () {
+        curRole = s.dataset.role;
+        document.querySelectorAll('#roleSwitch .seg').forEach(function (x) { x.classList.toggle('active', x === s); });
+        var admin = curRole === 'admin';
+        document.querySelector('.subnav-group.admin-only').style.display = admin ? '' : 'none';
+        /* 普通用户停留在管理页时，退回账号设置 */
+        if (!admin && document.querySelector('.subnav-item[data-tab="admin"]').classList.contains('active')) switchTab('account');
+      });
+    });
+
+    renderAdmin();
+
+    /* ================= 用量趋势图 ================= */
+    (function () {
+      const el = document.getElementById('usageChart');
+      if (!el) return;
+      const vals = [1.2,2.4,1.8,3.1,2.6,4.0,3.4,2.9,4.6,5.1,4.2,3.8,5.4,6.2,5.0,4.4,6.8,7.4,6.1,5.6,7.9,8.6,7.2,6.4,9.0,8.2,7.6,9.4,8.8,9.9];
+      const w = 900, ht = 240, padL = 48, padR = 16, padT = 16, padB = 28;
+      const max = 10, iw = w - padL - padR, ih = ht - padT - padB;
+      const x = i => padL + (iw * i / (vals.length - 1));
+      const y = v => padT + ih - (v / max) * ih;
+      const pts = vals.map((v, i) => [x(i), y(v)]);
+      let d = `M${pts[0][0]},${pts[0][1]}`;
+      for (let i = 1; i < pts.length; i++) {
+        const [px, py] = pts[i - 1], [cx, cy] = pts[i], mx = (px + cx) / 2;
+        d += ` C${mx},${py} ${mx},${cy} ${cx},${cy}`;
+      }
+      const area = `${d} L${pts[pts.length - 1][0]},${padT + ih} L${pts[0][0]},${padT + ih} Z`;
+      const grid = [0, 2.5, 5, 7.5, 10].map(v => {
+        const gy = y(v);
+        return `<line x1="${padL}" x2="${w - padR}" y1="${gy}" y2="${gy}" stroke="#F2F2F3"/>`
+          + `<text x="${padL - 10}" y="${gy + 4}" text-anchor="end" font-size="11" fill="#9CA3AF">¥${v}</text>`;
+      }).join('');
+      const labels = ['09-11', '09-16', '09-21', '09-26', '10-01', '10-06', '10-10'];
+      const xLabels = labels.map((t, idx) => {
+        const i = Math.round(idx * (vals.length - 1) / (labels.length - 1));
+        return `<text x="${x(i)}" y="${ht - 8}" text-anchor="middle" font-size="11" fill="#9CA3AF">${t}</text>`;
+      }).join('');
+      el.innerHTML = `<svg viewBox="0 0 ${w} ${ht}" style="width:100%;height:auto;display:block;">
+        <defs><linearGradient id="ug" x1="0" x2="0" y1="0" y2="1">
+          <stop offset="0%" stop-color="#4D6BFE" stop-opacity="0.16"/>
+          <stop offset="100%" stop-color="#4D6BFE" stop-opacity="0"/>
+        </linearGradient></defs>
+        ${grid}
+        <path d="${area}" fill="url(#ug)"/>
+        <path d="${d}" stroke="#4D6BFE" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+        ${xLabels}
+      </svg>`;
+    })();
+  </script>
+</body>
+</html>

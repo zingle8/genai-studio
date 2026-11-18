@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>充值 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">充值</div>
+              <div class="page-subtitle">充值金额仅用于调用 API 服务，网页版及 App 对话免费使用</div>
+            </div>
+            <div class="page-actions">
+              <div class="segmented" id="roleSwitch" title="演示：切换登录角色">
+                <div class="seg" data-role="user">普通用户视角</div>
+                <div class="seg active" data-role="admin">管理员视角</div>
+              </div>
+              <button class="btn btn-secondary" id="btnAdminTopup" onclick="switchPanel('admin')">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                管理员代充
+              </button>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:1fr 320px; gap:24px; align-items:start;" class="topup-grid">
+            <!-- 充值表单 -->
+            <div class="card">
+              <div class="card-body">
+                <div class="tabs">
+                  <div class="tab active" data-panel="online">在线充值</div>
+                  <div class="tab" data-panel="transfer">对公汇款</div>
+                  <div class="tab admin-tab" data-panel="admin" id="adminTab" style="display:none;">管理员代充</div>
+                </div>
+
+                <!-- ========== 面板：在线充值 ========== -->
+                <div class="tp-panel" id="panel-online">
+                <div class="form-row">
+                  <label class="form-label">支付金额</label>
+                  <div class="amount-options">
+                    <div class="amount-opt active">¥10</div>
+                    <div class="amount-opt">¥20</div>
+                    <div class="amount-opt">¥50</div>
+                    <div class="amount-opt">¥100</div>
+                    <div class="amount-opt">¥300</div>
+                    <div class="amount-opt">¥500</div>
+                    <div class="amount-opt">自定义</div>
+                    <span class="link" style="margin-left:6px; align-self:center;">查看价格</span>
+                  </div>
+                  <div class="form-help" style="color:var(--warning);">AI Studio 峰谷时间说明：调休上班的周末、中国法定节假日全天均按空闲时段计费。</div>
+                </div>
+
+                <div class="form-row">
+                  <label class="form-label">支付方式</label>
+                  <div class="pay-method active">
+                    <span class="pay-icon" style="color:#1677FF;">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M6 2h12a3 3 0 0 1 3 3v14a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3V5a3 3 0 0 1 3-3zm2 6h8M8 12h8M8 16h4"/></svg>
+                    </span>
+                    <span style="font-weight:600; color:#1677FF;">支付宝</span>
+                    <span class="pay-radio"></span>
+                  </div>
+                  <div class="pay-method">
+                    <span class="pay-icon" style="color:#07C160;">
+                      <svg viewBox="0 0 24 24" width="22" height="22" fill="currentColor"><path d="M12 2C6.5 2 2 5.6 2 10c0 2.5 1.4 4.7 3.6 6.2L4.5 20l3.5-1.9c1.2.3 2.6.5 4 .5 5.5 0 10-3.6 10-8S17.5 2 12 2z"/></svg>
+                    </span>
+                    <span style="font-weight:600; color:#07C160;">微信支付</span>
+                    <span class="pay-radio"></span>
+                  </div>
+                </div>
+
+                <button class="btn btn-primary btn-lg btn-block" style="margin-top:8px;">去支付</button>
+                <div class="text-center text-sm muted mt-16">金额将充入当前账户（185******32）</div>
+                </div>
+
+                <!-- ========== 面板：对公汇款 ========== -->
+                <div class="tp-panel" id="panel-transfer" hidden>
+                  <div class="notice" style="margin:0 0 16px;">
+                    <div>对公汇款适用于<b>企业认证</b>账户，汇款到账后（1 ~ 2 个工作日）自动入账，可前往<a class="link" href="user-center.html">用户中心</a>完成企业认证。</div>
+                  </div>
+                  <div class="form-row">
+                    <label class="form-label">收款账户信息</label>
+                    <div class="bank-info">
+                      <div class="bank-row"><span>公司名称</span><b>智谱创新科技（北京）有限公司</b></div>
+                      <div class="bank-row"><span>开户银行</span><b>中国工商银行北京分行中关村支行</b></div>
+                      <div class="bank-row"><span>银行账号</span><b class="mono">0200 1234 5678 9000 123</b></div>
+                      <div class="bank-row"><span>汇款备注 <i style="color:var(--danger);">*</i></span><b class="mono">ZC-充值-185xxxxxx32</b></div>
+                    </div>
+                    <div class="form-help">汇款时务必填写备注（充值账号），否则无法自动匹配入账。</div>
+                  </div>
+                  <div class="form-row">
+                    <label class="form-label">汇款金额（元）</label>
+                    <input class="form-input" id="transferAmount" type="number" min="1" placeholder="请输入汇款金额，最低 ¥100" style="max-width:260px;" />
+                  </div>
+                  <div class="form-row">
+                    <label class="form-label">汇款回执 / 凭证</label>
+                    <button class="btn btn-secondary">上传回执截图</button>
+                    <div class="form-help">上传后可加快对账速度；单笔 ≥ ¥10,000 将由财务人工确认。</div>
+                  </div>
+                  <button class="btn btn-primary btn-lg" style="margin-top:8px;" onclick="toast('汇款信息已登记，到账后自动入账并站内信通知（演示）', 'ok')">提交汇款登记</button>
+                </div>
+
+                <!-- ========== 面板：管理员代充（免支付） ========== -->
+                <div class="tp-panel" id="panel-admin" hidden>
+                  <div class="notice" style="margin:0 0 16px;">
+                    <div><b>管理员免支付通道</b>：无需经过支付网关，可直接为指定账户充值或设定余额；每次操作均记入充值记录与审计日志（操作人 / 时间 / 原因）。</div>
+                  </div>
+
+                  <div class="form-row">
+                    <label class="form-label">目标账户 <span class="required">*</span></label>
+                    <div class="adm-user-row">
+                      <select class="form-select" id="admUser" style="width:280px;"></select>
+                      <div class="adm-balance" id="admBalanceBox">
+                        当前余额 <b class="mono" id="admBalance">¥0.00</b>
+                        <span class="muted text-sm">（操作后实时更新）</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <label class="form-label">操作类型</label>
+                    <div class="radio-group" id="admModeGroup">
+                      <div class="radio-opt active" data-mode="add"><span class="radio-dot"></span>充值（在余额上增加）</div>
+                      <div class="radio-opt" data-mode="set"><span class="radio-dot"></span>设定余额（直接配置为指定金额）</div>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <label class="form-label">金额（元） <span class="required">*</span></label>
+                    <div class="amount-options">
+                      <div class="amount-opt" data-adm="100">¥100</div>
+                      <div class="amount-opt" data-adm="500">¥500</div>
+                      <div class="amount-opt" data-adm="1000">¥1000</div>
+                      <div class="amount-opt" data-adm="2000">¥2000</div>
+                    </div>
+                    <input class="form-input" id="admAmount" type="number" min="0.01" step="0.01" placeholder="请输入金额，支持两位小数" style="max-width:260px; margin-top:10px;" />
+                    <div class="form-help" id="admPreview">输入金额后预览调整结果。</div>
+                  </div>
+
+                  <div class="form-row">
+                    <label class="form-label">操作原因 <span class="required">*</span></label>
+                    <textarea class="form-textarea" id="admReason" placeholder="必填，将记入审计日志，例如：测试环境配额补偿 / 大客户合同赠送 / 误扣费返还" style="min-height:70px;"></textarea>
+                  </div>
+
+                  <button class="btn btn-primary btn-lg" style="margin-top:8px;" onclick="submitAdminTopup()">
+                    确认代充（免支付）
+                  </button>
+                  <div class="text-center text-sm muted mt-16" id="admFoot">操作人：<b>admin</b> · 本次操作免支付，不产生任何第三方交易流水</div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右侧：余额与提示 -->
+            <div class="flex-col gap-16">
+              <div class="card-soft">
+                <div class="stat-label">当前余额</div>
+                <div class="stat-value" style="font-size:28px;">¥34.21 <small>CNY</small></div>
+                <div class="flex items-center gap-12 mt-16">
+                  <a class="btn btn-sm btn-secondary" href="orders.html">查看账单</a>
+                  <a class="btn btn-sm btn-ghost" href="user-center.html">用量信息</a>
+                </div>
+              </div>
+              <div class="card">
+                <div class="card-header"><div class="card-title">提示</div></div>
+                <div class="card-body text-sm muted" style="line-height:2;">
+                  1. 充值金额仅用于调用 API 服务，网页版及 App 对话免费使用，无需充值。<br />
+                  2. 充值后可以前往账单页面开具发票。<br />
+                  3. 账户余额不可提现，如有疑问请联系客服。
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 充值记录 -->
+          <div class="card mt-24">
+            <div class="card-header">
+              <div class="card-title">充值记录</div>
+              <a class="link" href="orders.html">全部账单 →</a>
+            </div>
+            <div class="card-body no-pad">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>订单编号</th><th>充值金额</th><th>赠送金额</th><th>支付方式</th><th>状态</th><th>创建时间</th></tr>
+                  </thead>
+                  <tbody id="topupRows">
+                    <tr>
+                      <td class="mono">wechat46dc2aef67054cdcb87519dfa9</td>
+                      <td>¥10</td>
+                      <td class="muted">—</td>
+                      <td>微信</td>
+                      <td><span class="status-dot success">成功</span></td>
+                      <td class="muted">2025-06-02 17:32:51</td>
+                    </tr>
+                    <tr>
+                      <td class="mono">alipay7f3b21c9a84e4d0f9c2b6e5a1d</td>
+                      <td>¥100</td>
+                      <td class="muted">¥5</td>
+                      <td>支付宝</td>
+                      <td><span class="status-dot success">成功</span></td>
+                      <td class="muted">2025-05-18 09:14:22</td>
+                    </tr>
+                    <tr>
+                      <td class="mono">wechat9a1c8e2f4b7d4e6a8c3f5b2d0e</td>
+                      <td>¥50</td>
+                      <td class="muted">—</td>
+                      <td>微信</td>
+                      <td><span class="status-dot success">成功</span></td>
+                      <td class="muted">2025-04-30 21:08:45</td>
+                    </tr>
+                    <tr>
+                      <td class="mono">alipay2d6f8b4a1c9e7d3f5a2b8c6e4f</td>
+                      <td>¥300</td>
+                      <td class="muted">¥20</td>
+                      <td>支付宝</td>
+                      <td><span class="status-dot warning">处理中</span></td>
+                      <td class="muted">2025-04-12 11:26:03</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <style>
+    @media (max-width: 980px) { .topup-grid { grid-template-columns: 1fr !important; } }
+    .tp-panel { animation: fadeIn .18s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+    .bank-info { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+    .bank-row { display: flex; gap: 16px; padding: 10px 16px; background: #fff; }
+    .bank-row + .bank-row { border-top: 1px solid var(--border-light); }
+    .bank-row span { width: 110px; flex-shrink: 0; color: var(--text-tertiary); font-size: 13px; }
+    .bank-row b { font-weight: 600; font-size: 13px; }
+    .adm-user-row { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .adm-balance { font-size: 13px; color: var(--text-secondary); }
+    .adm-balance b { color: var(--text-primary); font-size: 14px; }
+    #admPreview b { color: var(--success); }
+    .topup-toast {
+      position: fixed; top: 76px; left: 50%; transform: translateX(-50%);
+      background: #fff; border: 1px solid var(--border); border-left: 3px solid var(--success);
+      border-radius: 8px; box-shadow: var(--shadow-lg);
+      padding: 12px 20px; font-size: 13.5px; z-index: 2000; display: none;
+    }
+    .topup-toast.err { border-left-color: var(--danger); }
+  </style>
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('topup');
+
+    /* ================= 角色（演示切换，与 API Key / 模型广场 一致） ================= */
+    var role = (window.Auth && Auth.ensure() && Auth.ensure().role === '超级管理员') ? 'admin' : 'user';
+
+    /* 演示数据：平台账户余额（当前登录 admin） */
+    var USER_BALANCES = { 'admin': 34.21, 'zhang.san': 128.45, 'li.si': 56.80, 'wang.wu': 12.00, 'zhao.liu': 302.66 };
+
+    /* ================= 轻量 toast ================= */
+    function toast(msg, type) {
+      var t = document.getElementById('topupToast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = 'topupToast'; t.className = 'topup-toast';
+        document.body.appendChild(t);
+      }
+      t.textContent = msg;
+      t.classList.toggle('err', type === 'err');
+      t.style.display = 'block';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function () { t.style.display = 'none'; }, 3200);
+    }
+
+    /* ================= 页签切换 ================= */
+    function switchPanel(name) {
+      document.querySelectorAll('.tabs .tab').forEach(function (t) {
+        t.classList.toggle('active', t.dataset.panel === name);
+      });
+      document.querySelectorAll('.tp-panel').forEach(function (p) {
+        p.hidden = p.id !== 'panel-' + name;
+      });
+    }
+    window.switchPanel = switchPanel;
+    document.querySelectorAll('.tabs .tab').forEach(function (t) {
+      t.addEventListener('click', function () { switchPanel(t.dataset.panel); });
+    });
+
+    /* 在线充值：金额选中（保留原有交互演示） */
+    document.querySelectorAll('#panel-online .amount-opt').forEach(function (o) {
+      o.addEventListener('click', function () {
+        document.querySelectorAll('#panel-online .amount-opt').forEach(function (x) { x.classList.remove('active'); });
+        o.classList.add('active');
+      });
+    });
+
+    /* ================= 管理员代充 ================= */
+    var admUser = document.getElementById('admUser');
+    Object.keys(USER_BALANCES).forEach(function (u) {
+      var opt = document.createElement('option');
+      opt.value = u; opt.textContent = u + (u === 'admin' ? '（当前登录）' : '');
+      admUser.appendChild(opt);
+    });
+
+    function admMode() {
+      var a = document.querySelector('#admModeGroup .radio-opt.active');
+      return a ? a.dataset.mode : 'add';
+    }
+    function fmtMoney(n) { return '¥' + Number(n).toFixed(2); }
+
+    function refreshAdmBalance() {
+      var u = admUser.value;
+      document.getElementById('admBalance').textContent = fmtMoney(USER_BALANCES[u] || 0);
+      refreshAdmPreview();
+    }
+    function refreshAdmPreview() {
+      var amount = parseFloat(document.getElementById('admAmount').value);
+      var box = document.getElementById('admPreview');
+      if (!amount || amount <= 0 || isNaN(amount)) { box.innerHTML = '输入金额后预览调整结果。'; return; }
+      var cur = USER_BALANCES[admUser.value] || 0;
+      var next = admMode() === 'add' ? cur + amount : amount;
+      var diff = next - cur;
+      box.innerHTML = '预览：<b>' + fmtMoney(cur) + '</b> → <b>' + fmtMoney(next) + '</b>'
+        + '（' + (diff >= 0 ? '+' : '−') + fmtMoney(Math.abs(diff)) + '）';
+    }
+    admUser.addEventListener('change', refreshAdmBalance);
+    document.getElementById('admAmount').addEventListener('input', refreshAdmPreview);
+    document.querySelectorAll('#admModeGroup .radio-opt').forEach(function (o) {
+      o.addEventListener('click', function () {
+        document.querySelectorAll('#admModeGroup .radio-opt').forEach(function (x) { x.classList.remove('active'); });
+        o.classList.add('active');
+        refreshAdmPreview();
+      });
+    });
+    document.querySelectorAll('#panel-admin .amount-opt').forEach(function (o) {
+      o.addEventListener('click', function () {
+        document.getElementById('admAmount').value = o.dataset.adm;
+        document.querySelectorAll('#panel-admin .amount-opt').forEach(function (x) { x.classList.remove('active'); });
+        o.classList.add('active');
+        refreshAdmPreview();
+      });
+    });
+    document.getElementById('admAmount').addEventListener('input', function () {
+      document.querySelectorAll('#panel-admin .amount-opt').forEach(function (x) {
+        x.classList.toggle('active', x.dataset.adm === this.value);
+      });
+    });
+    refreshAdmBalance();
+
+    function submitAdminTopup() {
+      var u = admUser.value;
+      var amount = parseFloat(document.getElementById('admAmount').value);
+      var reason = document.getElementById('admReason').value.trim();
+      if (!u) { toast('请选择目标账户', 'err'); return; }
+      if (!amount || amount <= 0 || isNaN(amount)) { toast('请输入有效的代充金额', 'err'); document.getElementById('admAmount').focus(); return; }
+      if (!reason) { toast('操作原因必填，将记入审计日志', 'err'); document.getElementById('admReason').focus(); return; }
+
+      var mode = admMode();
+      var cur = USER_BALANCES[u] || 0;
+      var next = mode === 'add' ? +(cur + amount).toFixed(2) : +amount.toFixed(2);
+      var delta = +(next - cur).toFixed(2);
+      USER_BALANCES[u] = next;
+      refreshAdmBalance();
+
+      /* 写入充值记录：免支付、即时成功 */
+      var now = new Date();
+      var stamp = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0')
+        + ' ' + now.toTimeString().slice(0, 8);
+      var orderId = 'admin' + Math.random().toString(16).slice(2, 14).padEnd(12, '0');
+      var isCut = delta < 0;   /* 调减余额：单独标记，避免与充值混淆 */
+      var tr = document.createElement('tr');
+      tr.innerHTML = '<td class="mono">' + orderId + '</td>'
+        + '<td' + (isCut ? ' style="color:var(--danger);"' : '') + '>' + (isCut ? '−' : '') + fmtMoney(Math.abs(delta)) + '</td>'
+        + '<td class="muted">—</td>'
+        + '<td><span class="tag ' + (isCut ? 'tag-warning' : 'tag-purple') + '">' + (isCut ? '管理员代充 · 余额调减' : '管理员代充') + '</span></td>'
+        + '<td><span class="status-dot success">成功</span></td>'
+        + '<td class="muted">' + stamp + '</td>';
+      var rows = document.getElementById('topupRows');
+      rows.insertBefore(tr, rows.firstChild);
+
+      document.getElementById('admAmount').value = '';
+      document.getElementById('admReason').value = '';
+      document.getElementById('admPreview').innerHTML = '输入金额后预览调整结果。';
+
+      toast(mode === 'add'
+        ? '已为「' + u + '」免支付充值 ' + fmtMoney(amount) + '，余额 ' + fmtMoney(next) + '（已记入审计日志）'
+        : '已将「' + u + '」余额设定为 ' + fmtMoney(next) + '（免支付，已记入审计日志）', 'ok');
+    }
+    window.submitAdminTopup = submitAdminTopup;
+
+    /* ================= 角色应用 ================= */
+    function applyRole(r) {
+      role = r;
+      var admin = r === 'admin';
+      document.getElementById('adminTab').style.display = admin ? '' : 'none';
+      document.getElementById('btnAdminTopup').style.display = admin ? '' : 'none';
+      if (!admin && document.querySelector('.tabs .tab.active').dataset.panel === 'admin') switchPanel('online');
+      document.querySelectorAll('#roleSwitch .seg').forEach(function (s) {
+        s.classList.toggle('active', s.dataset.role === r);
+      });
+    }
+    document.querySelectorAll('#roleSwitch .seg').forEach(function (s) {
+      s.addEventListener('click', function () { applyRole(s.dataset.role); });
+    });
+    applyRole(role);
+  </script>
+</body>
+</html>

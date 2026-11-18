@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>API Key · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">API Key</div>
+              <div class="page-subtitle">当前登录：<b id="curUser">zhang.san</b> · <span id="curRole">超级管理员</span></div>
+            </div>
+            <div class="page-actions">
+              <div class="segmented" id="roleSwitch" title="演示：切换登录角色">
+                <div class="seg" data-role="user">普通用户视角</div>
+                <div class="seg active" data-role="admin">管理员视角</div>
+              </div>
+              <button class="btn btn-primary" onclick="openCreate()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                创建 API Key
+              </button>
+            </div>
+          </div>
+
+          <div class="notice" id="createdNotice" style="display:none; align-items:flex-start; background:var(--success-soft);">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-top:3px; color:var(--success);">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>
+            </svg>
+            <div style="flex:1;" id="createdText"></div>
+          </div>
+
+          <div class="notice" style="align-items:flex-start;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" style="margin-top:3px; color:var(--accent);">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+            </svg>
+            <div style="flex:1;">
+              <div id="roleTip">您是超级管理员，可查看全部用户的 API Key，并支持按创建人筛选。</div>
+              <div>为保障账户安全，<b>API Key</b> 仅在创建时完整展示一次，后续无法查看或恢复。</div>
+              <a>查看更多</a>
+            </div>
+          </div>
+
+          <!-- 过滤栏 -->
+          <div class="filter-bar">
+            <div class="spacer"></div>
+            <span class="text-sm muted" id="countTip"></span>
+            <select class="form-select" id="fieldSelect" style="width:160px;">
+              <option value="name">按名称</option>
+              <option value="key">按 API Key</option>
+              <option value="created">按创建时间</option>
+              <option value="lastUsed">按使用时间</option>
+              <option value="expiry">按过期时间</option>
+              <option value="owner">按创建人</option>
+            </select>
+            <input class="form-input" id="fieldValue" placeholder="输入名称关键字" style="width:200px;" />
+            <button class="btn btn-primary" onclick="render()">查询</button>
+          </div>
+
+          <div class="card">
+            <div class="card-body no-pad">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>名称</th>
+                      <th>API Key ID</th>
+                      <th>API Key</th>
+                      <th>创建时间</th>
+                      <th>上次使用时间</th>
+                      <th>过期时间</th>
+                      <th>可用模型</th>
+                      <th>限流 RPM/TPM/并发</th>
+                      <th>创建人</th>
+                      <th class="text-right">操作</th>
+                    </tr>
+                  </thead>
+                  <tbody id="keyTableBody"></tbody>
+                </table>
+              </div>
+              <div class="card-footer">
+                <div class="text-sm muted" id="totalTip">共 0 条</div>
+                <div class="pagination">
+                  <button class="page-btn">‹</button>
+                  <button class="page-btn active">1</button>
+                  <button class="page-btn">›</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 创建 API Key 弹框 -->
+  <div class="modal-mask" id="createModal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <div>
+          <div class="modal-title" id="modalTitle">创建 API Key</div>
+          <div class="modal-subtitle" id="modalSub">为密钥指定可访问的模型范围，未指定的模型将无法调用。</div>
+        </div>
+        <button class="modal-close" onclick="closeCreate()">×</button>
+      </div>
+
+      <div class="modal-body">
+        <div class="form-row">
+          <label class="form-label">名称 <span class="required">*</span></label>
+          <input class="form-input" id="keyName" placeholder="例如：prod-main-key" />
+        </div>
+
+        <!-- 高级配置分界：以下均为可选，默认折叠，已自动设置默认参数 -->
+        <div class="adv-divider" id="advDivider" title="点击展开 / 收起">
+          <div class="line"></div>
+          <div class="cap">
+            <svg class="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink:0;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.01a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.01a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.01a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+            高级配置（可选）
+            <span class="adv-summary" id="advSummary">默认参数已自动设置，点击展开</span>
+          </div>
+          <div class="line"></div>
+        </div>
+        <div class="adv-body" id="advBody">
+        <div class="adv-defaults">
+          以下配置均已按<b>账号默认参数自动设置</b>，无需调整可直接保存：过期时间 <b>永久有效</b> ·
+          可用模型 <b>全部模型</b> · 限流 <b>继承账号默认额度（3000 RPM / 1M TPM / 500 并发）</b> ·
+          IP 白名单 <b>不限制</b>。按需修改即可覆盖默认值。
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">过期时间</label>
+          <div class="radio-group" id="expiryGroup">
+            <div class="radio-opt active" data-expiry="never"><span class="radio-dot"></span>永久有效</div>
+            <div class="radio-opt" data-expiry="date"><span class="radio-dot"></span>指定日期</div>
+          </div>
+          <div id="expiryDateWrap" style="display:none; margin-top:12px;">
+            <input class="form-input" id="expiryDate" type="date" value="2027-10-10" style="max-width:240px;" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">可用模型</label>
+          <div class="radio-group" id="modelScopeGroup">
+            <div class="radio-opt active" data-scope="all"><span class="radio-dot"></span>模型不限制</div>
+            <div class="radio-opt" data-scope="custom"><span class="radio-dot"></span>指定模型</div>
+          </div>
+
+          <div id="modelPickerWrap" style="display:none; margin-top:12px;">
+            <div class="model-picker">
+              <div class="mp-group-title">文本生成</div>
+              <div class="chips">
+                <div class="chip model-chip">GLM-4.7</div>
+                <div class="chip model-chip">GLM-4.6</div>
+                <div class="chip model-chip">GLM-4.5-Air</div>
+                <div class="chip model-chip">DeepSeek-V3.2</div>
+                <div class="chip model-chip">DeepSeek-R1</div>
+              </div>
+              <div class="mp-group-title">多模态</div>
+              <div class="chips">
+                <div class="chip model-chip">GLM-4V</div>
+                <div class="chip model-chip">GLM-4V-Flash</div>
+              </div>
+              <div class="mp-group-title">向量 / 嵌入</div>
+              <div class="chips">
+                <div class="chip model-chip">GLM-Embedding-3</div>
+                <div class="chip model-chip">BGE-Large</div>
+              </div>
+            </div>
+            <div class="form-help">已选 <b id="modelPickedCount">0</b> 个模型</div>
+          </div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">使用领域 <span class="muted text-sm" style="font-weight:400;">多选</span></label>
+          <div class="chips" id="fieldChips">
+            <div class="chip field-chip" data-tag="知识库">知识库</div>
+            <div class="chip field-chip" data-tag="向量化">向量化</div>
+            <div class="chip field-chip" data-tag="对话">对话</div>
+            <div class="chip field-chip" data-tag="编程">编程</div>
+            <div class="chip field-chip" data-tag="业务">业务</div>
+          </div>
+          <div class="field-add">
+            <input class="form-input" id="fieldCustom" placeholder="其他业务：输入标签名称，回车或点击添加" style="width:260px;" />
+            <button class="btn btn-secondary btn-sm" id="fieldAddBtn" type="button">添加标签</button>
+            <span class="form-help" style="margin:0 0 0 auto;">已选 <b id="fieldPickedCount">0</b> 个领域</span>
+          </div>
+          <div class="form-help">用于用量统计与成本分摊，建议按业务线勾选；自定义标签仅对当前密钥生效，可随时删除。</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">组织归属 <span class="muted text-sm" style="font-weight:400;">公司 · 部门 · 业务</span></label>
+          <div class="org-grid">
+            <div class="org-field">
+              <div class="org-lbl">公司</div>
+              <input class="form-input org-input" id="orgCompany" placeholder="输入或选择公司" autocomplete="off" />
+              <div class="org-drop"></div>
+            </div>
+            <div class="org-field">
+              <div class="org-lbl">部门</div>
+              <input class="form-input org-input" id="orgDept" placeholder="输入或选择部门" autocomplete="off" />
+              <div class="org-drop"></div>
+            </div>
+            <div class="org-field">
+              <div class="org-lbl">业务</div>
+              <input class="form-input org-input" id="orgBusiness" placeholder="输入或选择业务线" autocomplete="off" />
+              <div class="org-drop"></div>
+            </div>
+          </div>
+          <div class="form-help">聚焦时展示已有选项，输入可过滤匹配；若选项不存在，直接输入新值保存即自动创建，并进入选项库供下次选择。组织信息用于成本归属与按部门分摊。</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">限流与并发</label>
+          <div class="limit-rows">
+            <div class="limit-row" id="limit-rpm">
+              <div class="limit-name">RPM<div class="muted text-sm">请求次数 / 分钟</div></div>
+              <div class="radio-group limit-radio">
+                <div class="radio-opt active" data-limit="unlimited"><span class="radio-dot"></span>不限制</div>
+                <div class="radio-opt" data-limit="custom"><span class="radio-dot"></span>指定数值</div>
+              </div>
+              <input class="form-input limit-input" type="number" min="1" placeholder="如 3000" style="width:140px;" disabled />
+            </div>
+            <div class="limit-row" id="limit-tpm">
+              <div class="limit-name">TPM<div class="muted text-sm">Token 数 / 分钟</div></div>
+              <div class="radio-group limit-radio">
+                <div class="radio-opt active" data-limit="unlimited"><span class="radio-dot"></span>不限制</div>
+                <div class="radio-opt" data-limit="custom"><span class="radio-dot"></span>指定数值</div>
+              </div>
+              <input class="form-input limit-input" type="number" min="1" placeholder="如 1000000" style="width:140px;" disabled />
+            </div>
+            <div class="limit-row" id="limit-cc">
+              <div class="limit-name">并发上限<div class="muted text-sm">同时在途请求数</div></div>
+              <div class="radio-group limit-radio">
+                <div class="radio-opt active" data-limit="unlimited"><span class="radio-dot"></span>不限制</div>
+                <div class="radio-opt" data-limit="custom"><span class="radio-dot"></span>指定数值</div>
+              </div>
+              <input class="form-input limit-input" type="number" min="1" placeholder="如 500" style="width:140px;" disabled />
+            </div>
+          </div>
+          <div class="form-help">超出限流阈值的请求将返回 429；不限制则继承账号默认额度（3000 RPM / 1M TPM / 500 并发）。</div>
+        </div>
+
+        <div class="form-row">
+          <label class="form-label">IP 白名单</label>
+          <textarea class="form-textarea" placeholder="留空表示不限制；每行一个 CIDR，例如 10.0.0.0/8" style="min-height:70px;"></textarea>
+        </div>
+
+        <div class="form-row" style="margin-bottom:0;">
+          <label class="form-label">备注</label>
+          <input class="form-input" placeholder="选填，用于说明该密钥的用途" />
+        </div>
+        </div><!-- /adv-body -->
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCreate()">取消</button>
+        <button class="btn btn-primary" id="submitBtn" onclick="submitForm()">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .limit-rows { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; }
+    .limit-row { display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: #fff; }
+    .limit-row + .limit-row { border-top: 1px solid var(--border-light); }
+    .limit-name { width: 130px; font-size: 13.5px; font-weight: 500; flex-shrink: 0; }
+    .limit-radio { margin-right: 12px; }
+    .limit-input:disabled { background: var(--bg-soft); color: var(--text-tertiary); cursor: not-allowed; }
+    .field-add { display: flex; align-items: center; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+    .field-chip.custom { background: var(--accent-soft); color: var(--accent); border-style: dashed; }
+    .chip-x {
+      margin-left: 6px; font-size: 14px; line-height: 1; color: inherit; opacity: 0.55; cursor: pointer;
+    }
+    .chip-x:hover { opacity: 1; }
+    .field-mini {
+      display: inline-flex; align-items: center; height: 18px; padding: 0 6px; border-radius: 4px;
+      font-size: 11px; background: #F3F4F6; color: var(--text-secondary);
+    }
+    /* 组织归属（公司/部门/业务：可下拉选择，可输入新建） */
+    .org-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .org-field { position: relative; }
+    .org-lbl { font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+    .org-drop {
+      display: none; position: absolute; top: 100%; left: 0; right: 0; z-index: 30; margin-top: 4px;
+      background: #fff; border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1); max-height: 208px; overflow-y: auto;
+    }
+    .org-drop.open { display: block; }
+    .org-opt { padding: 7px 12px; font-size: 12.5px; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+    .org-opt:hover { background: var(--bg-soft); }
+    .org-opt.new { color: var(--primary); font-weight: 500; border-top: 1px dashed var(--border); }
+    .org-input.is-new { border-color: var(--accent); }
+    .org-tip {
+      position: fixed; right: 24px; bottom: 24px; z-index: 2000;
+      background: var(--text-primary); color: #fff; font-size: 12.5px;
+      padding: 10px 16px; border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+      opacity: 0; transform: translateY(8px); transition: all 0.2s ease; pointer-events: none;
+    }
+    .org-tip.show { opacity: 1; transform: none; }
+    /* 高级配置分界线：名称（必填）之后均为高级项，默认折叠，点击展开 */
+    .adv-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; cursor: pointer; user-select: none; }
+    .adv-divider .line { flex: 1; height: 1px; background: var(--border-light); }
+    .adv-divider .cap {
+      font-size: 12px; font-weight: 600; color: var(--text-tertiary);
+      letter-spacing: 2px; display: flex; align-items: center; gap: 6px; flex-shrink: 0;
+    }
+    .adv-divider:hover .cap { color: var(--text-secondary); }
+    .adv-divider .chev { transition: transform 0.18s ease; flex-shrink: 0; }
+    .adv-divider.open .chev { transform: rotate(90deg); }
+    .adv-summary { font-size: 11.5px; color: var(--text-tertiary); font-weight: 400; letter-spacing: 0; }
+    .adv-body { display: none; }
+    .adv-body.open { display: block; animation: advIn 0.18s ease; }
+    @keyframes advIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+    .adv-defaults {
+      margin: 0 0 16px; padding: 9px 14px; font-size: 12px; line-height: 1.7;
+      background: var(--bg-soft); border-radius: 8px; color: var(--text-tertiary);
+    }
+    .adv-defaults b { color: var(--text-secondary); font-weight: 500; }
+    @media (max-width: 640px) { .limit-row { flex-wrap: wrap; } .limit-name { width: 100%; } }
+  </style>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('developer');
+
+    /* ================= 数据 ================= */
+    var CURRENT_USER = 'zhang.san';   /* 演示：当前登录用户名 */
+    var role = 'admin';               /* 演示：当前角色 admin | user */
+
+    var keys = [
+      { name: '默认项目(907229)', id: 'kid=10048231', key: 'sk-604b...AKwx', created: '2026-01-20 01:15:07', lastUsed: '未使用', expiry: { type: 'never' }, models: null, fields: ['对话'], org: { company: '云创科技', dept: '算法平台部', business: '智能客服' }, rpm: null, tpm: null, cc: null, owner: 'zhang.san' },
+      { name: 'zcode-api-key', id: 'kid=10051186', key: 'sk-7c03...ii7m', created: '2026-02-16 00:15:06', lastUsed: '2026-04-25', expiry: { type: 'date', date: '2026-12-31' }, models: null, fields: ['编程'], org: { company: '云创科技', dept: '研发中心', business: '代码助手' }, rpm: 3000, tpm: 1000000, cc: 500, owner: 'zhang.san' },
+      { name: 'zhipu_glm_4_7', id: 'kid=10060342', key: 'sk-d9d6...QM4j', created: '2026-01-21 00:28:21', lastUsed: '2026-08-25', expiry: { type: 'date', date: '2026-11-15' }, models: ['GLM-4.7', 'GLM-4.6'], fields: ['对话', '编程'], org: { company: '云创科技', dept: '算法平台部', business: '代码助手' }, rpm: 1000, tpm: 400000, cc: 200, owner: 'zhang.san' },
+      { name: 'prod-main-key', id: 'kid=10071509', key: 'sk-a1b2...8Kwx', created: '2026-03-12 14:32:18', lastUsed: '2026-10-09', expiry: { type: 'warn', date: '2026-10-20' }, models: ['DeepSeek-V3.2', 'DeepSeek-R1'], fields: ['业务'], org: { company: '数联集团', dept: '数据智能部', business: '风控合规' }, rpm: 3000, tpm: 1000000, cc: 500, owner: 'li.si' },
+      { name: 'test-env-key', id: 'kid=10082774', key: 'sk-b2c3...7m2x', created: '2026-04-08 09:48:55', lastUsed: '2026-09-30', expiry: { type: 'expired', date: '2026-09-30' }, models: ['GLM-4.5-Air'], fields: ['编程'], org: { company: '数联集团', dept: '研发中心', business: '代码助手' }, rpm: 100, tpm: 50000, cc: 20, owner: 'li.si' },
+      { name: 'batch-job-key', id: 'kid=10093368', key: 'sk-c3d4...9Pqw', created: '2026-05-22 16:20:33', lastUsed: '未使用', expiry: { type: 'never' }, models: ['DeepSeek-V3.2', 'DeepSeek-R1'], fields: ['向量化'], org: { company: '数联集团', dept: '数据智能部', business: '批量处理' }, rpm: 6000, tpm: 2000000, cc: 800, owner: 'wang.wu' },
+      { name: 'analytics-svc', id: 'kid=10104512', key: 'sk-d4e5...3Kjm', created: '2026-06-15 11:05:42', lastUsed: '2026-10-08', expiry: { type: 'date', date: '2027-06-30' }, models: ['GLM-Embedding-3'], fields: ['业务', '数据分析'], org: { company: '智谱生态', dept: '产品技术部', business: '数据分析' }, rpm: 500, tpm: 200000, cc: 100, owner: 'wang.wu' },
+      { name: 'embedding-only', id: 'kid=10115627', key: 'sk-e5f6...5Nlp', created: '2026-07-03 13:42:09', lastUsed: '2026-10-10', expiry: { type: 'date', date: '2027-01-31' }, models: ['GLM-Embedding-3', 'BGE-Large'], fields: ['知识库', '向量化'], org: { company: '智谱生态', dept: '基础架构部', business: '知识问答' }, rpm: 1000, tpm: 400000, cc: 50, owner: 'zhao.liu' }
+    ];
+
+    /* ================= 渲染 ================= */
+    function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+
+    function expiryCell(e) {
+      if (e.type === 'never') return '<span class="muted">永久</span>';
+      if (e.type === 'warn') return '<span class="tag tag-warning">' + esc(e.date) + ' · 即将过期</span>';
+      if (e.type === 'expired') return '<span class="tag tag-danger">' + esc(e.date) + ' · 已过期</span>';
+      return '<span class="muted">' + esc(e.date) + '</span>';
+    }
+
+    function modelsCell(m) {
+      if (!m) return '<span class="tag tag-accent">模型不限制</span>';
+      var html = m.slice(0, 2).map(function (x) { return '<span class="tag">' + esc(x) + '</span>'; }).join(' ');
+      if (m.length > 2) html += ' <span class="muted text-sm">+' + (m.length - 2) + '</span>';
+      return html;
+    }
+
+    function fieldsCell(f) {
+      if (!f || !f.length) return '';
+      return '<div style="margin-top:5px; display:flex; gap:4px; flex-wrap:wrap;">'
+        + f.map(function (x) { return '<span class="field-mini">' + esc(x) + '</span>'; }).join('')
+        + '</div>';
+    }
+
+    function orgCell(o) {
+      if (!o || (!o.company && !o.dept && !o.business)) return '';
+      var s = [o.company, o.dept, o.business].filter(Boolean).join(' · ');
+      return '<div style="margin-top:3px; font-size:11.5px; color:var(--text-tertiary);">🏢 ' + esc(s) + '</div>';
+    }
+
+    function fmtNum(n) {
+      if (n >= 1000000) return (n / 1000000).toFixed(n % 1000000 === 0 ? 0 : 1) + 'M';
+      if (n >= 1000) return (n / 1000).toFixed(n % 1000 === 0 ? 0 : 1) + 'K';
+      return String(n);
+    }
+
+    function limitCell(k) {
+      if (k.rpm == null && k.tpm == null && k.cc == null) return '<span class="muted">不限制</span>';
+      return '<span class="mono text-sm">' + (k.rpm == null ? '∞' : fmtNum(k.rpm)) + ' / '
+        + (k.tpm == null ? '∞' : fmtNum(k.tpm)) + ' / '
+        + (k.cc == null ? '∞' : k.cc) + '</span>';
+    }
+
+    function fieldCell(k) {
+      var f = document.getElementById('fieldSelect').value;
+      if (f === 'name') return k.name;
+      if (f === 'key') return k.id + ' ' + k.key;
+      if (f === 'created') return k.created;
+      if (f === 'lastUsed') return k.lastUsed;
+      if (f === 'expiry') return k.expiry.type === 'never' ? '永久' : k.expiry.date;
+      if (f === 'owner') return k.owner;
+      return '';
+    }
+
+    function visibleKeys() {
+      var val = (document.getElementById('fieldValue').value || '').trim().toLowerCase();
+      return keys.filter(function (k) {
+        if (role === 'user' && k.owner !== CURRENT_USER) return false;      /* 普通用户：仅自己的 */
+        if (val && fieldCell(k).toLowerCase().indexOf(val) < 0) return false;
+        return true;
+      });
+    }
+
+    function render() {
+      var rows = visibleKeys();
+      document.getElementById('keyTableBody').innerHTML = rows.map(function (k, i) {
+        return '<tr>'
+          + '<td><b>' + esc(k.name) + '</b>' + fieldsCell(k.fields) + orgCell(k.org) + '</td>'
+          + '<td class="mono">' + esc(k.id) + '</td>'
+          + '<td class="mono">' + esc(k.key) + '</td>'
+          + '<td class="muted">' + esc(k.created) + '</td>'
+          + '<td class="muted">' + esc(k.lastUsed) + '</td>'
+          + '<td>' + expiryCell(k.expiry) + '</td>'
+          + '<td>' + modelsCell(k.models) + '</td>'
+          + '<td>' + limitCell(k) + '</td>'
+          + '<td class="muted">' + esc(k.owner) + '</td>'
+          + '<td class="text-right">'
+          + '<span class="link" onclick="openEdit(' + k._i + ')">更新</span> '
+          + '<span style="color:var(--border);">|</span> '
+          + '<span class="link" onclick="renewKey(' + k._i + ')">延期</span> '
+          + '<span style="color:var(--border);">|</span> '
+          + '<span class="link" style="color:var(--danger);" onclick="deleteKey(' + k._i + ')">删除</span>'
+          + '</td></tr>';
+      }).join('') || '<tr><td colspan="10"><div class="empty" style="padding:48px 0;">暂无数据</div></td></tr>';
+
+      document.getElementById('totalTip').textContent = '共 ' + rows.length + ' 条';
+      document.getElementById('countTip').textContent =
+        role === 'user' ? '普通用户视角 · 仅显示 zhang.san 的密钥' : '管理员视角 · 显示全部用户';
+    }
+
+    /* 索引绑定（删除/延期用） */
+    keys.forEach(function (k, i) { k._i = i; });
+
+    /* ================= 角色切换 ================= */
+    function setRole(r) {
+      role = r;
+      document.querySelectorAll('#roleSwitch .seg').forEach(function (s) {
+        s.classList.toggle('active', s.dataset.role === r);
+      });
+      document.getElementById('curRole').textContent = r === 'admin' ? '超级管理员' : '普通用户';
+      document.getElementById('roleTip').innerHTML = r === 'admin'
+        ? '您是超级管理员，可查看<b>全部用户</b>的 API Key，并支持按创建人筛选。'
+        : '您是普通用户，仅可查看<b>您本人（' + CURRENT_USER + '）</b>的 API Key。';
+      render();
+    }
+    document.querySelectorAll('#roleSwitch .seg').forEach(function (s) {
+      s.addEventListener('click', function () { setRole(s.dataset.role); });
+    });
+
+    /* 条件下拉 + 参数值输入 联动 */
+    var FIELD_PLACEHOLDER = {
+      name: '输入名称关键字',
+      key: '输入 API Key / ID',
+      created: '选择日期',
+      lastUsed: '选择日期',
+      expiry: '如 2026-10 或 永久',
+      owner: '输入创建人，如 li.si'
+    };
+    var fieldSelect = document.getElementById('fieldSelect');
+    var fieldValue = document.getElementById('fieldValue');
+    fieldSelect.addEventListener('change', function () {
+      var f = this.value;
+      var isDate = (f === 'created' || f === 'lastUsed');
+      fieldValue.type = isDate ? 'date' : 'text';
+      fieldValue.placeholder = FIELD_PLACEHOLDER[f];
+      fieldValue.value = '';
+      render();
+    });
+    fieldValue.addEventListener('input', render);
+    fieldValue.addEventListener('keydown', function (e) { if (e.key === 'Enter') render(); });
+
+    /* ================= 行操作 ================= */
+    function deleteKey(i) {
+      if (!confirm('确认删除该 API Key？删除后立即失效且不可恢复。')) return;
+      keys = keys.filter(function (k) { return k._i !== i; });
+      render();
+    }
+    function renewKey(i) {
+      var k = keys.filter(function (x) { return x._i === i; })[0];
+      if (!k) return;
+      if (k.expiry.type === 'never') { alert('该密钥永久有效，无需延期。'); return; }
+      var d = new Date(k.expiry.date); d.setFullYear(d.getFullYear() + 1);
+      k.expiry = { type: 'date', date: d.toISOString().slice(0, 10) };
+      render();
+    }
+
+    /* ================= 创建 / 更新弹框 ================= */
+    var editIndex = null;   /* null = 创建模式；数值 = 更新模式（对应 keys 的 _i） */
+
+    function setRadioActive(groupSel, val) {
+      document.querySelectorAll(groupSel + ' .radio-opt').forEach(function (o) {
+        o.classList.toggle('active', (o.dataset.expiry || o.dataset.scope) === val);
+      });
+    }
+
+    function openModal(i) {
+      editIndex = (typeof i === 'number') ? i : null;
+      var k = editIndex !== null ? keys.filter(function (x) { return x._i === editIndex; })[0] : null;
+      if (editIndex !== null && !k) return;
+
+      /* 标题 / 副标题 / 按钮 */
+      document.getElementById('modalTitle').textContent = k ? '更新 API Key' : '创建 API Key';
+      document.getElementById('modalSub').textContent = k
+        ? '修改密钥名称、过期时间与可访问的模型范围，保存后立即生效。'
+        : '为密钥指定可访问的模型范围，未指定的模型将无法调用。';
+      document.getElementById('submitBtn').textContent = k ? '更新' : '创建';
+
+      /* 名称 */
+      document.getElementById('keyName').value = k ? k.name : '';
+
+      /* 过期时间 */
+      var isNever = !k || k.expiry.type === 'never';
+      setRadioActive('#expiryGroup', isNever ? 'never' : 'date');
+      document.getElementById('expiryDateWrap').style.display = isNever ? 'none' : 'block';
+      if (!isNever) document.getElementById('expiryDate').value = k.expiry.date;
+
+      /* 可用模型 */
+      var isAll = !k || !k.models;
+      setRadioActive('#modelScopeGroup', isAll ? 'all' : 'custom');
+      document.getElementById('modelPickerWrap').style.display = isAll ? 'none' : 'block';
+      document.querySelectorAll('.model-chip').forEach(function (c) {
+        c.classList.toggle('active', !isAll && k.models.indexOf(c.textContent) >= 0);
+      });
+      refreshPicked();
+
+      /* 使用领域（含自定义标签回显） */
+      resetFieldChips(k ? k.fields : null);
+
+      /* 组织归属（公司/部门/业务）回显 */
+      document.getElementById('orgCompany').value = k && k.org ? (k.org.company || '') : '';
+      document.getElementById('orgDept').value = k && k.org ? (k.org.dept || '') : '';
+      document.getElementById('orgBusiness').value = k && k.org ? (k.org.business || '') : '';
+
+      /* 高级配置：创建默认折叠（用默认参数即可），编辑已有 Key 自动展开便于核对 */
+      setAdvOpen(editIndex !== null);
+
+      /* 限流与并发 */
+      setLimit('rpm', k ? k.rpm : null);
+      setLimit('tpm', k ? k.tpm : null);
+      setLimit('cc', k ? k.cc : null);
+
+      document.getElementById('createModal').classList.add('show');
+    }
+
+    function openCreate() { openModal(null); }
+    function openEdit(i) { openModal(i); }
+    function closeCreate() { document.getElementById('createModal').classList.remove('show'); }
+
+    document.querySelectorAll('#expiryGroup .radio-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        document.querySelectorAll('#expiryGroup .radio-opt').forEach(function (o) { o.classList.remove('active'); });
+        opt.classList.add('active');
+        document.getElementById('expiryDateWrap').style.display = opt.dataset.expiry === 'date' ? 'block' : 'none';
+      });
+    });
+
+    document.querySelectorAll('#modelScopeGroup .radio-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        document.querySelectorAll('#modelScopeGroup .radio-opt').forEach(function (o) { o.classList.remove('active'); });
+        opt.classList.add('active');
+        document.getElementById('modelPickerWrap').style.display = opt.dataset.scope === 'custom' ? 'block' : 'none';
+      });
+    });
+
+    function refreshPicked() {
+      document.getElementById('modelPickedCount').textContent = document.querySelectorAll('.model-chip.active').length;
+    }
+    document.querySelectorAll('.model-chip').forEach(function (chip) {
+      chip.addEventListener('click', function () { chip.classList.toggle('active'); refreshPicked(); });
+    });
+
+    /* ================= 使用领域（多选 + 自定义标签） ================= */
+    var FIELD_PRESETS = ['知识库', '向量化', '对话', '编程', '业务'];
+    var fieldChips = document.getElementById('fieldChips');
+
+    function refreshFieldPicked() {
+      document.getElementById('fieldPickedCount').textContent = fieldChips.querySelectorAll('.field-chip.active').length;
+    }
+
+    function findFieldChip(name) {
+      return Array.prototype.find.call(fieldChips.querySelectorAll('.field-chip'), function (c) {
+        return c.dataset.tag === name;
+      }) || null;
+    }
+
+    /* 添加自定义标签：已存在则激活，否则新建虚线标签（带删除按钮） */
+    function addFieldTag(name, silent) {
+      name = (name || '').trim().replace(/^其他业务[:：\s]*/, '');
+      if (!name) { if (!silent) document.getElementById('fieldCustom').focus(); return; }
+      if (name.length > 12) { (window.toast || function (m) { alert(m); })('标签名称不能超过 12 个字符'); return; }
+      var existed = findFieldChip(name);
+      if (existed) {
+        existed.classList.add('active');
+      } else {
+        var chip = document.createElement('div');
+        chip.className = 'chip field-chip custom active';
+        chip.dataset.tag = name;
+        chip.appendChild(document.createTextNode(name));
+        var x = document.createElement('span');
+        x.className = 'chip-x'; x.title = '删除该标签'; x.textContent = '×';
+        chip.appendChild(x);
+        fieldChips.appendChild(chip);
+      }
+      if (!silent) document.getElementById('fieldCustom').value = '';
+      refreshFieldPicked();
+      return true;
+    }
+
+    /* 事件委托：点标签切换选中；点 × 删除自定义标签 */
+    fieldChips.addEventListener('click', function (e) {
+      var x = e.target.closest('.chip-x');
+      if (x) { x.closest('.field-chip').remove(); refreshFieldPicked(); return; }
+      var chip = e.target.closest('.field-chip');
+      if (!chip) return;
+      chip.classList.toggle('active');
+      refreshFieldPicked();
+    });
+
+    document.getElementById('fieldAddBtn').addEventListener('click', function () { addFieldTag(document.getElementById('fieldCustom').value); });
+    document.getElementById('fieldCustom').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); addFieldTag(this.value); }
+    });
+
+    /* 打开弹框时回显：先清掉自定义标签，再按记录勾选（非预置项重建为自定义标签） */
+    function resetFieldChips(fields) {
+      fieldChips.querySelectorAll('.field-chip.custom').forEach(function (c) { c.remove(); });
+      fieldChips.querySelectorAll('.field-chip').forEach(function (c) { c.classList.remove('active'); });
+      (fields || []).forEach(function (f) { addFieldTag(f, true); });
+      refreshFieldPicked();
+    }
+
+    function readFields() {
+      return Array.prototype.map.call(fieldChips.querySelectorAll('.field-chip.active'), function (c) {
+        return c.dataset.tag;
+      });
+    }
+
+    /* ================= 组织归属（公司/部门/业务：下拉选择 + 输入新建） ================= */
+    var ORG_LABEL = { company: '公司', dept: '部门', business: '业务' };
+    var ORG_POOL = {
+      company: ['云创科技', '数联集团', '智谱生态', '创新工场'],
+      dept: ['算法平台部', '研发中心', '数据智能部', '产品技术部', '基础架构部'],
+      business: ['智能客服', '代码助手', '风控合规', '批量处理', '数据分析', '知识问答', '营销文案', '文档总结']
+    };
+
+    /* 轻量 toast（右下角） */
+    var orgTipEl = null, orgTipTimer = null;
+    function showToast(msg) {
+      if (!orgTipEl) { orgTipEl = document.createElement('div'); orgTipEl.className = 'org-tip'; document.body.appendChild(orgTipEl); }
+      orgTipEl.textContent = msg;
+      orgTipEl.classList.add('show');
+      clearTimeout(orgTipTimer);
+      orgTipTimer = setTimeout(function () { orgTipEl.classList.remove('show'); }, 2600);
+    }
+
+    function initOrgField(type, inputEl) {
+      var drop = inputEl.parentElement.querySelector('.org-drop');
+
+      function openDrop() {
+        var q = inputEl.value.trim().toLowerCase();
+        var list = ORG_POOL[type].filter(function (o) { return !q || o.toLowerCase().indexOf(q) > -1; });
+        var exact = ORG_POOL[type].some(function (o) { return o.toLowerCase() === q; });
+        var h = list.map(function (o) { return '<div class="org-opt" data-v="' + esc(o) + '">' + esc(o) + '</div>'; }).join('');
+        if (q && !exact) {
+          h += '<div class="org-opt new" data-v="' + esc(inputEl.value.trim()) + '">＋ 创建新' + ORG_LABEL[type] + '「' + esc(inputEl.value.trim()) + '」</div>';
+        }
+        drop.innerHTML = h;
+        drop.classList.toggle('open', !!h);
+        inputEl.classList.toggle('is-new', !!(q && !exact));
+      }
+
+      function pick(val, isNew) {
+        inputEl.value = val;
+        inputEl.classList.remove('is-new');
+        if (isNew) {
+          ORG_POOL[type].push(val);
+          showToast('已创建新' + ORG_LABEL[type] + '「' + val + '」，保存后进入选项库');
+        }
+        drop.classList.remove('open');
+      }
+
+      inputEl.addEventListener('focus', openDrop);
+      inputEl.addEventListener('input', openDrop);
+      inputEl.addEventListener('blur', function () {
+        /* blur 时输入框有值且为新值 → 自动创建并入库 */
+        setTimeout(function () {
+          drop.classList.remove('open');
+          var v = inputEl.value.trim();
+          if (v && ORG_POOL[type].indexOf(v) < 0) {
+            ORG_POOL[type].push(v);
+            inputEl.classList.remove('is-new');
+            showToast('已创建新' + ORG_LABEL[type] + '「' + v + '」，保存后进入选项库');
+          }
+        }, 160);
+      });
+      inputEl.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          var first = drop.querySelector('.org-opt');
+          if (first) pick(first.dataset.v, first.classList.contains('new'));
+          else drop.classList.remove('open');
+        } else if (e.key === 'Escape') {
+          drop.classList.remove('open');
+        }
+      });
+      drop.addEventListener('mousedown', function (e) {
+        var opt = e.target.closest('.org-opt');
+        if (!opt) return;
+        e.preventDefault(); /* 阻止 blur 先触发 */
+        pick(opt.dataset.v, opt.classList.contains('new'));
+      });
+    }
+
+    initOrgField('company', document.getElementById('orgCompany'));
+    initOrgField('dept', document.getElementById('orgDept'));
+    initOrgField('business', document.getElementById('orgBusiness'));
+
+    /* ================= 高级配置折叠 / 展开 ================= */
+    var advDivider = document.getElementById('advDivider');
+    var advBody = document.getElementById('advBody');
+    var advSummary = document.getElementById('advSummary');
+
+    function setAdvOpen(open) {
+      advBody.classList.toggle('open', open);
+      advDivider.classList.toggle('open', open);
+      advSummary.textContent = open ? '点击收起' : '默认参数已自动设置，点击展开';
+    }
+    advDivider.addEventListener('click', function () {
+      setAdvOpen(!advBody.classList.contains('open'));
+    });
+
+    /* ================= 限流与并发 ================= */
+    function setLimit(id, val) {
+      var row = document.getElementById('limit-' + id);
+      var custom = val != null && val !== '';
+      row.querySelectorAll('.radio-opt').forEach(function (o) {
+        o.classList.toggle('active', (o.dataset.limit === 'custom') === custom);
+      });
+      var input = row.querySelector('.limit-input');
+      input.disabled = !custom;
+      input.value = custom ? val : '';
+    }
+
+    function readLimit(id) {
+      var row = document.getElementById('limit-' + id);
+      var custom = row.querySelector('.radio-opt.active').dataset.limit === 'custom';
+      if (!custom) return null;
+      var n = parseInt(row.querySelector('.limit-input').value, 10);
+      return n > 0 ? n : null;
+    }
+
+    document.querySelectorAll('.limit-row .radio-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        var row = opt.closest('.limit-row');
+        row.querySelectorAll('.radio-opt').forEach(function (o) { o.classList.remove('active'); });
+        opt.classList.add('active');
+        var input = row.querySelector('.limit-input');
+        var custom = opt.dataset.limit === 'custom';
+        input.disabled = !custom;
+        if (custom) { input.focus(); } else { input.value = ''; }
+      });
+    });
+
+    function uuid() {
+      return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
+        var r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+      });
+    }
+
+    function submitForm() {
+      var name = document.getElementById('keyName').value.trim();
+      if (!name) { document.getElementById('keyName').focus(); return; }
+
+      var scope = document.querySelector('#modelScopeGroup .radio-opt.active').dataset.scope;
+      var models = null;
+      if (scope === 'custom') {
+        models = Array.prototype.map.call(document.querySelectorAll('.model-chip.active'), function (c) { return c.textContent; });
+        if (!models.length) { document.getElementById('modelPickerWrap').scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+      }
+      var expiry = { type: 'never' };
+      if (document.querySelector('#expiryGroup .radio-opt.active').dataset.expiry === 'date') {
+        expiry = { type: 'date', date: document.getElementById('expiryDate').value || '2027-10-10' };
+      }
+      var rpm = readLimit('rpm'), tpm = readLimit('tpm'), cc = readLimit('cc');
+      var fields = readFields();
+
+      /* 组织归属：输入值若为新的，先注册进选项库 */
+      var org = {
+        company: document.getElementById('orgCompany').value.trim(),
+        dept: document.getElementById('orgDept').value.trim(),
+        business: document.getElementById('orgBusiness').value.trim()
+      };
+      Object.keys(org).forEach(function (t) {
+        if (org[t] && ORG_POOL[t].indexOf(org[t]) < 0) {
+          ORG_POOL[t].push(org[t]);
+          showToast('已创建新' + ORG_LABEL[t] + '「' + org[t] + '」，保存后进入选项库');
+        }
+      });
+
+      closeCreate();
+
+      if (editIndex !== null) {
+        /* 更新模式：修改原有记录（创建人不变） */
+        var k = keys.filter(function (x) { return x._i === editIndex; })[0];
+        k.name = name; k.expiry = expiry; k.models = models; k.fields = fields; k.org = org;
+        k.rpm = rpm; k.tpm = tpm; k.cc = cc;
+        document.getElementById('createdText').innerHTML = 'API Key「<b>' + esc(name) + '</b>」已更新，配置立即生效。';
+      } else {
+        /* 创建模式：新增记录并展示完整密钥 */
+        var full = 'sk-' + uuid();
+        keys.unshift({
+          name: name, id: 'kid=' + (10000000 + Math.floor(Math.random() * 90000000)),
+          key: full.slice(0, 7) + '...' + full.slice(-4),
+          created: new Date().toISOString().replace('T', ' ').slice(0, 19),
+          lastUsed: '未使用', expiry: expiry, models: models, fields: fields, org: org, rpm: rpm, tpm: tpm, cc: cc, owner: CURRENT_USER, _i: Date.now()
+        });
+        document.getElementById('createdText').innerHTML = 'API Key 创建成功，请立即复制保存（仅展示一次）：'
+          + '<span class="mono" style="color:var(--text-primary); font-weight:600;">' + full + '</span>';
+      }
+
+      document.getElementById('createdNotice').style.display = 'flex';
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    document.getElementById('createModal').addEventListener('click', function (e) {
+      if (e.target === this) closeCreate();
+    });
+
+    render();
+  </script>
+</body>
+</html>

@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>帮助与反馈 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    .help-layout { display: grid; grid-template-columns: 2fr 1fr; gap: 16px; align-items: start; }
+
+    /* 快捷入口 */
+    .help-entries { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 16px; }
+    .help-entry {
+      display: flex; align-items: center; gap: 10px; padding: 14px 16px;
+      background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md);
+      transition: all .15s; cursor: pointer;
+    }
+    .help-entry:hover { border-color: var(--text-quaternary); box-shadow: var(--shadow-xs); }
+    .help-entry .he-icon {
+      width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--accent-soft); color: var(--accent);
+    }
+    .help-entry .he-icon svg { width: 16px; height: 16px; }
+    .help-entry .he-title { font-size: 13.5px; font-weight: 500; }
+    .help-entry .he-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+    /* FAQ */
+    .faq-group-title { font-size: 12px; color: var(--text-tertiary); margin: 18px 0 8px; }
+    .faq-group-title:first-child { margin-top: 0; }
+    .faq-item { border-bottom: 1px solid var(--border-light); }
+    .faq-item:last-child { border-bottom: 0; }
+    .faq-q {
+      display: flex; align-items: center; gap: 10px; padding: 13px 0;
+      font-size: 13.5px; cursor: pointer; user-select: none;
+    }
+    .faq-q .caret { margin-left: auto; color: var(--text-tertiary); transition: transform .18s; }
+    .faq-q .caret svg { width: 14px; height: 14px; }
+    .faq-item.open .faq-q .caret { transform: rotate(180deg); }
+    .faq-item.open .faq-q { color: var(--accent); }
+    .faq-a { display: none; padding: 0 0 14px 0; font-size: 13px; line-height: 1.8; color: var(--text-secondary); }
+    .faq-item.open .faq-a { display: block; }
+    .faq-a code { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; background: var(--bg-soft); border: 1px solid var(--border-light); border-radius: 4px; padding: 1px 5px; }
+
+    /* 反馈表单 */
+    .fb-success {
+      display: none; align-items: center; gap: 10px;
+      padding: 14px 16px; border-radius: var(--radius-md);
+      background: var(--success-soft); color: var(--success); font-size: 13.5px; margin-bottom: 16px;
+    }
+    .fb-success.show { display: flex; }
+    .fb-success svg { width: 18px; height: 18px; }
+    .contact-row { display: flex; align-items: flex-start; gap: 10px; padding: 12px 0; border-bottom: 1px solid var(--border-light); font-size: 13px; }
+    .contact-row:last-child { border-bottom: 0; }
+    .contact-row svg { width: 15px; height: 15px; color: var(--text-tertiary); margin-top: 2px; }
+    @media (max-width: 1080px) {
+      .help-layout { grid-template-columns: 1fr; }
+      .help-entries { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">帮助与反馈</div>
+              <div class="page-subtitle">常见问题解答、问题反馈与技术支持渠道</div>
+            </div>
+            <div class="page-actions">
+              <a class="btn btn-secondary" href="api-docs.html">接口文档</a>
+              <button class="btn btn-primary" onclick="document.getElementById('fbForm').scrollIntoView({behavior:'smooth'})">提交反馈</button>
+            </div>
+          </div>
+
+          <!-- 快捷入口 -->
+          <div class="help-entries">
+            <a class="help-entry" href="api-docs.html">
+              <div class="he-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+              <div><div class="he-title">接口文档</div><div class="he-sub">鉴权、参数与错误码</div></div>
+            </a>
+            <a class="help-entry" href="pricing.html">
+              <div class="he-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg></div>
+              <div><div class="he-title">产品定价</div><div class="he-sub">模型单价与计费规则</div></div>
+            </a>
+            <a class="help-entry" href="ops-center.html">
+              <div class="he-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2"/><rect x="2" y="14" width="20" height="8" rx="2"/></svg></div>
+              <div><div class="he-title">服务状态</div><div class="he-sub">模型可用性与告警</div></div>
+            </a>
+            <a class="help-entry" href="user-center.html">
+              <div class="he-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M4 21v-2a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v2"/></svg></div>
+              <div><div class="he-title">工单记录</div><div class="he-sub">我提交的问题进度</div></div>
+            </a>
+          </div>
+
+          <div class="help-layout">
+            <div>
+              <!-- FAQ -->
+              <div class="card mb-16">
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">常见问题</div>
+                    <div class="card-subtitle">共 12 条 · 点击展开查看解答</div>
+                  </div>
+                </div>
+                <div class="card-body" id="faqList">
+                  <div class="faq-group-title">账号与计费</div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">如何获取 API Key？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">在 <a class="link" href="developer.html">API Key</a> 页面点击「创建 API Key」，指定可用模型、过期时间、限流与并发额度后生成。密钥格式为 <code>sk-&lt;uuid&gt;</code>，<b>仅在创建成功时完整展示一次</b>，请立即保存到密钥管理服务中。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">费用是怎么计算的？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">按 Token 计费，输入与输出分别计价，多模态图片按 <code>⌈长 × 宽 / 750⌉</code> 折算为视觉 Token 计入输入。每笔调用可在<a class="link" href="usage-logs.html">使用日志</a>查看明细，在<a class="link" href="cost-statistics.html">成本统计</a>查看聚合报表。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">余额不足会怎样？如何设置提醒？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">余额为 0 时调用会返回 <code>402 insufficient_balance</code>，已产生的费用不受影响。可在<a class="link" href="user-center.html">用户中心 → 用量信息</a>开启余额预警（默认阈值 ¥50 / ¥10），触发后通过站内信与邮件提醒创建人。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">可以开发票吗？支持哪些类型？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">支持增值税普通发票（电子）与专用发票。进入<a class="link" href="orders.html">账单</a>页面选择账期后点击「开发票」；企业认证用户可开具专票，一般 1~3 个工作日寄出。</div>
+                  </div>
+
+                  <div class="faq-group-title">接口与调用</div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">返回 429 限流错误怎么处理？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">说明触发了 RPM / TPM / 并发限制。建议：① 客户端指数退避重试（1s → 2s → 4s）；② 读取响应头 <code>retry-after</code> 与 <code>x-ratelimit-remaining-tokens</code> 自适应节流；③ 在 API Key 配置中调高限流值或在<a class="link" href="help-feedback.html">工单</a>申请提额。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">是否兼容 OpenAI SDK？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">兼容。只需将 <code>base_url</code> 指向 <code>https://api.ai-studio.local/v1</code>、<code>api_key</code> 换成平台密钥即可，<code>chat.completions</code>、<code>embeddings</code>、流式与 <code>tools</code> 均可直接使用，详见<a class="link" href="api-docs.html">接口文档</a>。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">上下文长度超限（422）怎么办？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">先确认模型上下文窗口（模型广场可查），再裁剪历史消息或压缩长文本；知识密集型场景建议改用 RAG 检索注入，而非全量拼接。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">流式输出计费和非流式一样吗？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">一致，均按实际输入输出 Token 计费。若客户端中途断开，已生成的 Token 仍会计费。</div>
+                  </div>
+
+                  <div class="faq-group-title">模型与能力</div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">如何选择模型？对标关系是什么？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">通用对话选 <code>DeepSeek-V3.2</code>（性价比高）；复杂推理与数学选 <code>DeepSeek-R1</code>；多模态看图选 <code>GLM-4V</code>；向量化选 <code>GLM-Embedding-3</code>；需要极致稳定与英文场景可选 <code>GPT-4o</code> / <code>Claude 3.5</code>。可用<a class="link" href="model-config.html">模型广场</a>的对比视图横向评估。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">知识库文档解析失败怎么排查？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">常见原因：① 扫描件 PDF 未 OCR（请开启 OCR 解析）；② 单文件超 100 MB 或页数超 1000；③ 加密文档需先去密。解析失败详情可在<a class="link" href="knowledge-base.html">知识库</a>的文档列表查看错误日志。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">RAG 召回效果差，如何优化？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">建议调优顺序：① 提高切片质量（按语义分块而非固定长度）；② 调整 <code>top-k</code>（默认 8，可试 5/12）；③ 开启重排序（Rerank）模型；④ 对专业名词补充同义词表；⑤ 用「命中率 / 引用准确率」在<a class="link" href="rag-management.html">RAG 管理</a>的回放评测中量化验证。</div>
+                  </div>
+
+                  <div class="faq-item">
+                    <div class="faq-q">数据会被用于模型训练吗？<span class="caret"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></span></div>
+                    <div class="faq-a">不会。平台默认对所有请求与知识库数据<b>不用于训练</b>，传输全程 TLS 加密，存储支持静态加密；可在<a class="link" href="platform-config.html">平台配置 → 安全与合规</a>中调整日志保留周期。</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 提交反馈 -->
+              <div class="card" id="fbForm">
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">提交反馈 / 工单</div>
+                    <div class="card-subtitle">工作时间内 30 分钟响应，紧急问题请电话联系</div>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="fb-success" id="fbSuccess">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><polyline points="20 6 9 17 4 12"/></svg>
+                    <span>提交成功！工单号 <b id="fbNo">TK20261010021</b>，处理进度可在<a class="link" href="user-center.html">用户中心 → 工单记录</a>查看。</span>
+                  </div>
+
+                  <div class="form-row">
+                    <label class="form-label">问题类型 <span class="required">*</span></label>
+                    <div class="radio-group" id="fbType">
+                      <div class="radio-opt active" data-type="api"><span class="radio-dot"></span>接口调用异常</div>
+                      <div class="radio-opt" data-type="billing"><span class="radio-dot"></span>计费与账单</div>
+                      <div class="radio-opt" data-type="model"><span class="radio-dot"></span>模型效果</div>
+                      <div class="radio-opt" data-type="quota"><span class="radio-dot"></span>额度与提额</div>
+                      <div class="radio-opt" data-type="other"><span class="radio-dot"></span>其他建议</div>
+                    </div>
+                  </div>
+
+                  <div class="form-row">
+                    <label class="form-label">标题 <span class="required">*</span></label>
+                    <input class="form-input" id="fbTitle" placeholder="一句话描述问题，例如：/v1/chat/completions 偶发 503" />
+                  </div>
+
+                  <div class="form-row">
+                    <label class="form-label">详细描述 <span class="required">*</span></label>
+                    <textarea class="form-textarea" id="fbDesc" style="min-height:110px;" placeholder="请提供：触发时间、API Key ID（kid=）、请求 ID / TraceID、模型名称、完整的错误码与错误信息，便于快速定位。"></textarea>
+                    <div class="form-help">请勿粘贴完整密钥（sk-...），仅提供 Key ID（kid=...）即可。</div>
+                  </div>
+
+                  <div class="form-row row-2">
+                    <div>
+                      <label class="form-label">相关 API Key</label>
+                      <select class="form-select" id="fbKey">
+                        <option>不指定</option>
+                        <option>默认项目(907229) · kid=10048231</option>
+                        <option>zcode-api-key · kid=10051186</option>
+                        <option>prod-main-key · kid=10071509</option>
+                        <option>test-env-key · kid=10082774</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="form-label">优先级</label>
+                      <select class="form-select" id="fbLevel">
+                        <option>普通（1 个工作日）</option>
+                        <option>较高（4 小时）</option>
+                        <option>紧急（30 分钟，仅 P1 故障）</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div class="form-row row-2">
+                    <div>
+                      <label class="form-label">联系方式</label>
+                      <input class="form-input" id="fbContact" value="zhang.san@example.com" />
+                    </div>
+                    <div>
+                      <label class="form-label">附件</label>
+                      <div style="display:flex; align-items:center; gap:10px;">
+                        <button class="btn btn-secondary btn-sm">选择文件</button>
+                        <span class="text-sm muted">支持 png / jpg / log / txt，单个 ≤ 20 MB</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="form-row" style="margin-bottom:0;">
+                    <label class="form-label">授权排查</label>
+                    <label class="switch" style="vertical-align:middle;">
+                      <input type="checkbox" id="fbAuth" checked /><span class="switch-slider"></span>
+                    </label>
+                    <span class="text-sm muted" style="margin-left:8px;">允许工程师查询该时间段的调用日志与链路追踪数据</span>
+                  </div>
+                </div>
+                <div class="card-footer" style="justify-content:flex-end; display:flex; gap:8px;">
+                  <button class="btn btn-secondary" onclick="resetFb()">重置</button>
+                  <button class="btn btn-primary" onclick="submitFb()">提交</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右侧：联系方式 + 支持范围 -->
+            <div>
+              <div class="card mb-16">
+                <div class="card-header"><div class="card-title">技术支持渠道</div></div>
+                <div class="card-body">
+                  <div class="contact-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16v16H4z"/><polyline points="22,6 12,13 2,6"/></svg>
+                    <div><div>support@ai-studio.local</div><div class="muted text-sm">技术咨询 / 工单跟进</div></div>
+                  </div>
+                  <div class="contact-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    <div><div>400-800-1234（转 2）</div><div class="muted text-sm">紧急故障专线 7 × 24</div></div>
+                  </div>
+                  <div class="contact-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                    <div><div>企业微信支持群</div><div class="muted text-sm">企业认证客户专属，扫码入群</div></div>
+                  </div>
+                  <div class="contact-row">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                    <div><div>服务时间</div><div class="muted text-sm">工作日 9:00–21:00 · 节假日值班</div></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card mb-16">
+                <div class="card-header"><div class="card-title">响应 SLA</div></div>
+                <div class="card-body no-pad">
+                  <div class="table-wrap">
+                    <table>
+                      <thead><tr><th>级别</th><th>场景</th><th>响应</th></tr></thead>
+                      <tbody>
+                        <tr><td><span class="tag tag-danger">P1</span></td><td class="muted">服务不可用 / 大面积 5xx</td><td>30 分钟</td></tr>
+                        <tr><td><span class="tag tag-warning">P2</span></td><td class="muted">部分模型异常 / 性能劣化</td><td>4 小时</td></tr>
+                        <tr><td><span class="tag tag-info">P3</span></td><td class="muted">功能咨询 / 账单问题</td><td>1 个工作日</td></tr>
+                        <tr><td><span class="tag">P4</span></td><td class="muted">优化建议 / 需求登记</td><td>3 个工作日</td></tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header"><div class="card-title">自助排查清单</div></div>
+                <div class="card-body">
+                  <div class="text-sm muted" style="line-height:2;">
+                    ① 确认密钥未过期、未被删除<br>
+                    ② 确认模型在密钥白名单内<br>
+                    ③ 检查是否触发 429 限流<br>
+                    ④ 核对余额与配额是否充足<br>
+                    ⑤ 查看<a class="link" href="ops-center.html">服务状态</a>是否有在途故障<br>
+                    ⑥ 携带 TraceID 提交工单
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('help');
+
+    /* FAQ 折叠 */
+    document.querySelectorAll('.faq-item .faq-q').forEach(function (q) {
+      q.addEventListener('click', function () { q.parentElement.classList.toggle('open'); });
+    });
+
+    /* 问题类型单选 */
+    document.querySelectorAll('#fbType .radio-opt').forEach(function (opt) {
+      opt.addEventListener('click', function () {
+        document.querySelectorAll('#fbType .radio-opt').forEach(function (o) { o.classList.remove('active'); });
+        opt.classList.add('active');
+      });
+    });
+
+    /* 提交 */
+    function submitFb() {
+      var title = document.getElementById('fbTitle').value.trim();
+      var desc = document.getElementById('fbDesc').value.trim();
+      if (!title) { alert('请填写问题标题'); document.getElementById('fbTitle').focus(); return; }
+      if (!desc) { alert('请填写详细描述'); document.getElementById('fbDesc').focus(); return; }
+      document.getElementById('fbNo').textContent =
+        'TK' + new Date().toISOString().slice(0, 10).replace(/-/g, '') + String(Math.floor(Math.random() * 900) + 100);
+      document.getElementById('fbSuccess').classList.add('show');
+      document.getElementById('fbSuccess').scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function resetFb() {
+      document.getElementById('fbTitle').value = '';
+      document.getElementById('fbDesc').value = '';
+      document.querySelectorAll('#fbType .radio-opt').forEach(function (o, i) {
+        o.classList.toggle('active', i === 0);
+      });
+      document.getElementById('fbSuccess').classList.remove('show');
+    }
+  </script>
+</body>
+</html>

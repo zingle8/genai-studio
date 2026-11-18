@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>体验中心 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    .experience-wrap {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 40px 0 20px;
+    }
+    .experience-hero {
+      text-align: center;
+      margin-bottom: 28px;
+    }
+    .experience-hero h1 {
+      font-size: 26px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 6px;
+    }
+    .experience-hero h1 .hl {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+    }
+    .experience-hero p {
+      font-size: 14px;
+      color: var(--text-secondary);
+    }
+
+    /* 模型选择 */
+    .model-pick {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      max-width: 600px;
+      margin: 0 auto 12px;
+    }
+    .model-pick .pick-logo {
+      width: 24px; height: 24px; border-radius: 5px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display:flex; align-items:center; justify-content:center;
+      color:#fff; font-size:11px; font-weight:700;
+    }
+    .model-pick select {
+      border: none; outline: none; font-size: 14px; font-weight: 500;
+      background: transparent; cursor: pointer; color: var(--text-primary);
+    }
+    .model-pick .thinking-toggle {
+      margin-left: auto;
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 14px;
+      background: var(--primary-soft); color: var(--primary);
+      font-size: 12px; cursor: pointer;
+    }
+
+    /* 输入框 */
+    .chat-input-box {
+      max-width: 600px;
+      margin: 0 auto 16px;
+      background: #fff;
+      border: 2px solid var(--primary);
+      border-radius: 14px;
+      padding: 16px 18px;
+      box-shadow: 0 4px 20px rgba(42,111,249,0.08);
+    }
+    .chat-input-box textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      font-size: 14px;
+      min-height: 50px;
+      resize: none;
+      color: var(--text-primary);
+      line-height: 1.6;
+    }
+    .chat-input-box textarea::placeholder { color: var(--text-tertiary); }
+
+    .chat-input-tools {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .chat-input-tools .tag-pill {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 4px 10px; border-radius: 12px;
+      background: var(--primary-soft); color: var(--primary);
+      font-size: 12px;
+    }
+    .chat-input-tools .icon-btn {
+      width: 28px; height: 28px; border-radius: 6px;
+      background: var(--bg); color: var(--text-secondary);
+      display: flex; align-items: center; justify-content: center;
+    }
+    .chat-input-tools .icon-btn:hover { background: var(--primary-soft); color: var(--primary); }
+    .chat-input-tools .icon-btn svg { width: 14px; height: 14px; }
+    .chat-input-tools .send-btn {
+      margin-left: auto;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display:flex; align-items:center; justify-content:center;
+    }
+    .chat-input-tools .send-btn:hover { background: var(--primary-dark); }
+    .chat-input-tools .send-btn svg { width: 16px; height: 16px; }
+
+    /* 快捷场景 */
+    .scenario-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+    .scenario-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      background: #fff;
+      font-size: 13px;
+      color: var(--text-primary);
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .scenario-pill:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: var(--primary-soft);
+    }
+    .scenario-pill .emoji { font-size: 14px; }
+
+    /* 右侧模式切换按钮 */
+    .mode-buttons {
+      position: absolute;
+      right: 32px;
+      top: 24px;
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .mode-buttons .mp-btn {
+      height: 30px; padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: #fff;
+      font-size: 12.5px;
+      display: inline-flex; align-items: center; gap: 6px;
+      cursor: pointer;
+    }
+    .mode-buttons .mp-btn:hover { border-color: var(--primary); color: var(--primary); }
+    .mode-buttons .mp-btn svg { width: 12px; height: 12px; }
+    .mode-buttons .mp-btn.active {
+      background: var(--primary-soft); color: var(--primary); border-color: var(--primary);
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content" style="position:relative;">
+          <div class="mode-buttons">
+            <button class="mp-btn active">
+              <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+              特惠 Coding 套餐
+            </button>
+            <button class="mp-btn">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 3L4 14h7v7l9-11h-7z"/></svg>
+              PK 添加
+            </button>
+            <button class="mp-btn" style="border:0; background:transparent;">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+            </button>
+          </div>
+
+          <div class="experience-wrap">
+            <div class="experience-hero">
+              <h1>极速体验 <span class="hl">文本模型</span> 开启智能对话</h1>
+              <p>模型体验将按实际消耗计费，具体价格请遵守</p>
+            </div>
+
+            <div class="model-pick">
+              <div class="pick-logo">G</div>
+              <select>
+                <option>GLM-5.3</option>
+                <option>GPT-4o</option>
+                <option>Claude 3.5 Sonnet</option>
+                <option>文心 4.0</option>
+                <option>通义千问 Max</option>
+                <option>DeepSeek V3</option>
+              </select>
+              <span class="tag tag-success" style="background: transparent;">思考深度：Max</span>
+              <span class="thinking-toggle">
+                <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+                思考
+              </span>
+            </div>
+
+            <div class="chat-input-box">
+              <textarea>与我发指令，我可以完成对话聊天、创作文案、生成代码等多种任务</textarea>
+              <div class="chat-input-tools">
+                <button class="icon-btn" title="附件">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                </button>
+                <button class="icon-btn" title="插件">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6"/></svg>
+                </button>
+                <span class="tag-pill">
+                  <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  管理搜索标准版
+                  <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                </span>
+                <button class="send-btn" title="发送">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 15 22 2"/></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="scenario-row">
+              <button class="scenario-pill"><span class="emoji">📊</span> 数据洞察</button>
+              <button class="scenario-pill"><span class="emoji">💻</span> 前端开发</button>
+              <button class="scenario-pill"><span class="emoji">🎨</span> 沉浸扮演</button>
+              <button class="scenario-pill"><span class="emoji">✍️</span> 文学创作</button>
+              <button class="scenario-pill"><span class="emoji">🔬</span> 翻译专家</button>
+            </div>
+          </div>
+
+          <!-- 历史会话记录（折叠） -->
+          <div style="max-width: 920px; margin: 60px auto 0;">
+            <div class="tabs" style="border:0;">
+              <div class="tab active">最近对话</div>
+              <div class="tab">收藏</div>
+            </div>
+            <div style="display:grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap:12px;">
+              <div class="card" style="cursor:pointer;">
+                <div class="card-body" style="padding:14px 16px;">
+                  <div class="muted text-sm">2026-10-10 14:23</div>
+                  <div style="font-size:13.5px; font-weight:500; margin:6px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">智能客服 prompt 优化方案</div>
+                  <div class="muted text-sm" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">基于 RAG 的回答效果更好...</div>
+                </div>
+              </div>
+              <div class="card" style="cursor:pointer;">
+                <div class="card-body" style="padding:14px 16px;">
+                  <div class="muted text-sm">2026-10-10 11:08</div>
+                  <div style="font-size:13.5px; font-weight:500; margin:6px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">帮我写一段 SQL</div>
+                  <div class="muted text-sm" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">统计每个用户最近 30 天的...</div>
+                </div>
+              </div>
+              <div class="card" style="cursor:pointer;">
+                <div class="card-body" style="padding:14px 16px;">
+                  <div class="muted text-sm">2026-10-09 17:42</div>
+                  <div style="font-size:13.5px; font-weight:500; margin:6px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">React Hooks 最佳实践</div>
+                  <div class="muted text-sm" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">useState 和 useEffect...</div>
+                </div>
+              </div>
+              <div class="card" style="cursor:pointer;">
+                <div class="card-body" style="padding:14px 16px;">
+                  <div class="muted text-sm">2026-10-09 10:15</div>
+                  <div style="font-size:13.5px; font-weight:500; margin:6px 0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">文档总结段落</div>
+                  <div class="muted text-sm" style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">请帮我总结这篇论文的要点...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>initLayout('chat');</script>
+</body>
+</html>

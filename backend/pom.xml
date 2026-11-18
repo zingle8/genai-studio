@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <groupId>com.zimo.genai</groupId>
+    <artifactId>genai-studio</artifactId>
+    <version>1.0.0</version>
+    <packaging>pom</packaging>
+    <name>genai-studio</name>
+    <description>GenAI Studio 管理平台 - 后端父工程（Java 微服务）</description>
+
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <!-- Spring MVC 参数名反射（@RequestParam/@PathVariable）需要 -parameters -->
+        <maven.compiler.parameters>true</maven.compiler.parameters>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <spring-boot.version>3.2.12</spring-boot.version>
+        <mybatis-spring-boot.version>3.0.3</mybatis-spring-boot.version>
+    </properties>
+
+    <dependencyManagement>
+        <dependencies>
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- 网关平台接入 starter（来自 project_api-gateway，需先 install 到本地/私服） -->
+            <dependency>
+                <groupId>com.zimo.gateway</groupId>
+                <artifactId>jv-api-gateway-client-starter</artifactId>
+                <version>1.0.0</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <modules>
+        <module>jv-genai-app</module>
+        <module>jv-genai-comm</module>
+        <module>jv-genai-auth</module>
+        <module>jv-genai-dashboard</module>
+        <module>jv-genai-aigateway</module>
+        <module>jv-genai-mcpgateway</module>
+        <module>jv-genai-agentgateway</module>
+        <module>jv-genai-models</module>
+        <module>jv-genai-config</module>
+        <module>jv-genai-user</module>
+        <module>jv-genai-prompt</module>
+        <module>jv-genai-chats</module>
+        <module>jv-genai-apikey</module>
+        <module>jv-genai-billing</module>
+        <module>jv-genai-costs</module>
+        <module>jv-genai-logs</module>
+        <module>jv-genai-traces</module>
+        <module>jv-genai-scheduler</module>
+        <module>jv-genai-router</module>
+        <module>jv-genai-docs</module>
+        <module>jv-genai-market</module>
+        <module>jv-genai-apigateway-client-sdk</module>
+    </modules>
+
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+</project>

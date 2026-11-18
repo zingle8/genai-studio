@@ -1,0 +1,2030 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>本体图谱Onto · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    /* ===== 二级导航布局 ===== */
+    .account-layout { display: grid; grid-template-columns: 200px 1fr; gap: 28px; align-items: start; }
+    .subnav { position: sticky; top: 16px; font-size: 13px; }
+    .subnav-back {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 14px; font-weight: 600; color: var(--text-primary); padding: 3px 8px 14px 8px;
+    }
+    .subnav-back svg { width: 15px; height: 15px; }
+    .subnav-group { margin-bottom: 14px; }
+    .subnav-title { font-size: 12px; color: var(--text-tertiary); padding: 6px 8px; }
+    .subnav-item {
+      display: block; padding: 7px 8px; border-radius: var(--radius);
+      color: var(--text-secondary); cursor: pointer; transition: all .15s;
+    }
+    .subnav-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+    .subnav-item.active { background: var(--sidebar-active); color: var(--text-primary); font-weight: 500; }
+    .account-main { min-width: 0; }
+    .panel-head { margin-bottom: 16px; }
+    .panel-title { font-size: 18px; font-weight: 600; }
+    .panel-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+    @media (max-width: 1080px) { .account-layout { grid-template-columns: 1fr; } .subnav { position: static; } }
+
+    /* ===== 四种方式的切换 ===== */
+    .onto-tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--border-light); margin-bottom: 18px; flex-wrap: wrap; }
+    .onto-tab {
+      padding: 9px 15px; font-size: 13.5px; color: var(--text-secondary); cursor: pointer;
+      border-bottom: 2px solid transparent; transition: all .15s; white-space: nowrap;
+    }
+    .onto-tab:hover { color: var(--text-primary); }
+    .onto-tab.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+    .onto-tab .idx { font-size: 11px; color: var(--text-tertiary); margin-right: 5px; }
+    .onto-tab.active .idx { color: var(--primary); }
+    .doc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .doc-way { border: 1px solid var(--border-light); border-radius: var(--radius); padding: 12px 14px; }
+    .doc-way-h { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font-size: 13.5px; }
+    .doc-block { border: 1px solid var(--border-light); border-radius: var(--radius); overflow: hidden; margin-bottom: 12px; }
+    .doc-block:last-child { margin-bottom: 0; }
+    .doc-block-h { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg-soft); font-size: 13px; }
+    .doc-block-h .btn-copy { margin-left: auto; font-size: 12px; color: var(--accent); cursor: pointer; }
+    .doc-block-h .btn-copy:hover { text-decoration: underline; }
+    pre.doc-code {
+      margin: 0; padding: 12px 14px; background: #1F2937; color: #E5E7EB;
+      font-family: var(--font-mono, ui-monospace, Menlo, Consolas, monospace);
+      font-size: 12px; line-height: 1.8; overflow-x: auto; white-space: pre;
+    }
+    .doc-step { display: flex; gap: 12px; padding: 12px 0; border-bottom: 1px dashed var(--border-light); }
+    .doc-step:last-child { border-bottom: 0; padding-bottom: 0; }
+    .doc-step .n {
+      width: 22px; height: 22px; border-radius: 50%; background: var(--accent); color: #fff;
+      font-size: 12px; display: flex; align-items: center; justify-content: center; flex: none;
+    }
+    .doc-step .b { font-size: 13px; line-height: 1.7; }
+    .doc-step .b b { display: block; margin-bottom: 3px; }
+    .page-btn[disabled] { opacity: .45; cursor: not-allowed; }
+    #tab-list .card-header { flex-wrap: wrap; gap: 10px; }
+    #tab-list table th, #tab-list table td { white-space: nowrap; }
+    #tab-list table td:first-child { white-space: normal; min-width: 176px; }
+    #tab-list table td:nth-child(6) { min-width: 76px; }
+    #tab-list table td:nth-child(8) { min-width: 80px; }
+    .pager { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .pager-info { font-size: 12.5px; color: var(--text-tertiary); }
+    .subnav-item .muted { font-size: 12px; }
+    @media (max-width: 1080px) { .doc-grid { grid-template-columns: 1fr; } }
+    .onto-panel { display: none; }
+    .onto-panel.active { display: block; }
+    #ontoListBody tr { cursor: pointer; transition: background .13s; }
+    #ontoListBody tr:hover { background: var(--bg-soft); }
+    #ontoListBody tr.selected { background: var(--accent-soft-2); }
+    #ontoListBody tr.selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+    #reviewBody .btn { white-space: nowrap; flex: 0 0 auto; min-width: 48px; }
+    #reviewBody td:last-child { width: 156px; }
+    #reviewBody .row-actions { justify-content: flex-end; gap: 6px; }
+    #ontoListBody .row-actions .btn { padding: 0 7px; font-size: 12px; }
+
+    /* ===== 思维导图画布 ===== */
+    .mind-wrap {
+      height: 520px; overflow: auto; border-radius: 10px;
+      background: linear-gradient(135deg, #FAFAFB 0%, #F3F4F6 100%);
+      border: 1px solid var(--border-light);
+    }
+    .mind-wrap svg { display: block; }
+    .mn-box { cursor: pointer; }
+    .mn-box:hover rect.mn-bg { stroke: var(--primary); }
+    .mn-box.sel rect.mn-bg { stroke: var(--primary); stroke-width: 2; }
+    .onto-grid2 { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; align-items: start; }
+    .onto-grid2 > div { min-width: 0; }
+    @media (max-width: 1180px) { .onto-grid2 { grid-template-columns: 1fr; } }
+
+    /* ===== 节点详情 / 属性表单 ===== */
+    .fm-row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--border-light); }
+    .fm-row:last-child { border-bottom: 0; }
+    .fm-k { width: 96px; flex-shrink: 0; font-size: 12.5px; color: var(--text-secondary); }
+    .fm-v { flex: 1; min-width: 0; }
+    .fm-v input, .fm-v select { width: 100%; height: 32px; padding: 0 9px; font-size: 12.5px; border: 1px solid var(--border); border-radius: 6px; background: #fff; color: var(--text-primary); }
+    .fm-v input:focus, .fm-v select:focus { outline: none; border-color: var(--primary); }
+    .st-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    .mini-tbl { width: 100%; font-size: 12px; border-collapse: collapse; table-layout: fixed; }
+    .mini-tbl th { text-align: left; font-weight: 600; color: var(--text-tertiary); font-size: 11px; padding: 7px 5px; border-bottom: 1px solid var(--border-light); }
+    .mini-tbl td { padding: 6px 5px; border-bottom: 1px solid var(--border-light); vertical-align: middle; }
+    .mini-tbl tr:last-child td { border-bottom: 0; }
+    .tbl-attr th:nth-child(1), .tbl-attr td:nth-child(1) { width: 84px; }
+    .tbl-attr th:nth-child(2), .tbl-attr td:nth-child(2) { width: 72px; }
+    .tbl-attr td:nth-child(2) select { font-size: 11.5px; }
+    .tbl-attr th:nth-child(3), .tbl-attr td:nth-child(3) { width: 30px; text-align: center; }
+    .tbl-attr th:nth-child(5), .tbl-attr td:nth-child(5) { width: 56px; text-align: right; }
+    .tbl-rel th:nth-child(1), .tbl-rel td:nth-child(1) { width: 100px; }
+    .tbl-rel th:nth-child(2), .tbl-rel td:nth-child(2) { width: 70px; }
+    .tbl-rel th:nth-child(3), .tbl-rel td:nth-child(3) { width: 76px; }
+    .tbl-rel th:nth-child(4), .tbl-rel td:nth-child(4) { width: 56px; text-align: right; }
+    .mini-tbl select.mini-inp { padding: 0 2px; }
+    .mini-inp { width: 100%; height: 28px; padding: 0 7px; font-size: 12px; border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--text-primary); }
+    .mini-inp:hover { border-color: var(--border); }
+    .mini-inp:focus { outline: none; border-color: var(--primary); background: #fff; }
+    .badge-st { display: inline-block; white-space: nowrap; font-size: 10.5px; padding: 2px 7px; border-radius: 10px; }
+
+    /* ===== 代码区 ===== */
+    .code-box {
+      background: #0F172A; color: #E2E8F0; border-radius: 10px; padding: 14px 16px;
+      font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; line-height: 1.75;
+      white-space: pre; overflow: auto; max-height: 420px; margin: 0;
+    }
+    .code-box .k { color: #7DD3FC; }
+    .code-box .s { color: #86EFAC; }
+    .code-box .c { color: #64748B; }
+    .file-chips { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .file-chip { height: 30px; padding: 0 13px; border-radius: 15px; font-size: 12.5px; border: 1px solid var(--border); background: #fff; color: var(--text-secondary); cursor: pointer; transition: all .14s; }
+    .file-chip.active { background: var(--accent-soft-2); border-color: var(--accent); color: var(--accent); }
+    .yaml-edit { width: 100%; min-height: 340px; font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; line-height: 1.7; padding: 14px 16px; border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text-primary); resize: vertical; }
+    .yaml-edit:focus { outline: none; border-color: var(--primary); }
+    .check-out { font-size: 12.5px; padding: 10px 14px; border-radius: 8px; margin-top: 12px; }
+    .check-out.ok { background: rgba(16,185,129,.08); color: var(--success); border: 1px solid rgba(16,185,129,.25); }
+    .check-out.err { background: rgba(239,68,68,.06); color: var(--danger); border: 1px solid rgba(239,68,68,.25); }
+
+    /* ===== Chat ===== */
+    .chat-box { height: 420px; overflow: auto; padding: 18px; background: var(--bg-soft); border-radius: 10px; }
+    .msg { display: flex; gap: 10px; margin-bottom: 16px; }
+    .msg.me { flex-direction: row-reverse; }
+    .msg-av { width: 28px; height: 28px; border-radius: 7px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 600; color: #fff; }
+    .msg-bd { max-width: 78%; background: #fff; border: 1px solid var(--border-light); border-radius: 10px; padding: 11px 14px; font-size: 13px; line-height: 1.8; }
+    .msg.me .msg-bd { background: var(--primary); color: #fff; border-color: var(--primary); }
+    .msg-bd .caret { display: inline-block; width: 6px; height: 13px; background: var(--primary); vertical-align: -2px; margin-left: 2px; animation: blink 1s steps(2) infinite; }
+    @keyframes blink { 50% { opacity: 0; } }
+    .chat-in { display: flex; gap: 10px; margin-top: 14px; }
+    .chat-in input { flex: 1; height: 40px; padding: 0 14px; font-size: 13.5px; border: 1px solid var(--border); border-radius: 8px; }
+    .chat-in input:focus { outline: none; border-color: var(--primary); }
+
+    .toast {
+      position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%) translateY(14px);
+      background: #0F172A; color: #fff; font-size: 13px; padding: 10px 20px; border-radius: 8px;
+      opacity: 0; transition: all .22s; pointer-events: none; z-index: 999;
+    }
+    .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">本体图谱Onto</div>
+              <div class="page-subtitle">本体图谱的新建、启用/禁用与删除，实体 / 关系 / 属性的变更审核，以及图编辑 · 属性定义画布 · YAML 约束文件 · Chat 四种定义方式（改动实时同步同一份本体定义）</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary" onclick="location.href='knowledge-graph.html'">查看图谱Graph</button>
+              <button class="btn btn-primary" id="btnSaveVer">发布新版本</button>
+            </div>
+          </div>
+
+          <div class="account-layout">
+            <!-- 二级导航 -->
+            <nav class="subnav">
+              <div class="subnav-back">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="18" y1="9" x2="18" y2="15"/><line x1="9" y1="18" x2="15" y2="18"/></svg>
+                本体图谱Onto
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">本体管理</div>
+                <a class="subnav-item active" data-tab="overview">本体图谱概览</a>
+                <a class="subnav-item" data-tab="list">本体图谱列表</a>
+                <a class="subnav-item" data-tab="ops">本体图谱操作</a>
+                <a class="subnav-item" data-tab="review">本体图谱审核 <span class="muted" id="reviewBadge">0</span></a>
+              </div>
+
+              <div class="subnav-group">
+                <div class="subnav-title">接入</div>
+                <a class="subnav-item" data-tab="doc">图谱文档</a>
+              </div>
+            </nav>
+
+            <!-- 内容区 -->
+            <div class="account-main">
+              <div class="panel-head">
+                <div class="panel-title" id="panelTitle">本体图谱概览</div>
+                <div class="panel-sub" id="panelSub">本体规模、版本状态与变更概览，含各本体图谱的实体 / 关系 / 属性规模</div>
+              </div>
+
+          <!-- ========== 本体图谱列表（分页） ========== -->
+          <section class="tab-panel" id="tab-list">
+
+          <!-- 本体图谱列表：新建 / 选定 / 编辑 / 启用禁用 / 删除 -->
+          <div class="card mb-16">
+            <div class="card-header">
+              <div>
+                <div class="card-title">本体图谱列表</div>
+                <div class="card-subtitle">共 <b id="ontoCount">0</b> 个本体图谱 · 点击行或「选定」切换编辑对象，后续四种编辑方式均作用于当前选定的本体图谱</div>
+              </div>
+              <div class="flex gap-8" style="flex-wrap:wrap; justify-content:flex-end; align-items:center;">
+                <input class="form-input" id="ontoSearch" placeholder="搜索名称 / key / 描述" style="width:180px; height:32px;" />
+                <select class="form-select" id="ontoStatusFilter" style="height:32px; width:116px;">
+                  <option value="">全部状态</option>
+                  <option value="enabled">已启用</option>
+                  <option value="disabled">已禁用</option>
+                </select>
+                <button class="btn btn-sm btn-secondary" id="btnEditOnto">编辑</button>
+                <button class="btn btn-sm btn-secondary" id="btnToggleOnto">启用 / 禁用</button>
+                <button class="btn btn-sm btn-ghost" id="btnDelOnto" style="color:var(--danger);">删除</button>
+                <button class="btn btn-sm btn-primary" id="btnNewOnto">+ 新建本体图谱</button>
+              </div>
+            </div>
+            <div class="card-body no-pad">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr><th>本体图谱名称</th><th>标识 key</th><th>版本</th><th>实体类型</th><th>关系类型</th><th>待审核</th><th>更新时间</th><th>状态</th><th class="text-right">操作</th></tr>
+                  </thead>
+                  <tbody id="ontoListBody"></tbody>
+                </table>
+              </div>
+                <div class="pager" style="padding:12px 16px; border-top:1px solid var(--border-light);">
+                  <span class="pager-info" id="ontoPagerInfo">—</span>
+                  <div style="margin-left:auto; display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span class="text-sm muted">每页</span>
+                    <select class="form-select" id="ontoPageSize" style="height:30px; width:72px;">
+                      <option value="5">5</option>
+                      <option value="10" selected>10</option>
+                      <option value="20">20</option>
+                    </select>
+                    <span class="text-sm muted">条</span>
+                    <div class="pagination">
+                      <button class="page-btn" id="ontoPrev">上一页</button>
+                      <button class="page-btn active" id="ontoCur">1</button>
+                      <button class="page-btn" id="ontoNext">下一页</button>
+                    </div>
+                  </div>
+                </div>
+            </div>
+          </div>
+
+          </section>
+
+          <!-- ========== 本体图谱概览 ========== -->
+          <section class="tab-panel active" id="tab-overview">
+
+          <div class="card mb-16">
+            <div class="card-body" style="display:flex; align-items:center; gap:22px; flex-wrap:wrap;">
+              <div>
+                <div class="text-sm muted">当前本体</div>
+                <div style="font-size:15px; font-weight:600;" id="metaName">—</div>
+              </div>
+              <div>
+                <div class="text-sm muted">实体类型</div>
+                <div style="font-size:15px; font-weight:600;" id="metaEntities">0</div>
+              </div>
+              <div>
+                <div class="text-sm muted">关系类型</div>
+                <div style="font-size:15px; font-weight:600;" id="metaRels">0</div>
+              </div>
+              <div>
+                <div class="text-sm muted">属性总数</div>
+                <div style="font-size:15px; font-weight:600;" id="metaAttrs">0</div>
+              </div>
+              <div>
+                <div class="text-sm muted">版本状态</div>
+                <div id="metaStatus"></div>
+              </div>
+              <div style="margin-left:auto;">
+                <div style="display:flex; gap:14px; flex-wrap:wrap;">
+                  <span class="text-sm"><i class="st-dot" style="background:var(--success);"></i>已发布</span>
+                  <span class="text-sm"><i class="st-dot" style="background:var(--warning);"></i>待评审</span>
+                  <span class="text-sm"><i class="st-dot" style="background:var(--text-tertiary);"></i>草稿</span>
+                  <span class="text-sm"><i class="st-dot" style="background:var(--danger);"></i>已废弃</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+                <div class="stat-grid">
+                  <div class="stat-card">
+                    <div>
+                      <div class="stat-label">本体图谱数</div>
+                      <div class="stat-value" id="ovCount">0</div>
+                      <div class="stat-trend up" id="ovEnabled">已启用 0</div>
+                    </div>
+                    <div class="stat-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="3"/><circle cx="18" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="18" r="3"/><line x1="9" y1="6" x2="15" y2="6"/><line x1="6" y1="9" x2="6" y2="15"/><line x1="18" y1="9" x2="18" y2="15"/><line x1="9" y1="18" x2="15" y2="18"/></svg></div>
+                  </div>
+                  <div class="stat-card">
+                    <div>
+                      <div class="stat-label">实体类型总数</div>
+                      <div class="stat-value" id="ovEntities">0</div>
+                      <div class="stat-trend up">跨全部本体图谱</div>
+                    </div>
+                    <div class="stat-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+                  </div>
+                  <div class="stat-card">
+                    <div>
+                      <div class="stat-label">关系类型总数</div>
+                      <div class="stat-value" id="ovRels">0</div>
+                      <div class="stat-trend up">去重统计</div>
+                    </div>
+                    <div class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 12 19"/></svg></div>
+                  </div>
+                  <div class="stat-card">
+                    <div>
+                      <div class="stat-label">待审核变更</div>
+                      <div class="stat-value" id="ovPending">0</div>
+                      <div class="stat-trend up">前往「本体图谱审核」处理</div>
+                    </div>
+                    <div class="stat-icon warning"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+                  </div>
+                </div>
+
+                <div class="notice" style="margin-top:16px;">
+                  <span>四种定义方式（<b>状态编辑图</b> / <b>属性定义画布</b> / <b>YAML 约束文件</b> / <b>Chat 对话</b>）作用于同一份本体定义，任意一处改动实时同步；实体 / 关系 / 属性的新增与调整需经「本体图谱审核」通过后才写入生产本体。</span>
+                </div>
+
+                <div class="card mt-16">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">各本体图谱规模</div>
+                      <div class="card-subtitle">点击行可快速切换当前编辑对象</div>
+                    </div>
+                    <a class="link" data-tab-jump="list">前往列表 ›</a>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>本体图谱</th><th>标识 key</th><th>版本</th><th>实体类型</th><th>关系类型</th><th>属性</th><th>待审核</th><th>状态</th><th>更新时间</th></tr>
+                        </thead>
+                        <tbody id="ovBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="card mt-16">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title">最近变更</div>
+                      <div class="card-subtitle">全部本体图谱的最近 5 条变更申请</div>
+                    </div>
+                    <a class="link" data-tab-jump="review">前往审核 ›</a>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>本体图谱</th><th>变更类型</th><th>对象</th><th>申请人</th><th>提交时间</th><th>审核状态</th></tr>
+                        </thead>
+                        <tbody id="ovChangeBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+              </section>
+
+              <!-- ========== 本体图谱操作（四种定义方式） ========== -->
+              <section class="tab-panel" id="tab-ops">
+          <div class="notice" style="margin-bottom:14px;">
+            <span>当前编辑对象：<b id="opsCurName">—</b> · 四种定义 &amp; 编辑方式作用于同一份本体定义，任意一处改动实时同步到画布与 YAML 文件</span>
+          </div>
+
+          <!-- 四种定义 & 编辑方式切换 -->
+          <div class="onto-tabs" id="ontoTabs">
+            <div class="onto-tab active" data-p="graph"><span class="idx">01</span>节点 & 属性 & 关系 · 状态编辑图</div>
+            <div class="onto-tab" data-p="canvas"><span class="idx">02</span>本体属性定义画布</div>
+            <div class="onto-tab" data-p="yaml"><span class="idx">03</span>YAML 规则约束 / 实体定义文件</div>
+            <div class="onto-tab" data-p="chat"><span class="idx">04</span>Chat 对话定义</div>
+          </div>
+
+          <!-- ================= 01 节点&属性&关系·状态编辑展示图 ================= -->
+          <section class="onto-panel active" id="panel-graph">
+            <div class="onto-grid2">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">本体思维导图 · 节点 / 属性 / 关系 / 状态</div>
+                    <div class="card-subtitle">点击节点编辑其属性与关系；拖拽画布可平移，点击 + 展开子节点</div>
+                  </div>
+                  <div class="flex gap-8">
+                    <button class="btn btn-sm btn-secondary" id="btnExpand">展开全部</button>
+                    <button class="btn btn-sm btn-ghost" id="btnFit">适应视图</button>
+                    <button class="btn btn-sm btn-primary" id="btnAddChild">+ 子节点</button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="mind-wrap" id="mindGraph"></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">节点详情</div>
+                    <div class="card-subtitle" id="selHint">未选中节点</div>
+                  </div>
+                  <select id="selStatus" style="height:30px; font-size:12.5px; border:1px solid var(--border); border-radius:6px; padding:0 6px;">
+                    <option value="published">已发布</option>
+                    <option value="review">待评审</option>
+                    <option value="draft">草稿</option>
+                    <option value="deprecated">已废弃</option>
+                  </select>
+                </div>
+                <div class="card-body" id="nodeDetail">
+                  <div class="muted text-sm">在左侧思维导图中点击一个节点，即可编辑其属性与关系。</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= 02 本体属性定义画布 ================= -->
+          <section class="onto-panel" id="panel-canvas">
+            <div class="onto-grid2">
+              <div class="card">
+                <div class="card-header">
+                  <div>
+                    <div class="card-title">属性定义画布</div>
+                    <div class="card-subtitle">实体 → 属性 → 约束，三层思维导图；修改后可一键生成 YAML 约束文件与实体对象定义规则文件</div>
+                  </div>
+                  <div class="flex gap-8">
+                    <button class="btn btn-sm btn-primary" id="btnAddAttr">+ 属性</button>
+                    <button class="btn btn-sm btn-secondary" id="btnGen">生成 YAML</button>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <div class="mind-wrap" id="mindCanvas" style="height:420px;"></div>
+                </div>
+              </div>
+
+              <div class="card">
+                <div class="card-header">
+                  <div class="card-title">属性定义</div>
+                  <span class="text-sm muted" id="attrHint">点击属性节点编辑</span>
+                </div>
+                <div class="card-body" id="attrForm">
+                  <div class="muted text-sm">在左侧画布点击一个「属性」节点进行编辑。</div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">生成结果</div>
+                  <div class="card-subtitle">由画布实时生成，可一键同步到「YAML 规则约束 / 实体定义文件」</div>
+                </div>
+                <div class="flex gap-8">
+                  <button class="btn btn-sm btn-secondary" id="btnSyncYaml">同步到 YAML 文件</button>
+                  <button class="btn btn-sm btn-ghost" id="btnCopyGen">复制</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="file-chips" id="genChips">
+                  <span class="file-chip active" data-f="constraint">ontology-constraints.yaml</span>
+                  <span class="file-chip" data-f="entity">entity-definition.yaml</span>
+                </div>
+                <pre class="code-box" id="genOut"></pre>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= 03 YAML 规则约束 / 实体定义文件 ================= -->
+          <section class="onto-panel" id="panel-yaml">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">YAML 规则约束与实体定义文件</div>
+                  <div class="card-subtitle">可直接编辑、校验并回写本体；与画布双向同步</div>
+                </div>
+                <div class="flex gap-8">
+                  <button class="btn btn-sm btn-secondary" id="btnRegen">从画布重新生成</button>
+                  <button class="btn btn-sm btn-primary" id="btnCheck">校验</button>
+                  <button class="btn btn-sm btn-ghost" id="btnDownload">下载</button>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="file-chips" id="yamlChips">
+                  <span class="file-chip active" data-f="constraint">ontology-constraints.yaml</span>
+                  <span class="file-chip" data-f="entity">entity-definition.yaml</span>
+                </div>
+                <textarea class="yaml-edit" id="yamlEdit" spellcheck="false"></textarea>
+                <div class="check-out ok" id="checkOut" style="display:none;"></div>
+                <div class="muted text-sm mt-1">约束文件用于构建期校验（类型 / 必填 / 唯一 / 取值域）；实体定义文件用于抽取与对象映射。</div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ================= 04 Chat 对话定义 ================= -->
+          <section class="onto-panel" id="panel-chat">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">Chat 对话定义本体</div>
+                  <div class="card-subtitle">用自然语言描述业务，AI 生成实体 / 属性 / 关系建议，确认后一键应用到画布</div>
+                </div>
+                <span class="tag tag-accent">演示环境</span>
+              </div>
+              <div class="card-body">
+                <div class="chat-box" id="chatBox"></div>
+                <div class="flex gap-8" style="margin-top:12px; flex-wrap:wrap;" id="chatChips">
+                  <span class="file-chip">帮我定义一个「优惠券」实体，含面额、适用范围、有效期</span>
+                  <span class="file-chip">商品与订单应该是什么关系？</span>
+                  <span class="file-chip">为本体的价格属性补充取值约束</span>
+                </div>
+                <div class="chat-in">
+                  <input id="chatInput" placeholder="描述你的业务对象，例如：需要定义「供应链-供应商-供货关系」…" />
+                  <button class="btn btn-primary" id="btnSend">发送</button>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          </section>
+
+          <!-- ========== 本体图谱审核 ========== -->
+          <section class="tab-panel" id="tab-review">
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">变更审核 · <span id="reviewOntoName">—</span></div>
+                  <div class="card-subtitle">对当前本体图谱的实体 / 关系 / 属性新增与调整进行审核，通过后立即写入本体定义（画布、YAML 同步更新）</div>
+                </div>
+                <button class="btn btn-sm btn-secondary" id="btnRefreshReview">刷新</button>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>变更类型</th><th>对象</th><th>变更内容</th><th>申请人</th><th>提交时间</th><th>审核状态</th><th class="text-right">操作</th></tr>
+                    </thead>
+                    <tbody id="reviewBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ========== 图谱文档 ========== -->
+          <section class="tab-panel" id="tab-doc">
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">图谱开放能力</div>
+                  <div class="card-subtitle">通过 MCP Server / REST API / SDK 三种方式访问图谱与本体，均使用同一把 API Key 鉴权</div>
+                </div>
+                <span class="tag tag-accent">Bearer $AI_STUDIO_API_KEY</span>
+              </div>
+              <div class="card-body">
+                <div class="doc-grid">
+                  <div class="doc-way">
+                    <div class="doc-way-h"><b>MCP Server</b><span class="tag gray tag-solid">推荐</span></div>
+                    <div class="text-sm muted">以 MCP 工具方式暴露图谱检索与本体校验能力，Claude / Cursor 等客户端可直接接入，无需自行编写图查询语言。</div>
+                  </div>
+                  <div class="doc-way">
+                    <div class="doc-way-h"><b>REST API（curl）</b></div>
+                    <div class="text-sm muted">标准 HTTP 接口，适用于后端服务、数据管道与定时任务；支持分页检索、构建任务触发与本体约束校验。</div>
+                  </div>
+                  <div class="doc-way">
+                    <div class="doc-way-h"><b>Python / Java SDK</b></div>
+                    <div class="text-sm muted">封装鉴权、重试与分页逻辑，适合在应用内做 GraphRAG 问答、实体写入与批量校验。</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">MCP 工具列表</div>
+                  <div class="card-subtitle">MCP Server 暴露的图谱 / 本体工具，客户端通过 tools/call 调用</div>
+                </div>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>工具</th><th>说明</th><th>主要入参</th><th class="text-right">类型</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td class="mono">kg.search_entities</td><td>混合检索实体（向量 + 关键词）</td><td class="mono text-sm">query, top_k, entity_types[]</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td class="mono">kg.expand_neighbors</td><td>N 跳邻接实体扩展，用于 GraphRAG 上下文</td><td class="mono text-sm">entity_id, hops, rel_types[]</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td class="mono">kg.query_cypher</td><td>执行只读 Cypher 查询（超时自动中断）</td><td class="mono text-sm">cypher, limit, timeout_ms</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td class="mono">kg.upsert_entities</td><td>实体 / 关系批量写入（幂等，按主键合并）</td><td class="mono text-sm">graph_key, entities[], relations[]</td><td class="text-right"><span class="tag warning tag-solid">写入</span></td></tr>
+                      <tr><td class="mono">kg.build_job</td><td>查询构建任务进度 / 触发增量与全量构建</td><td class="mono text-sm">graph_key, action(query|trigger)</td><td class="text-right"><span class="tag warning tag-solid">写入</span></td></tr>
+                      <tr><td class="mono">onto.get_schema</td><td>获取本体 Schema：实体 / 关系 / 属性与约束</td><td class="mono text-sm">ontology_key, version</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td class="mono">onto.validate</td><td>按约束 YAML 校验实体数据（必填 / 正则 / 枚举 / 范围）</td><td class="mono text-sm">ontology_key, entity, payload</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">curl 接口列表</div>
+                  <div class="card-subtitle">REST API v1 · 基础地址 https://api.example.com/v1</div>
+                </div>
+              </div>
+              <div class="card-body no-pad">
+                <div class="table-wrap">
+                  <table>
+                    <thead>
+                      <tr><th>方法</th><th>路径</th><th>说明</th><th class="text-right">类型</th></tr>
+                    </thead>
+                    <tbody>
+                      <tr><td><span class="tag primary tag-solid">POST</span></td><td class="mono text-sm">/graphs/{graph_key}/query</td><td>执行图查询（Cypher / GQL）</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag success tag-solid">GET</span></td><td class="mono text-sm">/graphs/{graph_key}/entities/{id}</td><td>实体详情与一跳邻接关系</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag primary tag-solid">POST</span></td><td class="mono text-sm">/graphs/{graph_key}/entities:search</td><td>实体检索，支持分页与类型过滤</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag primary tag-solid">POST</span></td><td class="mono text-sm">/graphs/{graph_key}/build-jobs</td><td>触发增量 / 全量构建任务</td><td class="text-right"><span class="tag warning tag-solid">写入</span></td></tr>
+                      <tr><td><span class="tag success tag-solid">GET</span></td><td class="mono text-sm">/ontologies/{ontology_key}/schema</td><td>本体 Schema 与版本信息</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag primary tag-solid">POST</span></td><td class="mono text-sm">/ontologies/{ontology_key}:validate</td><td>按本体约束校验实体数据</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                      <tr><td><span class="tag success tag-solid">GET</span></td><td class="mono text-sm">/ontologies/{ontology_key}/changes</td><td>本体变更申请列表与审核状态</td><td class="text-right"><span class="tag gray tag-solid">只读</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">使用案例</div>
+                  <div class="card-subtitle">复制即可运行，替换 API Key 与图谱标识</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 1 · MCP 客户端检索实体</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "tools/call",
+  "params": {
+    "name": "kg.search_entities",
+    "arguments": {
+      "query": "iPhone 15 Pro 的运行内存",
+      "top_k": 10,
+      "entity_types": ["商品", "属性"]
+    }
+  }
+}</pre>
+                </div>
+
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 2 · curl 执行 Cypher 查询</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">curl -X POST https://api.example.com/v1/graphs/kg_ecommerce/query \
+  -H "Authorization: Bearer $AI_STUDIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "language": "cypher",
+    "statement": "MATCH (p:商品)-[:belongs_to]-&gt;(c:类目 {name: \'手机数码\'}) RETURN p.name, p.price LIMIT 20"
+  }'</pre>
+                </div>
+
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 3 · curl 按本体约束校验实体数据</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">curl -X POST https://api.example.com/v1/ontologies/ontology_ecommerce:validate \
+  -H "Authorization: Bearer $AI_STUDIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "entity": "商品",
+    "payload": {
+      "sku_id": "SKU00012345",
+      "name": "iPhone 15 Pro",
+      "price": 7999.00,
+      "level": "旗舰"
+    }
+  }'
+
+# 响应
+{
+  "valid": false,
+  "errors": [
+    { "field": "sku_id", "rule": "pattern ^SKU[0-9]{8,12}$", "msg": "长度不足 8 位" }
+  ],
+  "warnings": [{ "field": "level", "msg": "枚举值建议收敛为：入门 | 中端 | 旗舰" }]
+}</pre>
+                </div>
+
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 4 · Python SDK 做 GraphRAG 问答（含图谱路径溯源）</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">import os
+from ai_studio import GraphRAG
+
+client = GraphRAG(api_key=os.environ["AI_STUDIO_API_KEY"])
+
+ans = client.ask(
+    question="近一个月销量最高的手机分别属于哪些品牌？",
+    graph_key="kg_ecommerce",
+    hops=2,          # 邻接扩展跳数
+    top_k=8,         # 召回实体数
+    with_path=True   # 返回用于溯源的图谱路径
+)
+
+print(ans.answer)
+for path in ans.paths:
+    print(" → ".join(path))
+
+# 输出示例
+# 近一个月销量 Top3 为 iPhone 15 Pro、小米 14 Ultra、华为 Mate 60，分别属于 Apple、小米、华为。
+# iPhone 15 Pro → belongs_to → 手机数码 → produced_by → Apple</pre>
+                </div>
+
+                <div class="doc-block">
+                  <div class="doc-block-h"><b>案例 5 · 触发增量构建并轮询进度</b><span class="btn-copy">复制</span></div>
+                  <pre class="doc-code">JOB=$(curl -s -X POST https://api.example.com/v1/graphs/kg_ecommerce/build-jobs \
+  -H "Authorization: Bearer $AI_STUDIO_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"mode": "incremental", "sources": ["product_doc", "review_doc"]}' | jq -r .job_id)
+
+curl "https://api.example.com/v1/graphs/kg_ecommerce/build-jobs/$JOB" \
+  -H "Authorization: Bearer $AI_STUDIO_API_KEY"
+
+# 响应：{ "job_id": "job_9c21", "status": "running", "progress": 78, "eta": "约 4 分钟" }</pre>
+                </div>
+              </div>
+            </div>
+
+            <div class="card mt-16">
+              <div class="card-header">
+                <div>
+                  <div class="card-title">图谱使用步骤教程</div>
+                  <div class="card-subtitle">从本体定义到线上检索的完整流程</div>
+                </div>
+              </div>
+              <div class="card-body">
+                <div class="doc-step">
+                  <span class="n">1</span>
+                  <div class="b"><b>定义本体（本体图谱Onto）</b>新建本体图谱 → 用「状态编辑图 / 属性画布 / YAML / Chat」四种方式定义实体、关系与属性约束 → 在「本体图谱审核」中通过变更 → 发布版本并生成约束 YAML。</div>
+                </div>
+                <div class="doc-step">
+                  <span class="n">2</span>
+                  <div class="b"><b>构建图谱（知识图谱Graph）</b>在「知识图谱编辑」绑定本体 Schema 与数据源 → 选择抽取方式（LLM 抽取 / 规则抽取 / 专家标注）→ 在「构建任务」中触发增量或全量构建 → 观察进度与日志。</div>
+                </div>
+                <div class="doc-step">
+                  <span class="n">3</span>
+                  <div class="b"><b>配置检索策略</b>选择目标图谱 → 设置召回方式（GraphRAG 邻接扩展 hops、向量召回、关键词召回）→ 绑定知识库与重排模型 → 在「知识图谱查询」中用 Cypher / 自然语言验证召回效果。</div>
+                </div>
+                <div class="doc-step">
+                  <span class="n">4</span>
+                  <div class="b"><b>接入应用</b>创建 API Key 并授予只读或写入权限 → MCP 客户端配置 Server 地址，或后端直接调用 REST API / SDK → 用 kg.search_entities、kg.expand_neighbors 拼装上下文。</div>
+                </div>
+                <div class="doc-step">
+                  <span class="n">5</span>
+                  <div class="b"><b>运维与迭代</b>监控「构建任务」成功率与耗时 → 处理本体变更申请并回归校验（onto.validate）→ 发布新版本后灰度切换 graph_key → 定期用「实体与关系浏览」抽查数据质量。</div>
+                </div>
+              </div>
+            </div>
+          </section>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('ontology');
+
+    /* ==================== 通用 ==================== */
+    var STATUS = {
+      published: { label: '已发布', color: '#10B981' },
+      review: { label: '待评审', color: '#F59E0B' },
+      draft: { label: '草稿', color: '#9CA3AF' },
+      deprecated: { label: '已废弃', color: '#EF4444' }
+    };
+    var TYPES = ['string', 'int', 'float', 'boolean', 'date', 'datetime', 'enum', 'array'];
+
+    function toast(msg) {
+      var t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(function () { t.classList.remove('show'); }, 1900);
+    }
+    function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+
+    /* ==================== 数据：本体树（节点 & 属性 & 关系 & 状态） ==================== */
+    /* ==================== 数据：本体图谱列表（名称 / 标识 / 版本 / 启用状态 / 定义树 / 变更队列） ==================== */
+    var TREE, ATTR_TREE, CUR;
+
+    var ONTO_LIST = [
+      {
+        id: 'o-ecom', name: '电商本体', key: 'ontology_ecommerce', version: '3.2.0', status: 'enabled',
+        desc: '商品 / 用户 / 优惠券等电商域本体', updatedAt: '2026-10-08 16:20',
+        tree: {
+      id: 'root', name: '商品本体 v3.2.0', kind: '本体根', status: 'published', children: [
+        {
+          id: 'n-product', name: '商品', kind: '实体类型', status: 'published',
+          attrs: [
+            { n: 'sku_id', t: 'string', req: true, c: '唯一 · ^SKU[0-9]{8}$', s: 'published' },
+            { n: 'name', t: 'string', req: true, c: '长度 2~120', s: 'published' },
+            { n: 'price', t: 'float', req: true, c: '> 0 · 精度 2', s: 'published' },
+            { n: 'on_sale_at', t: 'datetime', req: false, c: 'ISO-8601', s: 'review' }
+          ],
+          rels: [
+            { n: 'belongs_to', to: '类目', card: '1 : 1..3', s: 'published' },
+            { n: 'produced_by', to: '品牌', card: '1 : 1', s: 'published' },
+            { n: 'has_attr', to: '属性', card: '1 : 0..N', s: 'published' },
+            { n: 'promoted_by', to: '优惠券', card: '1 : 0..N', s: 'review' }
+          ],
+          children: [
+            { id: 'n-category', name: '类目', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'cat_code', t: 'string', req: true, c: '唯一', s: 'published' }, { n: 'level', t: 'int', req: true, c: '1~4', s: 'published' }],
+              rels: [{ n: 'parent_of', to: '类目', card: '1 : 0..1', s: 'published' }], children: [] },
+            { id: 'n-brand', name: '品牌', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'brand_id', t: 'string', req: true, c: '唯一', s: 'published' }, { n: 'site', t: 'string', req: false, c: 'URL', s: 'draft' }],
+              rels: [{ n: 'owns', to: '商品', card: '1 : 0..N', s: 'published' }], children: [] },
+            { id: 'n-attr', name: '属性', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'attr_key', t: 'string', req: true, c: '唯一', s: 'published' }, { n: 'unit', t: 'string', req: false, c: '—', s: 'published' }],
+              rels: [{ n: 'attr_of', to: '商品', card: '1 : 1..N', s: 'published' }], children: [] }
+          ]
+        },
+        {
+          id: 'n-user', name: '用户', kind: '实体类型', status: 'published',
+          attrs: [{ n: 'user_id', t: 'string', req: true, c: '唯一 · 已脱敏', s: 'published' }, { n: 'level', t: 'enum', req: false, c: '普通/银/金/铂金', s: 'published' }],
+          rels: [{ n: 'reviewed', to: '评论', card: '1 : 0..N', s: 'published' }, { n: 'placed', to: '订单', card: '1 : 0..N', s: 'published' }],
+          children: [
+            { id: 'n-review', name: '评论', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'score', t: 'int', req: true, c: '1~5', s: 'published' }],
+              rels: [{ n: 'about', to: '商品', card: '1 : 1', s: 'published' }], children: [] },
+            { id: 'n-order', name: '订单', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'order_no', t: 'string', req: true, c: '唯一', s: 'published' }, { n: 'amount', t: 'float', req: true, c: '>= 0', s: 'published' }],
+              rels: [{ n: 'contains', to: '商品', card: '1 : 1..N', s: 'published' }], children: [] }
+          ]
+        },
+        {
+          id: 'n-coupon', name: '优惠券', kind: '实体类型', status: 'review',
+          attrs: [{ n: 'coupon_id', t: 'string', req: true, c: '唯一', s: 'review' }, { n: 'amount', t: 'float', req: true, c: '> 0', s: 'review' }, { n: 'valid_until', t: 'date', req: true, c: 'ISO-8601', s: 'draft' }],
+          rels: [{ n: 'promotes', to: '商品', card: '1 : 0..N', s: 'review' }], children: []
+        }
+      ]
+    },
+        attrTree: {
+      id: 'a-root', name: '商品（实体定义）', kind: 'entity', type: '', required: false, children: [
+        { id: 'a-sku', name: 'sku_id', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '', desc: '商品唯一编码', children: [
+          { id: 'a-sku-1', name: 'unique: true', kind: 'constraint' },
+          { id: 'a-sku-2', name: 'pattern: ^SKU[0-9]{8}$', kind: 'constraint' }
+        ] },
+        { id: 'a-name', name: 'name', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '2~120 字符', desc: '商品名称', children: [
+          { id: 'a-name-1', name: 'max_length: 120', kind: 'constraint' }
+        ] },
+        { id: 'a-price', name: 'price', kind: 'attr', type: 'float', required: true, def: '0.00', enumv: '', range: '> 0', desc: '售价（元）', children: [
+          { id: 'a-price-1', name: 'min: 0.01', kind: 'constraint' },
+          { id: 'a-price-2', name: 'precision: 2', kind: 'constraint' }
+        ] },
+        { id: 'a-level', name: 'level', kind: 'attr', type: 'enum', required: false, def: '普通', enumv: '普通,银,金,铂金', range: '', desc: '会员等级', children: [
+          { id: 'a-level-1', name: 'enum: [普通,银,金,铂金]', kind: 'constraint' }
+        ] }
+      ]
+    },
+        changes: [
+          { id: 'ch-e1', type: '新增实体', target: '库存', by: 'li.si', at: '2026-10-10 09:12', status: 'pending',
+            summary: '新增实体类型「库存」：warehouse_id / quantity / locked，并挂接 stores → 商品',
+            payload: { kind: 'entity', name: '库存', attrs: [
+              { n: 'warehouse_id', t: 'string', req: true, c: '唯一', s: 'review' },
+              { n: 'quantity', t: 'int', req: true, c: '>= 0', s: 'review' },
+              { n: 'locked', t: 'int', req: false, c: '>= 0', s: 'draft' }
+            ], rels: [{ n: 'stores', to: '商品', card: '1 : 0..N', s: 'review' }] } },
+          { id: 'ch-e2', type: '新增关系', target: '商品 → 供应商', by: 'wang.wu', at: '2026-10-10 11:40', status: 'pending',
+            summary: '新增关系 supplied_by（商品 → 供应商），基数 1 : 0..N，支持多供应商',
+            payload: { kind: 'relation', entity: '商品', n: 'supplied_by', to: '供应商', card: '1 : 0..N' } },
+          { id: 'ch-e3', type: '属性调整', target: '商品.sku_id', by: 'zhang.san', at: '2026-10-09 15:02', status: 'pending',
+            summary: 'SKU 正则由 ^SKU[0-9]{8}$ 放宽为 ^SKU[0-9]{8,12}$，兼容新业务线',
+            payload: { kind: 'attr', entity: '商品', n: 'sku_id', c: '唯一 · ^SKU[0-9]{8,12}$', s: 'review' } },
+          { id: 'ch-e4', type: '废弃关系', target: '商品.belongs_to', by: 'li.si', at: '2026-10-08 10:31', status: 'pending',
+            summary: '商品归属类目改由商品主数据直接维护，本体层废弃 belongs_to 关系',
+            payload: { kind: 'dep-rel', entity: '商品', n: 'belongs_to' } }
+        ]
+      },
+      {
+        id: 'o-org', name: '企业组织本体', key: 'ontology_org', version: '2.1.5', status: 'enabled',
+        desc: '员工 / 部门 / 岗位的组织域本体', updatedAt: '2026-09-25 14:03',
+        tree: {
+          id: 'root', name: '组织本体 v2.1.5', kind: '本体根', status: 'published', children: [
+            { id: 'o-staff', name: '员工', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'emp_id', t: 'string', req: true, c: '唯一', s: 'published' }, { n: 'name', t: 'string', req: true, c: '2~32', s: 'published' }, { n: 'title', t: 'string', req: false, c: '—', s: 'draft' }],
+              rels: [{ n: 'works_in', to: '部门', card: '1 : 1', s: 'published' }, { n: 'holds', to: '岗位', card: '1 : 1..N', s: 'published' }],
+              children: [
+                { id: 'o-dept', name: '部门', kind: '实体类型', status: 'published',
+                  attrs: [{ n: 'dept_code', t: 'string', req: true, c: '唯一', s: 'published' }],
+                  rels: [{ n: 'parent_of', to: '部门', card: '1 : 0..N', s: 'published' }], children: [] },
+                { id: 'o-post', name: '岗位', kind: '实体类型', status: 'review',
+                  attrs: [{ n: 'post_code', t: 'string', req: true, c: '唯一', s: 'review' }],
+                  rels: [{ n: 'belongs', to: '部门', card: '1 : 1', s: 'review' }], children: [] }
+              ] }
+          ]
+        },
+        attrTree: { id: 'a-root', name: '员工（实体定义）', kind: 'entity', children: [
+          { id: 'o-a1', name: 'emp_id', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '', desc: '员工工号', children: [{ id: 'o-c1', name: 'unique: true', kind: 'constraint' }] },
+          { id: 'o-a2', name: 'name', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '2~32 字符', desc: '员工姓名', children: [] }
+        ] },
+        changes: [
+          { id: 'ch-o1', type: '新增实体', target: '外部协作方', by: 'zhao.liu', at: '2026-09-24 16:20', status: 'pending',
+            summary: '新增实体类型「外部协作方」：partner_id / 合作类型，用于跨组织流程建模',
+            payload: { kind: 'entity', name: '外部协作方', attrs: [{ n: 'partner_id', t: 'string', req: true, c: '唯一', s: 'draft' }], rels: [{ n: 'cooperates', to: '员工', card: '1 : 0..N', s: 'draft' }] } }
+        ]
+      },
+      {
+        id: 'o-fin', name: '金融实体本体', key: 'ontology_finance', version: '4.0.1', status: 'enabled',
+        desc: '公司 / 人物 / 事件的金融域本体', updatedAt: '2026-10-09 10:15',
+        tree: {
+          id: 'root', name: '金融本体 v4.0.1', kind: '本体根', status: 'published', children: [
+            { id: 'f-comp', name: '公司', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'credit_code', t: 'string', req: true, c: '统一社会信用代码', s: 'published' }, { n: 'reg_capital', t: 'float', req: false, c: '>= 0', s: 'published' }],
+              rels: [{ n: 'employs', to: '人物', card: '1 : 0..N', s: 'published' }, { n: 'involved_in', to: '事件', card: '1 : 0..N', s: 'review' }],
+              children: [
+                { id: 'f-per', name: '人物', kind: '实体类型', status: 'published',
+                  attrs: [{ n: 'person_id', t: 'string', req: true, c: '唯一 · 已脱敏', s: 'published' }],
+                  rels: [{ n: 'related_to', to: '人物', card: '1 : 0..N', s: 'published' }], children: [] },
+                { id: 'f-evt', name: '事件', kind: '实体类型', status: 'draft',
+                  attrs: [{ n: 'event_id', t: 'string', req: true, c: '唯一', s: 'draft' }],
+                  rels: [{ n: 'about', to: '公司', card: '1 : 1..N', s: 'draft' }], children: [] }
+              ] }
+          ]
+        },
+        attrTree: { id: 'a-root', name: '公司（实体定义）', kind: 'entity', children: [
+          { id: 'f-a1', name: 'credit_code', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '18 位', desc: '统一社会信用代码', children: [{ id: 'f-c1', name: 'pattern: ^[0-9A-HJ-NPQRTUWXY]{18}$', kind: 'constraint' }] },
+          { id: 'f-a2', name: 'reg_capital', kind: 'attr', type: 'float', required: false, def: '0.00', enumv: '', range: '>= 0', desc: '注册资本（万元）', children: [] }
+        ] },
+        changes: [
+          { id: 'ch-f1', type: '属性调整', target: '公司.reg_capital', by: 'li.si', at: '2026-10-09 10:15', status: 'pending',
+            summary: '注册资本单位统一为「万元」，并补充精度约束 precision: 2',
+            payload: { kind: 'attr', entity: '公司', n: 'reg_capital', c: '>= 0 · 单位万元 · precision 2', s: 'review' } }
+        ]
+      },
+      {
+        id: 'o-med', name: '医疗知识本体', key: 'ontology_medical', version: '1.8.0', status: 'disabled',
+        desc: '疾病 / 药物 / 症状的医疗域本体（已停用，待重新评审）', updatedAt: '2026-09-12 09:40',
+        tree: {
+          id: 'root', name: '医疗本体 v1.8.0', kind: '本体根', status: 'draft', children: [
+            { id: 'm-dis', name: '疾病', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'icd10', t: 'string', req: true, c: 'ICD-10 编码', s: 'published' }],
+              rels: [{ n: 'treated_by', to: '药物', card: '1 : 0..N', s: 'published' }],
+              children: [
+                { id: 'm-drug', name: '药物', kind: '实体类型', status: 'published',
+                  attrs: [{ n: 'drug_code', t: 'string', req: true, c: '唯一', s: 'published' }],
+                  rels: [{ n: 'has_side_effect', to: '症状', card: '1 : 0..N', s: 'draft' }], children: [] },
+                { id: 'm-sym', name: '症状', kind: '实体类型', status: 'review',
+                  attrs: [{ n: 'sym_code', t: 'string', req: true, c: '唯一', s: 'review' }],
+                  rels: [{ n: 'indicates', to: '疾病', card: '1 : 0..N', s: 'review' }], children: [] }
+              ] }
+          ]
+        },
+        attrTree: { id: 'a-root', name: '疾病（实体定义）', kind: 'entity', children: [
+          { id: 'm-a1', name: 'icd10', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '', desc: 'ICD-10 疾病编码', children: [] }
+        ] },
+        changes: []
+      },
+      {
+        id: 'o-supply', name: '供应链本体', key: 'ontology_supply', version: '1.4.2', status: 'enabled',
+        desc: '供应商 / 物料 / 仓库的供应链域本体', updatedAt: '2026-10-02 11:20',
+        tree: {
+          id: 'root', name: '供应链本体 v1.4.2', kind: '本体根', status: 'published', children: [
+            { id: 's-sup', name: '供应商', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'supplier_id', t: 'string', req: true, c: '唯一', s: 'published' }, { n: 'level', t: 'enum', req: false, c: 'A | B | C', s: 'published' }],
+              rels: [{ n: 'supplies', to: '物料', card: '1 : 0..N', s: 'published' }],
+              children: [
+                { id: 's-mat', name: '物料', kind: '实体类型', status: 'published',
+                  attrs: [{ n: 'sku_code', t: 'string', req: true, c: '唯一', s: 'published' }, { n: 'safety_stock', t: 'int', req: false, c: '>= 0', s: 'published' }],
+                  rels: [{ n: 'stored_in', to: '仓库', card: '1 : 0..N', s: 'published' }], children: [] },
+                { id: 's-wh', name: '仓库', kind: '实体类型', status: 'draft',
+                  attrs: [{ n: 'wh_code', t: 'string', req: true, c: '唯一', s: 'draft' }],
+                  rels: [{ n: 'located_at', to: '供应商', card: '1 : 0..N', s: 'draft' }], children: [] }
+              ] }
+          ]
+        },
+        attrTree: { id: 'a-root', name: '供应商（实体定义）', kind: 'entity', children: [
+          { id: 'sp-a1', name: 'supplier_id', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '', desc: '供应商编号', children: [{ id: 'sp-c1', name: 'unique: true', kind: 'constraint' }] },
+          { id: 'sp-a2', name: 'level', kind: 'attr', type: 'enum', required: false, def: 'B', enumv: 'A, B, C', range: '', desc: '供应商等级', children: [] }
+        ] },
+        changes: [
+          { id: 'ch-s1', type: '新增关系', target: '仓库 → 物料', by: 'sun.qi', at: '2026-10-02 11:20', status: 'pending',
+            summary: '新增关系 holds（仓库 → 物料），支持库存分布查询',
+            payload: { kind: 'relation', entity: '仓库', n: 'holds', to: '物料', card: '1 : 0..N' } }
+        ]
+      },
+      {
+        id: 'o-risk', name: '风控反欺诈本体', key: 'ontology_risk', version: '3.0.9', status: 'enabled',
+        desc: '账号 / 设备 / 关系网络的风控域本体', updatedAt: '2026-10-10 09:05',
+        tree: {
+          id: 'root', name: '风控本体 v3.0.9', kind: '本体根', status: 'published', children: [
+            { id: 'r-acc', name: '账号', kind: '实体类型', status: 'published',
+              attrs: [{ n: 'account_id', t: 'string', req: true, c: '唯一 · 已脱敏', s: 'published' }, { n: 'risk_score', t: 'float', req: false, c: '0 ~ 100', s: 'published' }],
+              rels: [{ n: 'uses_device', to: '设备', card: '1 : 0..N', s: 'published' }, { n: 'transfers_to', to: '账号', card: '1 : 0..N', s: 'review' }],
+              children: [
+                { id: 'r-dev', name: '设备', kind: '实体类型', status: 'published',
+                  attrs: [{ n: 'device_id', t: 'string', req: true, c: '唯一', s: 'published' }],
+                  rels: [{ n: 'shared_with', to: '账号', card: '1 : 0..N', s: 'review' }], children: [] }
+              ] }
+          ]
+        },
+        attrTree: { id: 'a-root', name: '账号（实体定义）', kind: 'entity', children: [
+          { id: 'rk-a1', name: 'account_id', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '', desc: '账号唯一标识', children: [{ id: 'rk-c1', name: 'unique: true', kind: 'constraint' }] },
+          { id: 'rk-a2', name: 'risk_score', kind: 'attr', type: 'float', required: false, def: '0.0', enumv: '', range: '0 ~ 100', desc: '风险评分', children: [] }
+        ] },
+        changes: []
+      },
+      {
+        id: 'o-market', name: '营销活动本体', key: 'ontology_market', version: '0.6.3', status: 'disabled',
+        desc: '活动 / 优惠券 / 人群包的营销域本体（已停用，待合并至电商本体）', updatedAt: '2026-10-06 17:40',
+        tree: {
+          id: 'root', name: '营销本体 v0.6.3', kind: '本体根', status: 'draft', children: [
+            { id: 'mk-act', name: '活动', kind: '实体类型', status: 'review',
+              attrs: [{ n: 'campaign_id', t: 'string', req: true, c: '唯一', s: 'review' }],
+              rels: [{ n: 'contains_coupon', to: '优惠券', card: '1 : 0..N', s: 'review' }],
+              children: [
+                { id: 'mk-cp', name: '优惠券', kind: '实体类型', status: 'draft',
+                  attrs: [{ n: 'coupon_code', t: 'string', req: true, c: '唯一', s: 'draft' }, { n: 'amount', t: 'float', req: true, c: '> 0', s: 'draft' }],
+                  rels: [{ n: 'for_crowd', to: '人群包', card: '1 : 0..N', s: 'draft' }], children: [] },
+                { id: 'mk-cd', name: '人群包', kind: '实体类型', status: 'draft',
+                  attrs: [{ n: 'crowd_id', t: 'string', req: true, c: '唯一', s: 'draft' }],
+                  rels: [{ n: 'includes', to: '账号', card: '1 : 0..N', s: 'draft' }], children: [] }
+              ] }
+          ]
+        },
+        attrTree: { id: 'a-root', name: '活动（实体定义）', kind: 'entity', children: [
+          { id: 'mk-a1', name: 'campaign_id', kind: 'attr', type: 'string', required: true, def: '', enumv: '', range: '', desc: '活动编号', children: [] }
+        ] },
+        changes: [
+          { id: 'ch-m1', type: '废弃关系', target: '优惠券.for_crowd', by: 'zhou.ba', at: '2026-10-06 17:40', status: 'pending',
+            summary: '人群定向改由投放系统维护，本体层废弃 for_crowd 关系',
+            payload: { kind: 'dep-rel', entity: '优惠券', n: 'for_crowd' } }
+        ]
+      }
+    ];
+
+
+    /* ==================== 思维导图布局与渲染 ==================== */
+    var NW = 186, NH = 46, VGAP = 12, HGAP = 72, PAD = 26;
+
+    function measure(node) {
+      if (!node.children || !node.children.length || node.collapsed) return NH + VGAP;
+      var h = 0;
+      node.children.forEach(function (c) { h += measure(c); });
+      return Math.max(h, NH + VGAP);
+    }
+    function place(node, x, y, out) {
+      var h = measure(node);
+      var box = { n: node, x: x, y: y + h / 2 - NH / 2 };
+      out.push(box);
+      if (node.children && node.children.length && !node.collapsed) {
+        var cy = y;
+        node.children.forEach(function (c) {
+          var ch = measure(c);
+          place(c, x + NW + HGAP, cy, out);
+          cy += ch;
+        });
+      }
+    }
+    function findNode(node, id) {
+      if (node.id === id) return node;
+      if (!node.children) return null;
+      for (var i = 0; i < node.children.length; i++) {
+        var r = findNode(node.children[i], id);
+        if (r) return r;
+      }
+      return null;
+    }
+    function parentOf(node, id) {
+      if (!node.children) return null;
+      for (var i = 0; i < node.children.length; i++) {
+        if (node.children[i].id === id) return node;
+        var r = parentOf(node.children[i], id);
+        if (r) return r;
+      }
+      return null;
+    }
+    function renderMind(containerId, root, selId, onPick) {
+      var boxes = [];
+      place(root, PAD, PAD, boxes);
+      var maxX = 0, maxY = 0;
+      boxes.forEach(function (b) { maxX = Math.max(maxX, b.x + NW); maxY = Math.max(maxY, b.y + NH); });
+      var W = maxX + PAD, H = maxY + PAD;
+      var svg = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">';
+
+      /* 连线 */
+      boxes.forEach(function (b) {
+        if (!b.n.children || b.n.collapsed) return;
+        var px = b.x + NW, py = b.y + NH / 2;
+        b.n.children.forEach(function (c) {
+          var t = null;
+          boxes.forEach(function (x) { if (x.n === c) t = x; });
+          if (!t) return;
+          var cx = t.x, cy = t.y + NH / 2;
+          svg += '<path d="M' + px + ' ' + py + ' C' + (px + 38) + ' ' + py + ', ' + (cx - 38) + ' ' + cy + ', ' + cx + ' ' + cy + '" fill="none" stroke="#CBD5E1" stroke-width="1.4"/>';
+        });
+      });
+
+      /* 节点 */
+      boxes.forEach(function (b) {
+        var n = b.n, sel = n.id === selId ? ' sel' : '';
+        var st = STATUS[n.status] || (n.kind === 'attr' ? { label: '定义中', color: '#6366F1' } : STATUS.draft);
+        var sub = n.kind === 'attr'
+          ? (n.type || '') + (n.required ? ' · 必填' : '')
+          : (n.kind === 'constraint' ? '约束项' : (n.kind === 'entity' ? '实体定义' : n.kind + ' · ' + ((n.attrs ? n.attrs.length : 0) + ' 属性 / ' + (n.rels ? n.rels.length : 0) + ' 关系')));
+        svg += '<g class="mn-box' + sel + '" data-id="' + n.id + '">';
+        svg += '<rect class="mn-bg" x="' + b.x + '" y="' + b.y + '" width="' + NW + '" height="' + NH + '" rx="8" fill="#fff" stroke="#E5E7EB" stroke-width="1"/>';
+        svg += '<rect x="' + b.x + '" y="' + b.y + '" width="4" height="' + NH + '" rx="2" fill="' + st.color + '"/>';
+        svg += '<text x="' + (b.x + 14) + '" y="' + (b.y + 20) + '" font-size="13" font-weight="600" fill="#111827">' + esc(n.name) + '</text>';
+        svg += '<text x="' + (b.x + 14) + '" y="' + (b.y + 35) + '" font-size="11" fill="#6B7280">' + esc(sub) + '</text>';
+        if (n.children && n.children.length) {
+          svg += '<circle cx="' + (b.x + NW - 10) + '" cy="' + (b.y + NH - 10) + '" r="7" fill="' + (n.collapsed ? '#6366F1' : '#EEF2FF') + '"/>';
+          svg += '<text x="' + (b.x + NW - 10) + '" y="' + (b.y + NH - 6.5) + '" font-size="10" text-anchor="middle" fill="' + (n.collapsed ? '#fff' : '#6366F1') + '">' + (n.collapsed ? '+' : '−') + '</text>';
+        }
+        svg += '</g>';
+      });
+      svg += '</svg>';
+
+      var el = document.getElementById(containerId);
+      el.innerHTML = svg;
+      el.querySelectorAll('.mn-box').forEach(function (g) {
+        g.addEventListener('click', function (ev) {
+          var id = g.getAttribute('data-id');
+          var hitToggle = n_circleHit(g, ev);
+          if (hitToggle) {
+            var nd = findNode(root, id);
+            if (nd) nd.collapsed = !nd.collapsed;
+            renderMind(containerId, root, id, onPick);
+            return;
+          }
+          onPick(id);
+        });
+      });
+    }
+    function n_circleHit(g, ev) {
+      /* 点击右下角折叠圆点时切换，而非选中 */
+      var c = g.querySelector('circle');
+      if (!c) return false;
+      var pt = g.ownerSVGElement.createSVGPoint();
+      pt.x = ev.clientX; pt.y = ev.clientY;
+      var m = g.getScreenCTM();
+      if (!m) return false;
+      var p = pt.matrixTransform(m.inverse());
+      var cx = parseFloat(c.getAttribute('cx')), cy = parseFloat(c.getAttribute('cy'));
+      return Math.pow(p.x - cx, 2) + Math.pow(p.y - cy, 2) <= 100;
+    }
+
+    /* ==================== 方式一：节点 / 属性 / 关系 / 状态 ==================== */
+    var selGraphId = 'n-product';
+
+    function renderGraphTab() {
+      renderMind('mindGraph', TREE, selGraphId, function (id) {
+        selGraphId = id;
+        renderGraphTab();
+      });
+      renderNodeDetail();
+    }
+    function renderNodeDetail() {
+      var n = findNode(TREE, selGraphId);
+      var box = document.getElementById('nodeDetail');
+      var hint = document.getElementById('selHint');
+      if (!n) { box.innerHTML = '<div class="muted text-sm">未选中节点</div>'; return; }
+      hint.textContent = n.name + ' · ' + n.kind;
+      document.getElementById('selStatus').value = n.status || 'draft';
+
+      var h = '';
+      h += '<div class="fm-row"><div class="fm-k">名称</div><div class="fm-v"><input id="ndName" value="' + esc(n.name) + '" /></div></div>';
+      h += '<div class="fm-row"><div class="fm-k">类型</div><div class="fm-v"><input id="ndKind" value="' + esc(n.kind) + '" /></div></div>';
+      h += '<div style="margin-top:14px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">'
+        + '<b style="font-size:13px;">属性（' + (n.attrs ? n.attrs.length : 0) + '）</b>'
+        + '<span class="link text-sm" id="ndAddAttr">+ 新增属性</span></div>';
+      h += '<table class="mini-tbl tbl-attr"><thead><tr><th>属性名</th><th>类型</th><th>必填</th><th>约束</th><th>状态</th></tr></thead><tbody>';
+      (n.attrs || []).forEach(function (a, i) {
+        h += '<tr>'
+          + '<td><input class="mini-inp" data-a="n" data-i="' + i + '" value="' + esc(a.n) + '" /></td>'
+          + '<td><select class="mini-inp" data-a="t" data-i="' + i + '" style="height:28px;">' + TYPES.map(function (t) {
+            return '<option' + (t === a.t ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></td>'
+          + '<td><input type="checkbox" data-a="req" data-i="' + i + '"' + (a.req ? ' checked' : '') + ' /></td>'
+          + '<td><input class="mini-inp" data-a="c" data-i="' + i + '" value="' + esc(a.c) + '" /></td>'
+          + '<td><span class="badge-st" style="background:' + (STATUS[a.s] || STATUS.draft).color + '1A; color:' + (STATUS[a.s] || STATUS.draft).color + ';">' + (STATUS[a.s] || STATUS.draft).label + '</span></td>'
+          + '</tr>';
+      });
+      h += '</tbody></table></div>';
+
+      h += '<div style="margin-top:16px;"><div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">'
+        + '<b style="font-size:13px;">关系（' + (n.rels ? n.rels.length : 0) + '）</b>'
+        + '<span class="link text-sm" id="ndAddRel">+ 新增关系</span></div>';
+      h += '<table class="mini-tbl tbl-rel"><thead><tr><th>关系</th><th>指向</th><th>基数</th><th>状态</th></tr></thead><tbody>';
+      (n.rels || []).forEach(function (r, i) {
+        h += '<tr>'
+          + '<td><input class="mini-inp" data-r="n" data-i="' + i + '" value="' + esc(r.n) + '" /></td>'
+          + '<td><input class="mini-inp" data-r="to" data-i="' + i + '" value="' + esc(r.to) + '" /></td>'
+          + '<td><input class="mini-inp" data-r="card" data-i="' + i + '" value="' + esc(r.card) + '" /></td>'
+          + '<td><span class="badge-st" style="background:' + (STATUS[r.s] || STATUS.draft).color + '1A; color:' + (STATUS[r.s] || STATUS.draft).color + ';">' + (STATUS[r.s] || STATUS.draft).label + '</span></td>'
+          + '</tr>';
+      });
+      h += '</tbody></table></div>';
+      box.innerHTML = h;
+
+      var nm = document.getElementById('ndName');
+      nm.addEventListener('input', function () { n.name = nm.value || '未命名'; renderMind('mindGraph', TREE, selGraphId, function (id) { selGraphId = id; renderGraphTab(); }); });
+      var kd = document.getElementById('ndKind');
+      kd.addEventListener('input', function () { n.kind = kd.value; });
+
+      box.querySelectorAll('[data-a]').forEach(function (inp) {
+        inp.addEventListener('input', function () {
+          var i = +inp.getAttribute('data-i'), f = inp.getAttribute('data-a'), a = n.attrs[i];
+          if (f === 'req') a.req = inp.checked; else a[f] = inp.value;
+          renderMind('mindGraph', TREE, selGraphId, function (id) { selGraphId = id; renderGraphTab(); });
+        });
+      });
+      box.querySelectorAll('[data-r]').forEach(function (inp) {
+        inp.addEventListener('input', function () {
+          var i = +inp.getAttribute('data-i'), f = inp.getAttribute('data-r');
+          n.rels[i][f] = inp.value;
+        });
+      });
+      var aa = document.getElementById('ndAddAttr');
+      if (aa) aa.addEventListener('click', function () {
+        n.attrs.push({ n: 'new_attr', t: 'string', req: false, c: '—', s: 'draft' });
+        renderGraphTab(); toast('已新增属性（默认草稿状态）');
+      });
+      var ar = document.getElementById('ndAddRel');
+      if (ar) ar.addEventListener('click', function () {
+        n.rels.push({ n: 'new_rel', to: n.name, card: '1 : 0..N', s: 'draft' });
+        renderGraphTab(); toast('已新增关系（默认草稿状态）');
+      });
+      readonlyGuard(box);
+    }
+    document.getElementById('selStatus').addEventListener('change', function () {
+      if (!editable()) { this.value = ''; return; }
+      var n = findNode(TREE, selGraphId);
+      if (!n) return;
+      n.status = this.value;
+      renderGraphTab();
+      toast('状态已更新为：' + STATUS[n.status].label);
+    });
+    document.getElementById('btnAddChild').addEventListener('click', function () {
+      if (!editable()) return;
+      var p = findNode(TREE, selGraphId);
+      if (!p) return;
+      var name = prompt('在「' + p.name + '」下新增子节点名称：', '新实体类型');
+      if (!name) return;
+      var id = 'n-' + Date.now();
+      p.children = p.children || [];
+      p.children.push({ id: id, name: name, kind: '实体类型', status: 'draft', attrs: [], rels: [], children: [] });
+      selGraphId = id; renderGraphTab(); toast('已新增子节点：' + name);
+    });
+    document.getElementById('btnExpand').addEventListener('click', function () {
+      (function walk(x) { x.collapsed = false; (x.children || []).forEach(walk); })(TREE);
+      renderGraphTab();
+    });
+    document.getElementById('btnFit').addEventListener('click', function () {
+      var el = document.getElementById('mindGraph');
+      el.scrollLeft = 0; el.scrollTop = 0; toast('视图已复位');
+    });
+
+    /* ==================== 方式二：属性定义画布 ==================== */
+    var selAttrId = 'a-sku';
+
+    function renderCanvasTab() {
+      renderMind('mindCanvas', ATTR_TREE, selAttrId, function (id) { selAttrId = id; renderCanvasTab(); });
+      renderAttrForm();
+      renderGen();
+    }
+    function renderAttrForm() {
+      var n = findNode(ATTR_TREE, selAttrId);
+      var box = document.getElementById('attrForm');
+      var hint = document.getElementById('attrHint');
+      if (!n) { box.innerHTML = '<div class="muted text-sm">未选中节点</div>'; return; }
+      if (n.kind === 'constraint') {
+        hint.textContent = '约束项';
+        box.innerHTML = '<div class="fm-row"><div class="fm-k">约束表达式</div><div class="fm-v"><input id="afCons" value="' + esc(n.name) + '" /></div></div>'
+          + '<div class="muted text-sm mt-1">约束项直接书写为 YAML 片段，如 <code class="mono">min: 0.01</code>。</div>';
+        document.getElementById('afCons').addEventListener('input', function () { n.name = this.value; renderCanvasTab(); });
+        readonlyGuard(box);
+        return;
+      }
+      if (n.kind === 'entity') {
+        hint.textContent = '实体定义';
+        box.innerHTML = '<div class="fm-row"><div class="fm-k">实体名</div><div class="fm-v"><input id="afEnt" value="' + esc(n.name) + '" /></div></div>'
+          + '<div class="muted text-sm mt-1">（实体名在右侧画布根节点编辑）</div>';
+        document.getElementById('afEnt').addEventListener('input', function () { n.name = this.value; renderCanvasTab(); });
+        readonlyGuard(box);
+        return;
+      }
+      hint.textContent = '属性 · ' + n.name;
+      var h = '';
+      h += '<div class="fm-row"><div class="fm-k">属性名</div><div class="fm-v"><input id="afName" value="' + esc(n.name) + '" /></div></div>';
+      h += '<div class="fm-row"><div class="fm-k">数据类型</div><div class="fm-v"><select id="afType">' + TYPES.map(function (t) {
+        return '<option' + (t === n.type ? ' selected' : '') + '>' + t + '</option>'; }).join('') + '</select></div></div>';
+      h += '<div class="fm-row"><div class="fm-k">是否必填</div><div class="fm-v"><label class="switch"><input type="checkbox" id="afReq"' + (n.required ? ' checked' : '') + ' /><span class="switch-slider"></span></label></div></div>';
+      h += '<div class="fm-row"><div class="fm-k">默认值</div><div class="fm-v"><input id="afDef" value="' + esc(n.def) + '" /></div></div>';
+      h += '<div class="fm-row"><div class="fm-k">枚举值</div><div class="fm-v"><input id="afEnum" placeholder="逗号分隔，如 普通,银,金" value="' + esc(n.enumv) + '" /></div></div>';
+      h += '<div class="fm-row"><div class="fm-k">取值范围</div><div class="fm-v"><input id="afRange" placeholder="如 > 0 / 1~5 / 2~120 字符" value="' + esc(n.range) + '" /></div></div>';
+      h += '<div class="fm-row"><div class="fm-k">描述</div><div class="fm-v"><input id="afDesc" value="' + esc(n.desc) + '" /></div></div>';
+      h += '<div class="flex gap-8 mt-1" style="margin-top:12px;">'
+        + '<button class="btn btn-sm btn-primary" id="afAddCons">+ 约束项</button>'
+        + '<button class="btn btn-sm btn-ghost" id="afDel">删除属性</button></div>';
+      box.innerHTML = h;
+
+      var sync = function () { renderMind('mindCanvas', ATTR_TREE, selAttrId, function (id) { selAttrId = id; renderCanvasTab(); }); renderGen(); };
+      document.getElementById('afName').addEventListener('input', function () { n.name = this.value || 'attr'; sync(); });
+      document.getElementById('afType').addEventListener('change', function () { n.type = this.value; sync(); });
+      document.getElementById('afReq').addEventListener('change', function () {
+        n.required = this.checked;
+        syncConstraint(n, 'required: ' + (n.required ? 'true' : 'false'));
+        sync();
+      });
+      document.getElementById('afDef').addEventListener('input', function () { n.def = this.value; renderGen(); });
+      document.getElementById('afEnum').addEventListener('input', function () { n.enumv = this.value; syncConstraint(n, 'enum: [' + n.enumv + ']'); renderGen(); });
+      document.getElementById('afRange').addEventListener('input', function () { n.range = this.value; renderGen(); });
+      document.getElementById('afDesc').addEventListener('input', function () { n.desc = this.value; renderGen(); });
+      document.getElementById('afAddCons').addEventListener('click', function () {
+        var v = prompt('新增约束项（YAML 片段）：', 'max_length: 64');
+        if (!v) return;
+        n.children = n.children || [];
+        n.children.push({ id: 'c-' + Date.now(), name: v, kind: 'constraint' });
+        renderCanvasTab(); toast('已新增约束项');
+      });
+      document.getElementById('afDel').addEventListener('click', function () {
+        var p = parentOf(ATTR_TREE, selAttrId);
+        if (!p) return;
+        p.children = p.children.filter(function (c) { return c.id !== selAttrId; });
+        selAttrId = p.children.length ? p.children[0].id : 'a-root';
+        renderCanvasTab(); toast('属性已删除');
+      });
+      readonlyGuard(box);
+    }
+    function syncConstraint(attr, expr) {
+      var key = expr.split(':')[0];
+      attr.children = attr.children || [];
+      var hit = attr.children.filter(function (c) { return c.name.indexOf(key + ':') === 0; })[0];
+      if (hit) hit.name = expr; else attr.children.push({ id: 'c-' + Date.now(), name: expr, kind: 'constraint' });
+    }
+
+    /* ==================== YAML 生成 ==================== */
+    function genConstraintYaml() {
+      var L = [];
+      var entName = ATTR_TREE ? ATTR_TREE.name.replace('（实体定义）', '') : '';
+      L.push('# ontology-constraints.yaml');
+      L.push('# 由「本体属性定义画布」生成 · ' + (CUR ? CUR.name + ' v' + CUR.version : '') + ' · 构建期校验用');
+      L.push('version: "' + (CUR ? CUR.version : '-') + '"');
+      L.push('ontology: ' + (CUR ? CUR.key : '-'));
+      L.push('entity: ' + entName);
+      L.push('constraints:');
+      (ATTR_TREE.children || []).forEach(function (a) {
+        L.push('  - attribute: ' + a.name);
+        L.push('    type: ' + (a.type || 'string'));
+        L.push('    required: ' + (a.required ? 'true' : 'false'));
+        if (a.def) L.push('    default: ' + a.def);
+        (a.children || []).forEach(function (c) {
+          var kv = c.name.split(':');
+          if (kv.length < 2) return;
+          var k = kv[0].trim(), v = kv.slice(1).join(':').trim();
+          if (k === 'required') return;
+          L.push('    ' + k + ': ' + (/^\[.*\]$/.test(v) || /^(true|false|-?\d+(\.\d+)?)$/.test(v) ? v : '"' + v + '"'));
+        });
+        if (a.range) L.push('    # range: ' + a.range);
+        if (a.desc) L.push('    # desc: ' + a.desc);
+      });
+      return L.join('\n');
+    }
+    function genEntityYaml() {
+      var L = [];
+      L.push('# entity-definition.yaml');
+      L.push('# 实体对象定义规则文件 · 用于抽取与对象映射');
+      L.push('version: "' + (CUR ? CUR.version : '-') + '"');
+      L.push('ontology: ' + (CUR ? CUR.key : '-'));
+      L.push('entities:');
+      (function walk(node) {
+        if (node.kind === '实体类型') {
+          L.push('  - name: ' + node.name);
+          var pri = (node.attrs || []).filter(function (a) { return a.req; })[0];
+          L.push('    key: ' + (pri ? pri.n : 'id'));
+          L.push('    status: ' + (node.status || 'draft'));
+          if (node.attrs && node.attrs.length) {
+            L.push('    attributes:');
+            node.attrs.forEach(function (a) {
+              L.push('      - ' + a.n + ': ' + (a.t || 'string') + (a.req ? '   # required' : ''));
+            });
+          }
+          if (node.rels && node.rels.length) {
+            L.push('    relations:');
+            node.rels.forEach(function (r) {
+              L.push('      - ' + r.n + ': ' + r.to + '  # ' + r.card + (r.s === 'deprecated' ? ' · deprecated' : ''));
+            });
+          }
+        }
+        (node.children || []).forEach(walk);
+      })(TREE);
+      return L.join('\n');
+    }
+    var genFile = 'constraint';
+    function renderGen() {
+      var txt = genFile === 'constraint' ? genConstraintYaml() : genEntityYaml();
+      document.getElementById('genOut').innerHTML = highlight(txt);
+      return txt;
+    }
+    function highlight(s) {
+      return esc(s)
+        .replace(/^#.*$/gm, function (m) { return '<span class="c">' + m + '</span>'; })
+        .replace(/^(\s*-?\s*)([A-Za-z_][\w.]*)(:)/gm, function (m, a, b, c) { return a + '<span class="k">' + b + '</span>' + c; })
+        .replace(/(:\s)(true|false|-?\d+(\.\d+)?|\[[^\]]*\])$/gm, function (m, a, b) { return a + '<span class="s">' + b + '</span>'; });
+    }
+    document.getElementById('genChips').querySelectorAll('.file-chip').forEach(function (c) {
+      c.addEventListener('click', function () {
+        document.getElementById('genChips').querySelectorAll('.file-chip').forEach(function (x) { x.classList.remove('active'); });
+        c.classList.add('active');
+        genFile = c.getAttribute('data-f');
+        renderGen();
+      });
+    });
+    document.getElementById('btnGen').addEventListener('click', function () { renderGen(); toast('已根据画布生成 YAML'); });
+    document.getElementById('btnCopyGen').addEventListener('click', function () {
+      copyText(genFile === 'constraint' ? genConstraintYaml() : genEntityYaml());
+      toast('已复制到剪贴板');
+    });
+    document.getElementById('btnAddAttr').addEventListener('click', function () {
+      if (!editable()) return;
+      var id = 'a-' + Date.now();
+      ATTR_TREE.children.push({ id: id, name: 'new_attr', kind: 'attr', type: 'string', required: false, def: '', enumv: '', range: '', desc: '', children: [] });
+      selAttrId = id; renderCanvasTab(); toast('已新增属性，请在右侧编辑');
+    });
+
+    function copyText(t) {
+      var ta = document.createElement('textarea');
+      ta.value = t; document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); } catch (e) { }
+      document.body.removeChild(ta);
+    }
+
+    /* ==================== 方式三：YAML 文件编辑 / 校验 ==================== */
+    var yamlFile = 'constraint';
+    var YAML = { constraint: '', entity: '' };
+    function syncYamlFromCanvas(silent) {
+      YAML.constraint = genConstraintYaml();
+      YAML.entity = genEntityYaml();
+      document.getElementById('yamlEdit').value = YAML[yamlFile];
+      if (!silent) toast('已用画布内容覆盖当前 YAML 文件');
+    }
+    document.getElementById('yamlChips').querySelectorAll('.file-chip').forEach(function (c) {
+      c.addEventListener('click', function () {
+        YAML[yamlFile] = document.getElementById('yamlEdit').value;
+        document.getElementById('yamlChips').querySelectorAll('.file-chip').forEach(function (x) { x.classList.remove('active'); });
+        c.classList.add('active');
+        yamlFile = c.getAttribute('data-f');
+        document.getElementById('yamlEdit').value = YAML[yamlFile];
+        document.getElementById('checkOut').style.display = 'none';
+      });
+    });
+    document.getElementById('btnRegen').addEventListener('click', function () { syncYamlFromCanvas(false); });
+    document.getElementById('btnSyncYaml').addEventListener('click', function () {
+      syncYamlFromCanvas(false);
+      switchPanel('yaml');
+    });
+    document.getElementById('btnCheck').addEventListener('click', function () {
+      YAML[yamlFile] = document.getElementById('yamlEdit').value;
+      var lines = YAML[yamlFile].split('\n');
+      var errs = [];
+      lines.forEach(function (l, i) {
+        if (/\t/.test(l)) errs.push('第 ' + (i + 1) + ' 行：不允许使用 Tab 缩进');
+        var ind = l.match(/^ */)[0].length;
+        if (l.trim() && ind % 2 !== 0) errs.push('第 ' + (i + 1) + ' 行：缩进应为 2 的倍数');
+        if (/:\S/.test(l) && l.trim().indexOf('#') !== 0 && !/:\s*$/.test(l)) {
+          if (!/^[\w.\-]+:\s*\S/.test(l.trim()) && !/^\s*-\s*[\w.\-]+:\s*\S/.test(l)) {
+            errs.push('第 ' + (i + 1) + ' 行：冒号后缺少空格');
+          }
+        }
+      });
+      var out = document.getElementById('checkOut');
+      out.style.display = 'block';
+      if (errs.length) {
+        out.className = 'check-out err';
+        out.innerHTML = '<b>校验未通过（' + errs.length + ' 项）</b><br>' + errs.slice(0, 6).join('<br>');
+      } else {
+        var keys = (YAML[yamlFile].match(/^\s*-?\s*[\w.]+:/gm) || []).length;
+        out.className = 'check-out ok';
+        out.innerHTML = '<b>校验通过</b> · 共 ' + lines.length + ' 行、' + keys + ' 个键，可发布为本体的 ' + (yamlFile === 'constraint' ? '约束规则' : '实体定义') + '。';
+      }
+    });
+    document.getElementById('btnDownload').addEventListener('click', function () {
+      var name = yamlFile === 'constraint' ? 'ontology-constraints.yaml' : 'entity-definition.yaml';
+      var blob = new Blob([document.getElementById('yamlEdit').value], { type: 'text/yaml;charset=utf-8' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob); a.download = name; a.click();
+      toast('已下载 ' + name);
+    });
+
+    /* ==================== 方式四：Chat ==================== */
+    var CHAT_ANS = {
+      '帮我定义一个「优惠券」实体，含面额、适用范围、有效期': {
+        text: '建议新增实体类型「优惠券」（建议状态：待评审），定义如下：\n\n· coupon_id：string，必填、唯一（主键）\n· amount：float，必填，取值 > 0\n· scope：enum[全场,类目,单品]，必填\n· valid_until：date，必填，ISO-8601\n\n关系：商品 —promoted_by→ 优惠券（1 : 0..N）',
+        apply: function () {
+          ATTR_TREE.children.push({ id: 'a-' + Date.now(), name: 'scope', kind: 'attr', type: 'enum', required: true, def: '全场', enumv: '全场,类目,单品', range: '', desc: '优惠券适用范围', children: [{ id: 'c-' + Date.now(), name: 'enum: [全场,类目,单品]', kind: 'constraint' }] });
+          var c = findNode(TREE, 'n-coupon');
+          if (c && !c.attrs.some(function (a) { return a.n === 'scope'; })) {
+            c.attrs.push({ n: 'scope', t: 'enum', req: true, c: 'enum[全场,类目,单品]', s: 'review' });
+          }
+        }
+      },
+      '商品与订单应该是什么关系？': {
+        text: '推荐两条有向关系，并补充基数约束：\n\n· 订单 —contains→ 商品（1 : 1..N）：一个订单至少含一件商品\n· 商品 —ordered_in→ 订单（1 : 0..N）：反向关系，便于按商品统计销量\n\n注意：两条关系互为反向，构建时需做一致性校验，避免重复计数。',
+        apply: function () {
+          var o = findNode(TREE, 'n-order');
+          if (o && !o.rels.some(function (r) { return r.n === 'ordered_in'; })) {
+            o.rels.push({ n: 'ordered_in', to: '商品', card: '1 : 0..N', s: 'review' });
+          }
+        }
+      },
+      '为本体的价格属性补充取值约束': {
+        text: '为「price」补充约束：\n\n· min: 0.01（不允许 0 元与负值）\n· precision: 2（金额精度 2 位）\n· currency: CNY（显式币种，避免多币种混算）\n\n已在画布中为 price 属性追加以上约束项。',
+        apply: function () {
+          var p = findNode(ATTR_TREE, 'a-price');
+          if (p) {
+            p.children = p.children || [];
+            ['min: 0.01', 'precision: 2', 'currency: CNY'].forEach(function (c) {
+              if (!p.children.some(function (x) { return x.name.indexOf(c.split(':')[0]) === 0; })) {
+                p.children.push({ id: 'c-' + Date.now() + Math.random().toString(36).slice(2, 5), name: c, kind: 'constraint' });
+              }
+            });
+          }
+        }
+      }
+    };
+    var DEFAULT_CHAT = {
+      text: '已按你的描述生成建议本体结构（演示）：\n\n· 实体类型：供应商（supplier_id / 名称 / 资质等级）\n· 实体类型：供货单（supply_no / 数量 / 到货日期）\n· 关系：供应商 —supplies→ 商品（1 : 0..N）\n\n建议先设为「待评审」，由业务确认后再发布。',
+      apply: function () {
+        var root = TREE && TREE.children && TREE.children[0];
+        if (!root) return;
+        root.children = root.children || [];
+        root.children.push({ id: 'n-' + Date.now(), name: '供应商', kind: '实体类型', status: 'review', attrs: [{ n: 'supplier_id', t: 'string', req: true, c: '唯一', s: 'review' }], rels: [{ n: 'supplies', to: '商品', card: '1 : 0..N', s: 'review' }], children: [] });
+      }
+    };
+
+    function pushMsg(role, html) {
+      var box = document.getElementById('chatBox');
+      var d = document.createElement('div');
+      d.className = 'msg' + (role === 'me' ? ' me' : '');
+      var av = role === 'me'
+        ? '<div class="msg-av" style="background:#6366F1;">我</div>'
+        : '<div class="msg-av" style="background:#0F172A;">AI</div>';
+      d.innerHTML = av + '<div class="msg-bd">' + html + '</div>';
+      box.appendChild(d);
+      box.scrollTop = box.scrollHeight;
+      return d.querySelector('.msg-bd');
+    }
+    function typeOut(el, text, done) {
+      var i = 0;
+      el.innerHTML = '<span class="caret"></span>';
+      var timer = setInterval(function () {
+        i += 3;
+        var part = text.slice(0, i).replace(/\n/g, '<br>');
+        el.innerHTML = part + '<span class="caret"></span>';
+        var box = document.getElementById('chatBox');
+        box.scrollTop = box.scrollHeight;
+        if (i >= text.length) {
+          clearInterval(timer);
+          el.innerHTML = text.replace(/\n/g, '<br>');
+          if (done) done();
+        }
+      }, 16);
+    }
+    function ask(q) {
+      if (!q) return;
+      pushMsg('me', esc(q));
+      document.getElementById('chatInput').value = '';
+      var ans = CHAT_ANS[q] || DEFAULT_CHAT;
+      var el = pushMsg('ai', '');
+      typeOut(el, ans.text, function () {
+        var b = document.createElement('div');
+        b.style.marginTop = '10px';
+        b.innerHTML = '<button class="btn btn-sm btn-primary">应用到画布</button>';
+        b.querySelector('button').addEventListener('click', function () {
+          if (!editable()) return;
+          ans.apply();
+          renderGraphTab(); renderCanvasTab(); syncYamlFromCanvas(true);
+          toast('已应用到本体画布与 YAML 文件');
+          switchPanel('canvas');
+        });
+        el.appendChild(b);
+      });
+    }
+    document.getElementById('btnSend').addEventListener('click', function () {
+      ask(document.getElementById('chatInput').value.trim());
+    });
+    document.getElementById('chatInput').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') ask(this.value.trim());
+    });
+    document.getElementById('chatChips').querySelectorAll('.file-chip').forEach(function (c) {
+      c.addEventListener('click', function () { ask(c.textContent.trim()); });
+    });
+
+    /* ==================== 二级导航切换 ==================== */
+    var PANEL_META = {
+      overview: ['本体图谱概览', '本体规模、版本状态与变更概览，含各本体图谱的实体 / 关系 / 属性规模'],
+      list: ['本体图谱列表', '全部本体图谱的分页管理：搜索、状态筛选、每页条数与上下翻页'],
+      ops: ['本体图谱操作', '状态编辑图 / 属性定义画布 / YAML 约束文件 / Chat 对话，四种方式作用于同一份本体定义'],
+      review: ['本体图谱审核', '实体 / 关系 / 属性的新增与调整审核，通过后写入本体定义'],
+      doc: ['图谱文档', '开放的图谱 MCP 工具、curl 接口列表、使用案例与图谱使用步骤教程']
+    };
+    function switchTab(key) {
+      var meta = PANEL_META[key];
+      if (!meta) return;
+      document.querySelectorAll('.subnav-item').forEach(function (x) {
+        x.classList.toggle('active', x.getAttribute('data-tab') === key);
+      });
+      document.querySelectorAll('.tab-panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'tab-' + key);
+      });
+      document.getElementById('panelTitle').textContent = meta[0];
+      document.getElementById('panelSub').textContent = meta[1];
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    function bindNav() {
+      document.querySelectorAll('.subnav-item').forEach(function (el) {
+        el.addEventListener('click', function () { switchTab(el.getAttribute('data-tab')); });
+      });
+      document.querySelectorAll('[data-tab-jump]').forEach(function (a) {
+        a.addEventListener('click', function (e) { e.preventDefault(); switchTab(a.getAttribute('data-tab-jump')); });
+      });
+    }
+
+    /* ==================== 本体图谱列表：统计 / 选中 / 新建 / 编辑 / 启停 / 删除 ==================== */
+    function stats(tree) {
+      var acc = { entities: 0, attrs: 0, rels: 0, relSet: {}, attrSet: {} };
+      (function walk(n) {
+        if (n.kind === '实体类型') acc.entities++;
+        (n.attrs || []).forEach(function (a) { acc.attrs++; acc.attrSet[a.n] = 1; });
+        (n.rels || []).forEach(function (r) { acc.rels++; acc.relSet[r.n] = 1; });
+        (n.children || []).forEach(walk);
+      })(tree);
+      acc.relUnique = Object.keys(acc.relSet).length;
+      acc.attrUnique = Object.keys(acc.attrSet).length;
+      return acc;
+    }
+    function findByName(node, name) {
+      if (node.name === name) return node;
+      for (var i = 0; i < (node.children || []).length; i++) {
+        var r = findByName(node.children[i], name);
+        if (r) return r;
+      }
+      return null;
+    }
+    function pendingCount(o) {
+      return o.changes.filter(function (c) { return c.status === 'pending'; }).length;
+    }
+    function getOnto(id) {
+      return ONTO_LIST.filter(function (x) { return x.id === id; })[0];
+    }
+    var ontoPage = 1, ontoSize = 10;
+    function filteredOnto() {
+      var kw = document.getElementById('ontoSearch').value.trim().toLowerCase();
+      var st = document.getElementById('ontoStatusFilter').value;
+      return ONTO_LIST.filter(function (o) {
+        var okKw = !kw || (o.name + o.key + o.desc).toLowerCase().indexOf(kw) > -1;
+        var okSt = !st || o.status === st;
+        return okKw && okSt;
+      });
+    }
+    function renderOntoList() {
+      var body = document.getElementById('ontoListBody');
+      document.getElementById('ontoCount').textContent = ONTO_LIST.length;
+      var all = filteredOnto();
+      var pages = Math.max(1, Math.ceil(all.length / ontoSize));
+      if (ontoPage > pages) ontoPage = pages;
+      var start = (ontoPage - 1) * ontoSize;
+      var rows = all.slice(start, start + ontoSize);
+      document.getElementById('ontoPagerInfo').textContent = all.length
+        ? ('第 ' + (start + 1) + ' - ' + Math.min(start + ontoSize, all.length) + ' 条 / 共 ' + all.length + ' 条 · 第 ' + ontoPage + ' / ' + pages + ' 页')
+        : '共 0 条';
+      document.getElementById('ontoCur').textContent = ontoPage;
+      document.getElementById('ontoPrev').disabled = ontoPage <= 1;
+      document.getElementById('ontoNext').disabled = ontoPage >= pages;
+      body.innerHTML = rows.length ? rows.map(function (o) {
+        var st = stats(o.tree), pd = pendingCount(o);
+        return '<tr class="' + (CUR && CUR.id === o.id ? 'selected' : '') + '" data-id="' + o.id + '">'
+          + '<td><b>' + esc(o.name) + '</b><div class="muted text-sm">' + esc(o.desc) + '</div></td>'
+          + '<td class="mono muted text-sm">' + esc(o.key) + '</td>'
+          + '<td class="mono">v' + esc(o.version) + '</td>'
+          + '<td>' + st.entities + '</td><td>' + st.relUnique + '</td>'
+          + '<td>' + (pd ? '<span class="tag tag-warning">' + pd + ' 条待审</span>' : '<span class="muted text-sm">—</span>') + '</td>'
+          + '<td class="muted text-sm">' + esc(o.updatedAt) + '</td>'
+          + '<td>' + (o.status === 'enabled' ? '<span class="status-dot success">已启用</span>' : '<span class="status-dot danger">已禁用</span>') + '</td>'
+          + '<td class="text-right"><div class="row-actions">'
+          + '<button class="btn btn-ghost btn-sm" data-act="select" data-id="' + o.id + '">选定</button>'
+          + '<button class="btn btn-ghost btn-sm" data-act="edit" data-id="' + o.id + '">编辑</button>'
+          + '<button class="btn btn-ghost btn-sm" data-act="toggle" data-id="' + o.id + '">' + (o.status === 'enabled' ? '禁用' : '启用') + '</button>'
+          + '<button class="btn btn-ghost btn-sm" data-act="del" data-id="' + o.id + '" style="color:var(--danger);">删除</button>'
+          + '</div></td></tr>';
+      }).join('') : '<tr><td colspan="9" class="muted text-sm" style="padding:20px 16px;">没有匹配的本体图谱</td></tr>';
+
+      body.querySelectorAll('[data-act]').forEach(function (b) {
+        b.addEventListener('click', function (e) {
+          e.stopPropagation();
+          var id = b.getAttribute('data-id'), act = b.getAttribute('data-act');
+          if (act === 'select') selectOnto(id);
+          if (act === 'edit') editOnto(id);
+          if (act === 'toggle') toggleOnto(id);
+          if (act === 'del') delOnto(id);
+        });
+      });
+      body.querySelectorAll('tr[data-id]').forEach(function (r) {
+        r.addEventListener('click', function () { selectOnto(r.getAttribute('data-id')); });
+      });
+
+      document.getElementById('reviewBadge').textContent = CUR ? pendingCount(CUR) : 0;
+    }
+    document.getElementById('ontoSearch').addEventListener('input', function () { ontoPage = 1; renderOntoList(); });
+    document.getElementById('ontoStatusFilter').addEventListener('change', function () { ontoPage = 1; renderOntoList(); });
+    document.getElementById('ontoPageSize').addEventListener('change', function () { ontoSize = parseInt(this.value, 10); ontoPage = 1; renderOntoList(); });
+    document.getElementById('ontoPrev').addEventListener('click', function () { if (ontoPage > 1) { ontoPage--; renderOntoList(); } });
+    document.getElementById('ontoNext').addEventListener('click', function () { if (ontoPage < Math.ceil(filteredOnto().length / ontoSize)) { ontoPage++; renderOntoList(); } });
+
+    /* ==================== 本体图谱概览 ==================== */
+    function renderOverview() {
+      var ents = 0, rels = 0, pend = 0, relSet = {}, enabled = 0;
+      ONTO_LIST.forEach(function (o) {
+        var st = stats(o.tree);
+        ents += st.entities;
+        rels += st.relUnique;
+        pend += pendingCount(o);
+        Object.keys(st.relSet).forEach(function (k) { relSet[k] = 1; });
+        if (o.status === 'enabled') enabled++;
+      });
+      document.getElementById('ovCount').textContent = ONTO_LIST.length;
+      document.getElementById('ovEnabled').textContent = '已启用 ' + enabled;
+      document.getElementById('ovEntities').textContent = ents;
+      document.getElementById('ovRels').textContent = Object.keys(relSet).length;
+      document.getElementById('ovPending').textContent = pend;
+
+      document.getElementById('ovBody').innerHTML = ONTO_LIST.map(function (o) {
+        var st = stats(o.tree), pd = pendingCount(o);
+        return '<tr data-id="' + o.id + '" style="cursor:pointer;">'
+          + '<td><b>' + esc(o.name) + '</b></td>'
+          + '<td class="mono muted text-sm">' + esc(o.key) + '</td>'
+          + '<td class="mono">v' + esc(o.version) + '</td>'
+          + '<td>' + st.entities + '</td><td>' + st.relUnique + '</td><td>' + st.attrUnique + '</td>'
+          + '<td>' + (pd ? '<span class="tag tag-warning">' + pd + ' 条待审</span>' : '<span class="muted text-sm">—</span>') + '</td>'
+          + '<td>' + (o.status === 'enabled' ? '<span class="status-dot success">已启用</span>' : '<span class="status-dot danger">已禁用</span>') + '</td>'
+          + '<td class="muted text-sm">' + esc(o.updatedAt) + '</td></tr>';
+      }).join('');
+      document.querySelectorAll('#ovBody tr[data-id]').forEach(function (r) {
+        r.addEventListener('click', function () { selectOnto(r.getAttribute('data-id')); switchTab('ops'); });
+      });
+
+      var recent = [];
+      ONTO_LIST.forEach(function (o) {
+        o.changes.forEach(function (c) { recent.push({ o: o, c: c }); });
+      });
+      recent.sort(function (a, b) { return a.c.at < b.c.at ? 1 : -1; });
+      recent = recent.slice(0, 5);
+      document.getElementById('ovChangeBody').innerHTML = recent.length ? recent.map(function (x) {
+        var st = x.c.status === 'pending' ? '<span class="status-dot warning">待审核</span>'
+          : x.c.status === 'approved' ? '<span class="status-dot success">已通过</span>'
+            : '<span class="status-dot danger">已驳回</span>';
+        return '<tr><td>' + esc(x.o.name) + '</td><td><span class="tag ' + (x.c.type.indexOf('新增') > -1 ? 'tag-success' : x.c.type.indexOf('废弃') > -1 ? 'tag-danger' : 'tag-warning') + '">' + esc(x.c.type) + '</span></td>'
+          + '<td><b>' + esc(x.c.target) + '</b></td><td class="muted">' + esc(x.c.by) + '</td>'
+          + '<td class="muted text-sm">' + esc(x.c.at) + '</td><td>' + st + '</td></tr>';
+      }).join('') : '<tr><td colspan="6" class="muted text-sm" style="padding:20px 16px;">暂无变更申请</td></tr>';
+    }
+
+    function refreshMeta() {
+      if (!CUR) return;
+      var st = stats(CUR.tree);
+      document.getElementById('metaName').textContent = CUR.name + ' · v' + CUR.version;
+      document.getElementById('metaEntities').textContent = st.entities;
+      document.getElementById('metaRels').textContent = st.relUnique;
+      document.getElementById('metaAttrs').textContent = st.attrUnique;
+      document.getElementById('metaStatus').innerHTML = CUR.status === 'enabled'
+        ? '<span class="tag success tag-solid">已启用</span>'
+        : '<span class="tag gray tag-solid">已禁用</span>';
+    }
+    function selectOnto(id, silent) {
+      var o = getOnto(id);
+      if (!o) return;
+      CUR = o;
+      TREE = o.tree;
+      ATTR_TREE = o.attrTree;
+      TREE.name = CUR.name + ' v' + CUR.version;
+      ATTR_TREE.name = CUR.name + '（实体定义）';
+      selGraphId = (TREE.children && TREE.children.length) ? TREE.children[0].id : TREE.id;
+      selAttrId = (ATTR_TREE.children && ATTR_TREE.children.length) ? ATTR_TREE.children[0].id : ATTR_TREE.id;
+      renderOntoList();
+      refreshMeta();
+      renderOverview();
+      var opsCur = document.getElementById('opsCurName');
+      if (opsCur) opsCur.textContent = o.name + ' · v' + o.version + '（' + (o.status === 'enabled' ? '已启用' : '已禁用') + '）';
+      renderGraphTab();
+      renderCanvasTab();
+      syncYamlFromCanvas(true);
+      renderReview();
+      if (!silent) toast('已选定本体图谱：' + o.name);
+    }
+    function editable() {
+      if (CUR && CUR.status === 'enabled') return true;
+      toast('「' + (CUR ? CUR.name : '当前本体') + '」处于禁用状态，请先在列表中启用后再编辑');
+      return false;
+    }
+    function readonlyGuard(box) {
+      if (!CUR || CUR.status === 'enabled') return;
+      box.querySelectorAll('input, select, button').forEach(function (el) { el.disabled = true; });
+      box.querySelectorAll('.link').forEach(function (el) { el.style.display = 'none'; });
+      var tip = document.createElement('div');
+      tip.className = 'notice';
+      tip.style.margin = '0 0 12px';
+      tip.innerHTML = '<span>本体图谱 <b>' + esc(CUR.name) + '</b> 已禁用，当前为<b>只读</b>模式；如需编辑请在上方「本体图谱列表」中执行「启用」。</span>';
+      box.insertBefore(tip, box.firstChild);
+    }
+    function newOnto() {
+      var name = prompt('本体图谱名称：', '新本体图谱');
+      if (!name) return;
+      var key = prompt('标识 key（英文，用于配置文件名与接口调用）：', 'ontology_' + Date.now().toString().slice(-6));
+      if (!key) return;
+      var desc = prompt('一句话描述：', '待完善') || '待完善';
+      var id = 'o-' + Date.now();
+      ONTO_LIST.push({
+        id: id, name: name, key: key, version: '0.1.0', status: 'enabled', desc: desc,
+        updatedAt: new Date().toISOString().slice(0, 10) + ' 00:00',
+        tree: { id: 'root', name: name + ' v0.1.0', kind: '本体根', status: 'draft', children: [] },
+        attrTree: { id: 'a-root', name: name + '（实体定义）', kind: 'entity', children: [] },
+        changes: []
+      });
+      selectOnto(id, true);
+      toast('已新建本体图谱：' + name + '（v0.1.0 · 草稿）');
+    }
+    function editOnto(id) {
+      var o = getOnto(id);
+      if (!o) return;
+      var name = prompt('修改本体图谱名称：', o.name);
+      if (name === null) return;
+      var key = prompt('修改标识 key：', o.key);
+      if (key === null) return;
+      var desc = prompt('修改描述：', o.desc);
+      if (desc === null) return;
+      o.name = name || o.name;
+      o.key = key || o.key;
+      o.desc = desc || o.desc;
+      if (CUR && CUR.id === o.id) { selectOnto(o.id, true); }
+      else renderOntoList();
+      toast('已保存：' + o.name);
+    }
+    function toggleOnto(id) {
+      var o = getOnto(id);
+      if (!o) return;
+      o.status = o.status === 'enabled' ? 'disabled' : 'enabled';
+      renderOntoList();
+      refreshMeta();
+      renderOverview();
+      renderGraphTab();
+      renderCanvasTab();
+      toast(o.name + ' 已' + (o.status === 'enabled' ? '启用' : '禁用'));
+    }
+    function delOnto(id) {
+      var o = getOnto(id);
+      if (!o) return;
+      if (ONTO_LIST.length <= 1) { toast('至少需保留一个本体图谱'); return; }
+      if (!confirm('确认删除本体图谱「' + o.name + '」？其本体定义与变更记录将一并移除。')) return;
+      ONTO_LIST = ONTO_LIST.filter(function (x) { return x.id !== id; });
+      if (CUR && CUR.id === id) selectOnto(ONTO_LIST[0].id, true);
+      else renderOntoList();
+      toast('已删除：' + o.name);
+    }
+
+    /* ==================== 变更审核：实体 / 关系 / 属性的新增与调整 ==================== */
+    function renderReview() {
+      document.getElementById('reviewOntoName').textContent = CUR ? (CUR.name + ' · v' + CUR.version) : '—';
+      var body = document.getElementById('reviewBody');
+      if (!CUR || !CUR.changes.length) {
+        body.innerHTML = '<tr><td colspan="7" class="muted text-sm" style="padding:20px 16px;">当前本体图谱暂无变更申请</td></tr>';
+        return;
+      }
+      body.innerHTML = CUR.changes.map(function (c) {
+        var st = c.status === 'pending' ? '<span class="status-dot warning">待审核</span>'
+          : c.status === 'approved' ? '<span class="status-dot success">已通过</span>'
+            : '<span class="status-dot danger">已驳回</span>';
+        var tc = c.type.indexOf('新增') > -1 ? 'tag-success' : (c.type.indexOf('废弃') > -1 ? 'tag-danger' : 'tag-warning');
+        var act = c.status === 'pending'
+          ? '<button class="btn btn-sm btn-primary" data-act="approve" data-id="' + c.id + '">通过</button> '
+            + '<button class="btn btn-sm btn-ghost" data-act="reject" data-id="' + c.id + '">驳回</button>'
+          : '<span class="muted text-sm">—</span>';
+        return '<tr>'
+          + '<td><span class="tag ' + tc + '">' + esc(c.type) + '</span></td>'
+          + '<td><b>' + esc(c.target) + '</b></td>'
+          + '<td class="text-sm muted" style="max-width:340px;">' + esc(c.summary) + '</td>'
+          + '<td class="muted">' + esc(c.by) + '</td>'
+          + '<td class="muted text-sm">' + esc(c.at) + '</td>'
+          + '<td>' + st + '</td>'
+          + '<td class="text-right"><div class="row-actions">' + act + '</div></td>'
+          + '</tr>';
+      }).join('');
+      body.querySelectorAll('[data-act]').forEach(function (b) {
+        b.addEventListener('click', function () {
+          var c = CUR.changes.filter(function (x) { return x.id === b.getAttribute('data-id'); })[0];
+          if (!c) return;
+          if (b.getAttribute('data-act') === 'approve') {
+            if (!editable()) return;
+            var msg = applyPayload(c.payload);
+            c.status = 'approved';
+            toast('审核通过 · ' + msg);
+          } else {
+            c.status = 'rejected';
+            toast('已驳回：' + c.type + ' · ' + c.target);
+          }
+          renderReview();
+          renderOntoList();
+          refreshMeta();
+          renderOverview();
+          renderGraphTab();
+          renderCanvasTab();
+          syncYamlFromCanvas(true);
+        });
+      });
+    }
+    function applyPayload(p) {
+      if (p.kind === 'entity') {
+        if (findByName(TREE, p.name)) return p.name + ' 已存在，未重复写入';
+        TREE.children = TREE.children || [];
+        TREE.children.push({
+          id: 'n-' + Date.now(), name: p.name, kind: '实体类型', status: 'review',
+          attrs: p.attrs || [], rels: p.rels || [], children: []
+        });
+        return '实体「' + p.name + '」已写入本体（待发布）';
+      }
+      if (p.kind === 'relation') {
+        var e = findByName(TREE, p.entity);
+        if (!e) return '未找到实体：' + p.entity;
+        if ((e.rels || []).some(function (r) { return r.n === p.n; })) return '关系 ' + p.n + ' 已存在';
+        e.rels.push({ n: p.n, to: p.to, card: p.card, s: 'review' });
+        return '关系 ' + p.n + '（' + p.entity + ' → ' + p.to + '）已写入';
+      }
+      if (p.kind === 'attr') {
+        var e2 = findByName(TREE, p.entity);
+        if (!e2) return '未找到实体：' + p.entity;
+        var a = (e2.attrs || []).filter(function (x) { return x.n === p.n; })[0];
+        if (!a) return '未找到属性：' + p.n;
+        a.c = p.c; a.s = p.s;
+        var pa = findByName(ATTR_TREE, p.n);
+        if (pa) {
+          pa.children = pa.children || [];
+          pa.range = p.c;
+          var hit = pa.children.filter(function (x) { return x.name.indexOf('pattern:') === 0; })[0];
+          if (hit) hit.name = 'pattern: ' + p.c;
+        }
+        return '属性 ' + p.n + ' 约束已更新';
+      }
+      if (p.kind === 'dep-rel') {
+        var e3 = findByName(TREE, p.entity);
+        if (!e3) return '未找到实体：' + p.entity;
+        var r3 = (e3.rels || []).filter(function (x) { return x.n === p.n; })[0];
+        if (!r3) return '未找到关系：' + p.n;
+        r3.s = 'deprecated';
+        return '关系 ' + p.n + ' 已标记为废弃';
+      }
+      return '暂不支持该变更类型';
+    }
+    document.getElementById('btnRefreshReview').addEventListener('click', function () { renderReview(); toast('审核列表已刷新'); });
+    document.getElementById('btnNewOnto').addEventListener('click', newOnto);
+    document.getElementById('btnEditOnto').addEventListener('click', function () { if (CUR) editOnto(CUR.id); });
+    document.getElementById('btnToggleOnto').addEventListener('click', function () { if (CUR) toggleOnto(CUR.id); });
+    document.getElementById('btnDelOnto').addEventListener('click', function () { if (CUR) delOnto(CUR.id); });
+
+    bindNav();
+
+    /* ==================== 图谱文档：代码示例复制 ==================== */
+    document.querySelectorAll('.doc-block .btn-copy').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        var code = btn.closest('.doc-block').querySelector('pre.doc-code').textContent;
+        var ta = document.createElement('textarea');
+        ta.value = code;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); } catch (e) {}
+        ta.remove();
+        btn.textContent = '已复制';
+        setTimeout(function () { btn.textContent = '复制'; }, 1500);
+      });
+    });
+
+    /* ==================== 面板切换 ==================== */
+    function switchPanel(key) {
+      document.getElementById('ontoTabs').querySelectorAll('.onto-tab').forEach(function (t) {
+        t.classList.toggle('active', t.getAttribute('data-p') === key);
+      });
+      document.querySelectorAll('.onto-panel').forEach(function (p) {
+        p.classList.toggle('active', p.id === 'panel-' + key);
+      });
+      if (key === 'graph') renderGraphTab();
+      if (key === 'canvas') renderCanvasTab();
+      if (key === 'yaml') syncYamlFromCanvas(true);
+      if (key === 'review') renderReview();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+    document.getElementById('ontoTabs').querySelectorAll('.onto-tab').forEach(function (t) {
+      t.addEventListener('click', function () { switchPanel(t.getAttribute('data-p')); });
+    });
+    document.getElementById('btnSaveVer').addEventListener('click', function () {
+      if (!editable()) return;
+      toast('已发布 ' + CUR.key + ' v' + CUR.version + '（演示）：约束文件与实体定义文件同步归档');
+    });
+
+    /* ==================== 初始化 ==================== */
+    selectOnto('o-ecom', true);
+    pushMsg('ai', '我可以帮你定义或修改本体。试试下方的示例，或直接描述你的业务对象 —— 确认后可一键应用到画布与 YAML 文件。');
+  </script>
+</body>
+</html>

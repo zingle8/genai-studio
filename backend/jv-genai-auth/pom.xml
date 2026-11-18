@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>com.zimo.genai</groupId>
+        <artifactId>genai-studio</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>jv-genai-auth</artifactId>
+    <packaging>jar</packaging>
+    <name>jv-genai-auth</name>
+    <description>认证授权服务</description>
+
+    <dependencies>
+        <!-- 公共二方库 -->
+        <dependency>
+            <groupId>com.zimo.genai</groupId>
+            <artifactId>jv-genai-comm</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+        <!-- 网关平台接入 SDK（日志采集/埋点上报） -->
+        <dependency>
+            <groupId>com.zimo.genai</groupId>
+            <artifactId>jv-genai-apigateway-client-sdk</artifactId>
+            <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+        <!-- 注：auth 为网关用户体系代理服务，不自建数据库，故不引入 mybatis/mysql 依赖 -->
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+            </plugin>
+        </plugins>
+    </build>
+</project>

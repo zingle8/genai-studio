@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>账单 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div class="page-title">账单</div>
+            <div class="page-actions">
+              <span class="link">退款管理</span>
+              <span class="link">发票管理</span>
+            </div>
+          </div>
+
+          <div class="stat-grid" style="grid-template-columns:repeat(3,1fr);">
+            <div class="stat-card" style="flex-direction:column; align-items:flex-start;">
+              <div class="stat-label">累计充值</div>
+              <div class="stat-value">¥1,318.57 <small>CNY</small></div>
+            </div>
+            <div class="stat-card" style="flex-direction:column; align-items:flex-start;">
+              <div class="stat-label">累计消费</div>
+              <div class="stat-value">¥1,284.36 <small>CNY</small></div>
+            </div>
+            <div class="stat-card" style="flex-direction:column; align-items:flex-start;">
+              <div class="stat-label">当前余额</div>
+              <div class="stat-value">¥34.21 <small>CNY</small></div>
+            </div>
+          </div>
+
+          <div class="tabs">
+            <div class="tab active">充值账单</div>
+            <div class="tab">赠送账单</div>
+          </div>
+
+          <div class="filter-bar">
+            <div class="filter-pill"><span class="label">时间范围</span><span>近 90 天</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+            <div class="filter-pill"><span class="label">支付方式</span><span>全部</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+            <div class="filter-pill"><span class="label">状态</span><span>全部</span>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg></div>
+            <input class="form-input" placeholder="搜索订单编号" />
+            <div class="spacer"></div>
+            <button class="btn btn-primary">导出账单</button>
+          </div>
+
+          <div class="card">
+            <div class="card-body no-pad">
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>订单编号</th>
+                      <th>状态</th>
+                      <th>金额</th>
+                      <th>支付方式</th>
+                      <th>创建时间</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td class="mono">wechat46dc2aef67054cdcb87519dfa9</td>
+                      <td><span class="status-dot success">成功</span></td>
+                      <td>¥10</td>
+                      <td>微信</td>
+                      <td class="muted">2025-06-02 17:32:51</td>
+                    </tr>
+                    <tr>
+                      <td class="mono">alipay7f3b21c9a84e4d0f9c2b6e5a1d</td>
+                      <td><span class="status-dot success">成功</span></td>
+                      <td>¥100</td>
+                      <td>支付宝</td>
+                      <td class="muted">2025-05-18 09:14:22</td>
+                    </tr>
+                    <tr>
+                      <td class="mono">wechat9a1c8e2f4b7d4e6a8c3f5b2d0e</td>
+                      <td><span class="status-dot success">成功</span></td>
+                      <td>¥50</td>
+                      <td>微信</td>
+                      <td class="muted">2025-04-30 21:08:45</td>
+                    </tr>
+                    <tr>
+                      <td class="mono">alipay2d6f8b4a1c9e7d3f5a2b8c6e4f</td>
+                      <td><span class="status-dot warning">处理中</span></td>
+                      <td>¥300</td>
+                      <td>支付宝</td>
+                      <td class="muted">2025-04-12 11:26:03</td>
+                    </tr>
+                    <tr>
+                      <td class="mono">wechat5e3c1a7f9b2d4e6c8a0f3b5d7e</td>
+                      <td><span class="status-dot danger">已退款</span></td>
+                      <td>¥20</td>
+                      <td>微信</td>
+                      <td class="muted">2025-03-28 16:52:18</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <div class="card-footer">
+                <div class="text-sm muted">共 <b>5</b> 条</div>
+                <div class="pagination">
+                  <button class="page-btn">‹</button>
+                  <button class="page-btn active">1</button>
+                  <button class="page-btn">›</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>initLayout('orders');</script>
+</body>
+</html>

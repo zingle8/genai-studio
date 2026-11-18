@@ -1,0 +1,13 @@
+[project]
+name = "py-genai-apigateway-client-sdk"
+version = "0.1.0"
+description = "GenAI Studio 网关平台接入 SDK（Python 模块接入与上报入口，应用 ID：app-genai-studio）"
+requires-python = ">=3.10"
+dependencies = ["httpx>=0.27", "psutil>=5.9"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["genai_apigateway_sdk*"]

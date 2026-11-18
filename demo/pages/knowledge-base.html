@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>知识库 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+  <style>
+    .kb-layout { display: grid; grid-template-columns: 246px 1fr; gap: 22px; align-items: start; }
+
+    /* 空间树 */
+    .space-tree { position: sticky; top: 16px; }
+    .st-group-title { font-size: 12px; color: var(--text-tertiary); padding: 12px 10px 6px; }
+    .st-item {
+      display: flex; align-items: center; gap: 8px; padding: 7px 10px;
+      border-radius: var(--radius); font-size: 13px; color: var(--text-secondary);
+      cursor: pointer; transition: all .13s; user-select: none;
+    }
+    .st-item:hover { background: var(--sidebar-hover); color: var(--text-primary); }
+    .st-item.active { background: var(--sidebar-active); color: var(--text-primary); font-weight: 500; }
+    .st-item svg { width: 15px; height: 15px; flex-shrink: 0; color: var(--text-tertiary); }
+    .st-item.active svg { color: var(--accent); }
+    .st-caret { width: 12px !important; height: 12px !important; transition: transform .15s; margin-right: -3px; }
+    .st-caret.open { transform: rotate(90deg); }
+    .st-children { margin-left: 16px; border-left: 1px solid var(--border-light); padding-left: 5px; }
+    .st-children.collapsed { display: none; }
+    .st-kind {
+      margin-left: auto; font-size: 10.5px; padding: 1px 6px; border-radius: 4px;
+      background: var(--bg-soft); color: var(--text-tertiary); flex-shrink: 0;
+    }
+
+    /* 面包屑 */
+    .space-crumb { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-tertiary); flex-wrap: wrap; }
+    .space-crumb b { color: var(--text-primary); font-weight: 600; }
+    .space-crumb .sep { color: var(--border); }
+
+    /* 知识库卡片 */
+    .kb-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+    .kb-card {
+      background: #fff; border: 1px solid var(--border); border-radius: var(--radius-lg);
+      padding: 18px; transition: border-color .15s, box-shadow .15s; cursor: pointer;
+      display: flex; flex-direction: column; gap: 12px;
+    }
+    .kb-card:hover { border-color: var(--text-quaternary); box-shadow: var(--shadow-sm); }
+    .kb-card-top { display: flex; align-items: flex-start; gap: 12px; }
+    .kb-card-icon {
+      width: 40px; height: 40px; border-radius: var(--radius-md); flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; color: #fff;
+    }
+    .kb-card-icon svg { width: 20px; height: 20px; }
+    .kb-card-name { font-size: 14.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .kb-card-desc { font-size: 12.5px; color: var(--text-secondary); margin-top: 4px; line-height: 1.5;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .kb-card-meta { display: flex; gap: 18px; padding-top: 12px; border-top: 1px solid var(--border-light); }
+    .kb-meta-item .kb-meta-v { font-size: 14px; font-weight: 600; }
+    .kb-meta-item .kb-meta-k { font-size: 11.5px; color: var(--text-tertiary); margin-top: 2px; }
+    .kb-card-foot { display: flex; align-items: center; justify-content: space-between; }
+    .kb-progress { width: 100%; height: 5px; background: var(--bg-soft); border-radius: 3px; overflow: hidden; }
+    .kb-progress > i { display: block; height: 100%; border-radius: 3px; background: var(--accent); }
+
+    /* 新建弹窗 */
+    .modal-mask {
+      display: none; position: fixed; inset: 0; background: rgba(15, 17, 24, 0.45);
+      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-mask.open { display: flex; }
+    .modal {
+      width: 460px; max-width: 100%; background: #fff; border-radius: 14px;
+      box-shadow: 0 24px 64px rgba(15, 17, 24, 0.24); padding: 24px;
+      animation: modalIn .2s ease;
+    }
+    @keyframes modalIn { from { opacity: 0; transform: translateY(14px) scale(.98); } to { opacity: 1; transform: none; } }
+    .modal-title { font-size: 16.5px; font-weight: 650; margin-bottom: 4px; }
+    .modal-sub { font-size: 12.5px; color: var(--text-tertiary); margin-bottom: 18px; }
+    .form-row { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    .form-label small { color: var(--text-tertiary); font-weight: 400; margin-left: 4px; }
+
+    @media (max-width: 1080px) { .kb-layout { grid-template-columns: 1fr; } .space-tree { position: static; } }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+      <main class="main">
+        <div class="content">
+          <div class="page-header">
+            <div>
+              <div class="page-title">知识库</div>
+              <div class="page-subtitle">基于知识空间（公司 / 部门 / 领域 / 行业）创建知识库，并管理空间下的知识文档</div>
+            </div>
+            <div class="page-actions">
+              <button class="btn btn-secondary" onclick="openDocView(null, true)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                全部文档
+              </button>
+              <button class="btn btn-primary" onclick="openCreate()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                创建知识库
+              </button>
+            </div>
+          </div>
+
+          <!-- 统计卡 -->
+          <div class="stat-grid">
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">知识空间</div>
+                <div class="stat-value" id="stSpaces">8</div>
+                <div class="stat-trend up">公司 1 · 部门 3 · 领域 2 · 行业 2</div>
+              </div>
+              <div class="stat-icon info"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg></div>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">知识库总数</div>
+                <div class="stat-value" id="stKbs">8</div>
+              </div>
+              <div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">文档总数</div>
+                <div class="stat-value" id="stDocs">1,604</div>
+              </div>
+              <div class="stat-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            </div>
+            <div class="stat-card">
+              <div>
+                <div class="stat-label">存储使用</div>
+                <div class="stat-value">476.5 <small>MB / 1 GB</small></div>
+                <div class="kb-progress"><i style="width:46.5%;"></i></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="kb-layout">
+            <!-- 左侧：空间树 -->
+            <div class="card">
+              <div class="card-header" style="padding:14px 16px;">
+                <div class="card-title" style="font-size:14px;">知识空间</div>
+                <span class="link" onclick="openCreate()">＋ 新建空间</span>
+              </div>
+              <div style="padding:4px 8px 12px;" id="spaceTree"></div>
+            </div>
+
+            <!-- 右侧内容 -->
+            <div style="min-width:0;">
+              <!-- 视图一：知识库列表 -->
+              <div id="listView">
+                <div class="card" style="margin-bottom:16px;">
+                  <div class="card-body" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 18px;">
+                    <div class="space-crumb" id="spaceCrumb"></div>
+                    <div class="spacer" style="flex:1;"></div>
+                    <input class="form-input" id="kbSearch" placeholder="搜索知识库名称" style="width:200px;" />
+                  </div>
+                </div>
+                <div class="kb-grid" id="kbGrid"></div>
+                <div class="card mt-24">
+                  <div class="card-header">
+                    <div class="card-title">最近更新文档</div>
+                    <span class="link" onclick="openDocView(null, true)">查看全部</span>
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>文档名称</th><th>所属空间</th><th>知识库</th><th>类型</th><th>状态</th><th>更新时间</th></tr>
+                        </thead>
+                        <tbody id="recentBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 视图二：文档管理 -->
+              <div id="docView" style="display:none;">
+                <div class="card" style="margin-bottom:16px;">
+                  <div class="card-body" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 18px;">
+                    <button class="btn btn-sm btn-ghost" onclick="backToList()">← 返回知识库列表</button>
+                    <div class="space-crumb" id="docCrumb"></div>
+                    <div class="spacer" style="flex:1;"></div>
+                    <button class="btn btn-sm btn-secondary">上传文档</button>
+                    <button class="btn btn-sm btn-secondary">新建文件夹</button>
+                    <button class="btn btn-sm btn-primary">重建索引</button>
+                  </div>
+                </div>
+                <div class="card">
+                  <div class="card-header">
+                    <div>
+                      <div class="card-title" id="docTitle">文档列表</div>
+                      <div class="card-subtitle" id="docSub"></div>
+                    </div>
+                    <input class="form-input" id="docSearch" placeholder="搜索文档名称" style="width:200px;" />
+                  </div>
+                  <div class="card-body no-pad">
+                    <div class="table-wrap">
+                      <table>
+                        <thead>
+                          <tr><th>文档名称</th><th>类型</th><th>分片数</th><th>大小</th><th>状态</th><th>更新时间</th><th>操作</th></tr>
+                        </thead>
+                        <tbody id="docBody"></tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- 创建知识库弹窗 -->
+  <div class="modal-mask" id="createMask">
+    <div class="modal">
+      <div class="modal-title">创建知识库</div>
+      <div class="modal-sub">知识库必须挂载到某个知识空间路径下</div>
+      <div class="form-row">
+        <label class="form-label">知识库名称</label>
+        <input class="form-input" id="cName" placeholder="如：产品文档库" style="width:100%;" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">描述</label>
+        <input class="form-input" id="cDesc" placeholder="一句话说明知识库用途（可选）" style="width:100%;" />
+      </div>
+      <div class="form-row">
+        <label class="form-label">所属空间路径 <small>公司 / 部门 / 领域 / 行业</small></label>
+        <select class="form-input" id="cSpace" style="width:100%;"></select>
+      </div>
+      <div class="form-row">
+        <label class="form-label">嵌入模型</label>
+        <select class="form-input" style="width:100%;">
+          <option>GLM-Embedding-3（默认 · 2048 维）</option>
+          <option>BGE-M3（多语言 · 1024 维）</option>
+          <option>text-embedding-3-large（3072 维）</option>
+        </select>
+      </div>
+      <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:20px;">
+        <button class="btn" onclick="closeCreate()">取消</button>
+        <button class="btn btn-primary" onclick="submitCreate()">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>
+    initLayout('knowledge-base');
+
+    /* ==================== 数据：空间树 ==================== */
+    var SPACES = [
+      { id: 'all', name: '全部空间', kind: '', icon: 'home', all: true },
+      { id: 'nebula', name: '星云科技', kind: '公司', icon: 'org', children: [
+        { id: 'nebula-pd', name: '产品部', kind: '部门', icon: 'org' },
+        { id: 'nebula-rd', name: '研发部', kind: '部门', icon: 'org' },
+        { id: 'nebula-mkt', name: '市场部', kind: '部门', icon: 'org' }
+      ]},
+      { id: 'med', name: '医疗健康', kind: '领域', icon: 'domain', children: [
+        { id: 'med-clin', name: '临床医学', kind: '领域', icon: 'org' },
+        { id: 'med-pub', name: '公共卫生', kind: '领域', icon: 'org' }
+      ]},
+      { id: 'fin', name: '金融风控', kind: '领域', icon: 'domain' },
+      { id: 'ecom', name: '电商零售', kind: '行业', icon: 'industry' },
+      { id: 'mfg', name: '智能制造', kind: '行业', icon: 'industry' }
+    ];
+
+    var SPACE_META = {
+      'all':      ['全部空间', ''],
+      'nebula':   ['星云科技', '公司'],
+      'nebula-pd':['星云科技 / 产品部', '部门'],
+      'nebula-rd':['星云科技 / 研发部', '部门'],
+      'nebula-mkt':['星云科技 / 市场部', '部门'],
+      'med':      ['医疗健康', '领域'],
+      'med-clin': ['医疗健康 / 临床医学', '领域'],
+      'med-pub':  ['医疗健康 / 公共卫生', '领域'],
+      'fin':      ['金融风控', '领域'],
+      'ecom':     ['电商零售', '行业'],
+      'mfg':      ['智能制造', '行业']
+    };
+
+    /* 空间父子映射（点击父空间 → 包含子空间） */
+    var CHILDREN = { 'nebula': ['nebula-pd', 'nebula-rd', 'nebula-mkt'], 'med': ['med-clin', 'med-pub'] };
+
+    /* ==================== 数据：知识库 ==================== */
+    var KBS = [
+      { id: 'kb1', name: '产品文档库', space: 'nebula-pd', desc: '产品手册、版本说明、FAQ 与最佳实践，面向售前与客服团队。', docs: 128, vec: 2048, size: '32.4 MB', color: 'linear-gradient(135deg,#4D6BFE,#7B5CFF)', st: 'ok' },
+      { id: 'kb2', name: 'API 技术手册', space: 'nebula-rd', desc: 'API 参考、SDK 用法与架构设计文档，供研发与集成方检索。', docs: 76, vec: 1024, size: '15.6 MB', color: 'linear-gradient(135deg,#ED7B2F,#E34D59)', st: 'parsing' },
+      { id: 'kb3', name: '客服话术库', space: 'nebula-mkt', desc: '工单沉淀、话术模板与常见问题，用于智能客服自动应答。', docs: 356, vec: 5120, size: '88.1 MB', color: 'linear-gradient(135deg,#00A870,#00B7C2)', st: 'ok' },
+      { id: 'kb4', name: '医疗问答集', space: 'med-clin', desc: '科室常见问答与临床指南摘要，助力健康咨询场景检索增强。', docs: 512, vec: 8192, size: '120.5 MB', color: 'linear-gradient(135deg,#00B7C2,#4D6BFE)', st: 'ok' },
+      { id: 'kb5', name: '公共卫生政策库', space: 'med-pub', desc: '防疫政策、公卫标准与统计数据，按发布机构分类管理。', docs: 208, vec: 3328, size: '46.2 MB', color: 'linear-gradient(135deg,#7B5CFF,#4D6BFE)', st: 'ok' },
+      { id: 'kb6', name: '金融合规库', space: 'fin', desc: '合同条款、合规制度与监管政策，支持条款级精准引用。', docs: 42, vec: 512, size: '9.2 MB', color: 'linear-gradient(135deg,#1A1A1A,#5B5B5B)', st: 'ok' },
+      { id: 'kb7', name: '电商促销素材库', space: 'ecom', desc: '大促玩法、商品卖点文案与素材规范，按活动场次归档。', docs: 186, vec: 2976, size: '64.8 MB', color: 'linear-gradient(135deg,#E34D59,#ED7B2F)', st: 'ok' },
+      { id: 'kb8', name: '设备维保知识库', space: 'mfg', desc: '设备手册、故障案例与维保 SOP，支持按产线与机型过滤。', docs: 96, vec: 1536, size: '28.4 MB', color: 'linear-gradient(135deg,#00A870,#4D6BFE)', st: 'ok' }
+    ];
+
+    var DOC_TYPES = ['PDF', 'DOCX', 'MD', 'XLSX', 'PPTX', 'TXT'];
+    var DOCS = {
+      kb1: [['V4.1 版本发布说明.pdf', 'PDF', 86, '12.4 MB', 'ok', '2026-10-10 09:12'], ['产品功能清单.xlsx', 'XLSX', 42, '3.1 MB', 'ok', '2026-10-08'], ['新手引导手册.docx', 'DOCX', 64, '8.6 MB', 'ok', '2026-09-30'], ['接入 FAQ.md', 'MD', 18, '0.4 MB', 'ok', '2026-09-22']],
+      kb2: [['网关限流配置指南.md', 'MD', 32, '0.8 MB', 'parsing', '2026-10-09 15:02'], ['SDK 参考手册.pdf', 'PDF', 124, '18.2 MB', 'ok', '2026-09-28'], ['错误码速查表.xlsx', 'XLSX', 12, '0.9 MB', 'ok', '2026-09-20']],
+      kb3: [['售前话术手册 v3.docx', 'DOCX', 142, '22.3 MB', 'ok', '2026-10-09 18:40'], ['高频工单 TOP100.xlsx', 'XLSX', 96, '5.8 MB', 'ok', '2026-10-06'], ['退换货标准流程.pdf', 'PDF', 28, '3.2 MB', 'ok', '2026-09-25']],
+      kb4: [['用药安全问答集.xlsx', 'XLSX', 204, '15.7 MB', 'ok', '2026-10-08 10:05'], ['临床路径指南.pdf', 'PDF', 186, '48.9 MB', 'ok', '2026-10-02'], ['科室分诊知识.md', 'MD', 46, '1.1 MB', 'ok', '2026-09-18']]
+    };
+
+    var ST_MAP = { ok: ['<span class="tag tag-success">已就绪</span>', '<span class="status-dot success">已向量化</span>'], parsing: ['<span class="tag tag-warning">解析中</span>', '<span class="status-dot warning">解析中</span>'] };
+
+    /* ==================== 空间树渲染 ==================== */
+    var TREE_ICONS = {
+      home: '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2h-4v-7h-6v7H5a2 2 0 0 1-2-2V9z"/>',
+      org: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+      domain: '<circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>',
+      industry: '<path d="M2 20h20M4 20V8l5 3V8l5 3V8l5 3v9"/><path d="M7 12v8M12 12v8M17 12v8"/>'
+    };
+    var CARET = '<polyline points="9 18 15 12 9 6"/>';
+
+    var currentSpace = 'all';
+
+    function iconSvg(name) {
+      return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">' + (TREE_ICONS[name] || TREE_ICONS.org) + '</svg>';
+    }
+
+    function renderTree() {
+      var html = '';
+      SPACES.forEach(function (s) {
+        var hasKids = s.children && s.children.length;
+        var expanded = hasKids && (currentSpace === s.id || (CHILDREN[s.id] || []).indexOf(currentSpace) > -1);
+        html += '<div class="st-item ' + (currentSpace === s.id ? 'active' : '') + '" onclick="selectSpace(\'' + s.id + '\')">' +
+          (hasKids ? '<span class="st-caret ' + (expanded ? 'open' : '') + '"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' + CARET + '</svg></span>' : '<span style="width:12px;"></span>') +
+          iconSvg(s.icon) + '<span>' + s.name + '</span>' +
+          (s.kind ? '<span class="st-kind">' + s.kind + '</span>' : '') +
+          '</div>';
+        if (hasKids) {
+          html += '<div class="st-children ' + (expanded ? '' : 'collapsed') + '">';
+          s.children.forEach(function (c) {
+            html += '<div class="st-item ' + (currentSpace === c.id ? 'active' : '') + '" onclick="selectSpace(\'' + c.id + '\')">' +
+              '<span style="width:12px;"></span>' + iconSvg(c.icon) + '<span>' + c.name + '</span>' +
+              '<span class="st-kind">' + c.kind + '</span></div>';
+          });
+          html += '</div>';
+        }
+      });
+      document.getElementById('spaceTree').innerHTML = html;
+    }
+
+    window.selectSpace = function (id) {
+      currentSpace = id;
+      renderTree(); renderCrumb(); renderKbs();
+      backToList();
+    };
+
+    /* ==================== 面包屑 ==================== */
+    function renderCrumb() {
+      var meta = SPACE_META[currentSpace];
+      var parts = meta[0].split(' / ');
+      var html = parts.map(function (p, i) {
+        return (i ? '<span class="sep">/</span>' : '') + (i === parts.length - 1 ? '<b>' + p + '</b>' : '<span>' + p + '</span>');
+      }).join('');
+      if (meta[1]) html += ' <span class="tag">' + meta[1] + '空间</span>';
+      document.getElementById('spaceCrumb').innerHTML = html;
+    }
+
+    /* ==================== 知识库列表 ==================== */
+    function spaceScope(id) {
+      if (id === 'all') return Object.keys(SPACE_META).filter(function (k) { return k !== 'all'; });
+      return [id].concat(CHILDREN[id] || []);
+    }
+
+    function renderKbs() {
+      var kw = (document.getElementById('kbSearch').value || '').toLowerCase();
+      var scope = spaceScope(currentSpace);
+      var list = KBS.filter(function (k) {
+        var inSpace = scope.indexOf(k.space) > -1;
+        var hit = !kw || k.name.toLowerCase().indexOf(kw) > -1 || (k.desc || '').toLowerCase().indexOf(kw) > -1;
+        return inSpace && hit;
+      });
+
+      var grid = document.getElementById('kbGrid');
+      grid.innerHTML = list.map(function (k) {
+        var sp = SPACE_META[k.space];
+        return '<div class="kb-card" onclick="openDocView(\'' + k.id + '\')">' +
+          '<div class="kb-card-top">' +
+            '<div class="kb-card-icon" style="background:' + k.color + ';"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg></div>' +
+            '<div style="flex:1; min-width:0;">' +
+              '<div class="kb-card-name">' + k.name + ' ' + ST_MAP[k.st][0] + '</div>' +
+              '<div class="kb-card-desc">' + (k.desc || '') + '</div>' +
+              '<div style="margin-top:7px;"><span class="tag">' + sp[0] + '</span> <span class="tag tag-accent">' + sp[1] + '</span></div>' +
+            '</div>' +
+          '</div>' +
+          '<div class="kb-card-meta">' +
+            '<div class="kb-meta-item"><div class="kb-meta-v">' + k.docs + '</div><div class="kb-meta-k">文档</div></div>' +
+            '<div class="kb-meta-item"><div class="kb-meta-v">' + k.vec.toLocaleString() + '</div><div class="kb-meta-k">向量</div></div>' +
+            '<div class="kb-meta-item"><div class="kb-meta-v">' + k.size + '</div><div class="kb-meta-k">存储</div></div>' +
+          '</div>' +
+          '<div class="kb-card-foot">' +
+            '<span class="muted text-sm">更新于 ' + k.time + '</span>' +
+            '<span class="link">管理文档 →</span>' +
+          '</div></div>';
+      }).join('') || '<div class="card" style="grid-column:1/-1;"><div class="card-body muted" style="text-align:center; padding:40px;">当前空间暂无知识库，点击右上角「创建知识库」新建</div></div>';
+    }
+
+    document.getElementById('kbSearch').addEventListener('input', renderKbs);
+
+    /* ==================== 最近更新文档 ==================== */
+    function renderRecent() {
+      var rows = [
+        ['V4.1 版本发布说明.pdf', 'kb1', 'PDF', 'ok', '2026-10-10 09:12'],
+        ['售前话术手册 v3.docx', 'kb3', 'DOCX', 'ok', '2026-10-09 18:40'],
+        ['网关限流配置指南.md', 'kb2', 'MD', 'parsing', '2026-10-09 15:02'],
+        ['用药安全问答集.xlsx', 'kb4', 'XLSX', 'ok', '2026-10-08 10:05'],
+        ['618 大促素材规范.pdf', 'kb7', 'PDF', 'ok', '2026-10-07 16:48']
+      ];
+      document.getElementById('recentBody').innerHTML = rows.map(function (r) {
+        var kb = KBS.filter(function (k) { return k.id === r[1]; })[0];
+        var sp = SPACE_META[kb.space];
+        return '<tr><td><b>' + r[0] + '</b></td>' +
+          '<td><span class="tag">' + sp[0] + '</span></td>' +
+          '<td class="muted">' + kb.name + '</td>' +
+          '<td><span class="tag">' + r[2] + '</span></td>' +
+          '<td>' + ST_MAP[r[3]][1] + '</td>' +
+          '<td class="muted">' + r[4] + '</td></tr>';
+      }).join('');
+    }
+
+    /* ==================== 文档管理视图 ==================== */
+    var currentKb = null;
+
+    window.openDocView = function (kbId, all) {
+      currentKb = kbId ? KBS.filter(function (k) { return k.id === kbId; })[0] : null;
+      document.getElementById('listView').style.display = 'none';
+      document.getElementById('docView').style.display = '';
+
+      if (currentKb) {
+        var sp = SPACE_META[currentKb.space];
+        document.getElementById('docTitle').textContent = currentKb.name + ' · 文档列表';
+        document.getElementById('docSub').textContent = '空间：' + sp[0] + ' · 共 ' + currentKb.docs + ' 个文档';
+        document.getElementById('docCrumb').innerHTML = '<b>' + currentKb.name + '</b><span class="sep">·</span><span>' + sp[0] + '</span>';
+      } else {
+        document.getElementById('docTitle').textContent = '全部文档';
+        document.getElementById('docSub').textContent = '跨知识空间汇总最近更新的文档';
+        document.getElementById('docCrumb').innerHTML = '<b>全部文档</b><span class="sep">·</span><span>' + (SPACE_META[currentSpace][0]) + '</span>';
+      }
+      renderDocs();
+      window.scrollTo({ top: 0 });
+    };
+
+    window.backToList = function () {
+      document.getElementById('docView').style.display = 'none';
+      document.getElementById('listView').style.display = '';
+    };
+
+    function renderDocs() {
+      var kw = (document.getElementById('docSearch').value || '').toLowerCase();
+      var list;
+      if (currentKb) {
+        list = (DOCS[currentKb.id] || [['示例文档.pdf', 'PDF', 12, '1.2 MB', 'ok', '2026-10-01']]).slice();
+      } else {
+        list = [];
+        Object.keys(DOCS).forEach(function (kid) {
+          var kb = KBS.filter(function (k) { return k.id === kid; })[0];
+          if (spaceScope(currentSpace).indexOf(kb.space) > -1) {
+            DOCS[kid].forEach(function (d) { list.push(d.concat([kb.name])); });
+          }
+        });
+      }
+      var rows = list.filter(function (d) { return !kw || d[0].toLowerCase().indexOf(kw) > -1; });
+      document.getElementById('docBody').innerHTML = rows.map(function (d) {
+        return '<tr><td><b>' + d[0] + '</b>' + (d[6] ? ' <span class="muted text-sm">· ' + d[6] + '</span>' : '') + '</td>' +
+          '<td><span class="tag">' + d[1] + '</span></td><td>' + d[2] + '</td><td class="mono muted">' + d[3] + '</td>' +
+          '<td>' + ST_MAP[d[4]][1] + '</td><td class="muted">' + d[5] + '</td>' +
+          '<td><div class="row-actions"><button class="btn btn-ghost btn-sm">预览</button><button class="btn btn-ghost btn-sm">重新解析</button></div></td></tr>';
+      }).join('') || '<tr><td colspan="7" class="muted" style="text-align:center; padding:36px;">暂无文档</td></tr>';
+    }
+
+    document.getElementById('docSearch').addEventListener('input', renderDocs);
+
+    /* ==================== 创建知识库弹窗 ==================== */
+    window.openCreate = function () {
+      var sel = document.getElementById('cSpace');
+      sel.innerHTML = Object.keys(SPACE_META).filter(function (k) { return k !== 'all'; }).map(function (k) {
+        var m = SPACE_META[k];
+        return '<option value="' + k + '">' + m[0] + '（' + m[1] + '）</option>';
+      }).join('');
+      if (currentSpace !== 'all') sel.value = currentSpace;
+      document.getElementById('createMask').classList.add('open');
+    };
+    window.closeCreate = function () { document.getElementById('createMask').classList.remove('open'); };
+    document.getElementById('createMask').addEventListener('click', function (e) {
+      if (e.target === this) closeCreate();
+    });
+
+    window.submitCreate = function () {
+      var name = document.getElementById('cName').value.trim();
+      if (!name) { document.getElementById('cName').focus(); return; }
+      var space = document.getElementById('cSpace').value;
+      KBS.push({
+        id: 'kb' + (KBS.length + 1), name: name, space: space,
+        desc: document.getElementById('cDesc').value.trim() || '（暂无描述）',
+        docs: 0, vec: 0, size: '0 MB', color: 'linear-gradient(135deg,#4D6BFE,#00B7C2)',
+        st: 'ok', time: '刚刚'
+      });
+      closeCreate();
+      document.getElementById('cName').value = '';
+      document.getElementById('cDesc').value = '';
+      currentSpace = space;
+      renderTree(); renderCrumb(); renderKbs(); updateStats();
+      backToList();
+    };
+
+    function updateStats() {
+      document.getElementById('stKbs').textContent = KBS.length;
+      document.getElementById('stDocs').textContent = KBS.reduce(function (a, k) { return a + k.docs; }, 0).toLocaleString();
+    }
+
+    /* ==================== 初始化 ==================== */
+    KBS.forEach(function (k) { if (!k.time) k.time = '2026-10-0' + (2 + Math.floor(Math.random() * 7)); });
+    renderTree(); renderCrumb(); renderKbs(); renderRecent();
+  </script>
+</body>
+</html>

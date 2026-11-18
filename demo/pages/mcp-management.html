@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>MCP 管理 · AI Studio</title>
+  <link rel="stylesheet" href="../assets/css/style.css" />
+</head>
+<body>
+  <div class="app">
+    <div id="brand-bar-root"></div>
+    <div class="main-wrap">
+      <div id="sidebar-root"></div>
+    <main class="main">
+      <div class="content">
+        <div class="page-header">
+          <div>
+            <div class="page-title">MCP 管理</div>
+            <div class="page-subtitle">Model Context Protocol 服务接入、注册、调用与监控</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-secondary">注册中心</button>
+            <button class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              接入 MCP 服务
+            </button>
+          </div>
+        </div>
+
+        <div class="stat-grid">
+          <div class="stat-card"><div><div class="stat-label">MCP 服务数</div><div class="stat-value">38</div><div class="stat-trend up">▲ +5</div></div><div class="stat-icon primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 2v6M15 2v6M5 8h14v3a6 6 0 0 1-6 6h-2a6 6 0 0 1-6-6V8z"/></svg></div></div>
+          <div class="stat-card"><div><div class="stat-label">已注册工具</div><div class="stat-value">186</div><div class="stat-trend up">▲ +24</div></div><div class="stat-icon success"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg></div></div>
+          <div class="stat-card"><div><div class="stat-label">今日调用</div><div class="stat-value">42.8K</div><div class="stat-trend up">▲ 28%</div></div><div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg></div></div>
+          <div class="stat-card"><div><div class="stat-label">成功率</div><div class="stat-value">98.6%</div><div class="stat-trend up">▲ 0.4%</div></div><div class="stat-icon cyan"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="20 6 9 17 4 12"/></svg></div></div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active">MCP 服务</div>
+          <div class="tab">工具列表</div>
+          <div class="tab">调用日志</div>
+          <div class="tab">服务市场</div>
+        </div>
+
+        <div class="filter-bar">
+          <input class="form-input" placeholder="搜索 MCP 服务 / 工具名称" />
+          <select class="form-select" style="width:140px;"><option>全部分类</option><option>数据查询</option><option>计算执行</option><option>外部API</option><option>业务系统</option></select>
+          <select class="form-select" style="width:140px;"><option>全部传输</option><option>stdio</option><option>sse</option><option>websocket</option></select>
+        </div>
+
+        <div class="card">
+          <div class="card-body no-pad">
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr><th>服务名</th><th>分类</th><th>传输协议</th><th>工具数</th><th>调用次数</th><th>平均耗时</th><th>健康度</th><th>状态</th><th>操作</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td><b>mysql-query-mcp</b><div class="muted text-sm">MySQL 数据库查询</div></td>
+                    <td><span class="tag primary tag-solid">数据查询</span></td>
+                    <td><code class="mono">stdio</code></td>
+                    <td>12</td>
+                    <td>18,420</td>
+                    <td>124ms</td>
+                    <td><span style="color:var(--success);">100%</span></td>
+                    <td><span class="tag success">运行中</span></td>
+                    <td><div class="row-actions"><button title="工具"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6"/></svg></button><button title="配置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>elasticsearch-mcp</b><div class="muted text-sm">ES 检索</div></td>
+                    <td><span class="tag primary tag-solid">数据查询</span></td>
+                    <td><code class="mono">sse</code></td>
+                    <td>8</td>
+                    <td>8,640</td>
+                    <td>82ms</td>
+                    <td><span style="color:var(--success);">100%</span></td>
+                    <td><span class="tag success">运行中</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>calculator-mcp</b><div class="muted text-sm">数学计算</div></td>
+                    <td><span class="tag info tag-solid">计算执行</span></td>
+                    <td><code class="mono">stdio</code></td>
+                    <td>4</td>
+                    <td>3,820</td>
+                    <td>12ms</td>
+                    <td><span style="color:var(--success);">100%</span></td>
+                    <td><span class="tag success">运行中</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>weather-mcp</b><div class="muted text-sm">天气查询</div></td>
+                    <td><span class="tag purple tag-solid">外部API</span></td>
+                    <td><code class="mono">sse</code></td>
+                    <td>3</td>
+                    <td>1,286</td>
+                    <td>320ms</td>
+                    <td><span style="color:var(--warning);">96.5%</span></td>
+                    <td><span class="tag success">运行中</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>github-mcp</b><div class="muted text-sm">GitHub 操作</div></td>
+                    <td><span class="tag purple tag-solid">外部API</span></td>
+                    <td><code class="mono">websocket</code></td>
+                    <td>16</td>
+                    <td>2,184</td>
+                    <td>456ms</td>
+                    <td><span style="color:var(--success);">99.2%</span></td>
+                    <td><span class="tag success">运行中</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>erp-business-mcp</b><div class="muted text-sm">ERP 业务系统</div></td>
+                    <td><span class="tag warning tag-solid">业务系统</span></td>
+                    <td><code class="mono">sse</code></td>
+                    <td>24</td>
+                    <td>5,640</td>
+                    <td>182ms</td>
+                    <td><span style="color:var(--success);">98.8%</span></td>
+                    <td><span class="tag success">运行中</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                  <tr>
+                    <td><b>notion-mcp</b><div class="muted text-sm">Notion 集成</div></td>
+                    <td><span class="tag purple tag-solid">外部API</span></td>
+                    <td><code class="mono">stdio</code></td>
+                    <td>10</td>
+                    <td>0</td>
+                    <td>—</td>
+                    <td><span style="color:var(--text-tertiary);">—</span></td>
+                    <td><span class="tag gray tag-solid">已停用</span></td>
+                    <td><div class="row-actions"><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6"/></svg></button><button><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></button></div></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- MCP 接入配置 -->
+        <div class="card mt-24">
+          <div class="card-header">
+            <div class="card-title">接入新 MCP 服务</div>
+            <div class="text-sm muted">支持 stdio / sse / websocket 三种传输协议</div>
+          </div>
+          <div class="card-body">
+            <div class="form-row row-2">
+              <div>
+                <label class="form-label">服务名称 <span class="required">*</span></label>
+                <input class="form-input" placeholder="如：weather-mcp" />
+              </div>
+              <div>
+                <label class="form-label">服务分类</label>
+                <select class="form-select"><option>数据查询</option><option>计算执行</option><option>外部API</option><option>业务系统</option></select>
+              </div>
+            </div>
+            <div class="form-row row-2">
+              <div>
+                <label class="form-label">传输协议</label>
+                <select class="form-select"><option>stdio</option><option>sse</option><option>websocket</option></select>
+              </div>
+              <div>
+                <label class="form-label">端点 / 命令</label>
+                <input class="form-input mono" placeholder="如：npx -y @modelcontextprotocol/server-xxx" />
+              </div>
+            </div>
+            <div class="form-row">
+              <label class="form-label">环境变量 (JSON)</label>
+              <textarea class="form-textarea mono" placeholder='例：{"API_KEY": "xxx"}'>{
+  "API_KEY": "your-api-key",
+  "REGION": "cn-beijing"
+}</textarea>
+            </div>
+            <div class="form-row row-3">
+              <div>
+                <label class="form-label">超时（秒）</label>
+                <input class="form-input" type="number" value="30" />
+              </div>
+              <div>
+                <label class="form-label">最大并发</label>
+                <input class="form-input" type="number" value="100" />
+              </div>
+              <div>
+                <label class="form-label">权限范围</label>
+                <select class="form-select"><option>全部 AppCode</option><option>指定 AppCode</option></select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+  </div>
+  <script src="../assets/js/nav.js?v=4"></script>
+  <script>initLayout('mcp');</script>
+</body>
+</html>

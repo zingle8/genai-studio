@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>03-模型评估.ipynb · AI Workbench</title>
+  <link rel="stylesheet" href="assets/css/workbench.css" />
+</head>
+<body>
+  <div id="wb-header-root"></div>
+
+  <!-- 菜单栏 + 工具栏（整体吸顶，避免逐条写死偏移导致错位） -->
+  <div class="nb-head" id="nbHead">
+  <div class="nb-menubar">
+    <div class="wb-dropdown">
+      <span class="m-item" onclick="wbToggleMenu(this,event)">文件</span>
+      <div class="wb-menu">
+        <button onclick="notebookToast('已新建 Notebook（演示）');return false;">新建 Notebook</button>
+        <button onclick="saveNotebook();return false;">保存并创建检查点</button>
+        <button onclick="notebookToast('已下载 03-模型评估.ipynb（演示）');return false;">下载 .ipynb</button>
+        <div class="menu-sep"></div>
+        <button onclick="notebookToast('已关闭并停止内核（演示）');return false;">关闭并停止内核</button>
+      </div>
+    </div>
+    <span class="m-item" onclick="notebookToast('演示：编辑菜单')">编辑</span>
+    <span class="m-item" onclick="notebookToast('演示：视图菜单')">视图</span>
+    <span class="m-item" onclick="notebookToast('演示：插入菜单')">插入</span>
+    <span class="m-item" onclick="notebookToast('演示：Cell 菜单')">Cell</span>
+    <div class="wb-dropdown">
+      <span class="m-item" onclick="wbToggleMenu(this,event)">内核</span>
+      <div class="wb-menu">
+        <button onclick="restartKernel();return false;">重启内核</button>
+        <button onclick="interruptKernel();return false;">中断内核</button>
+        <button onclick="notebookToast('已切换至 Python 3.10 内核（演示）');return false;">切换内核…</button>
+      </div>
+    </div>
+    <span class="m-item" onclick="notebookToast('演示：帮助文档')">帮助</span>
+    <div class="nb-title">
+      <span class="wb-tag accent">受信任</span>
+      <span class="mono">03-模型评估.ipynb</span>
+      <span>· 最后保存 <b id="lastSave">16:20</b></span>
+    </div>
+  </div>
+
+  <!-- 工具栏 -->
+  <div class="nb-toolbar">
+    <div class="tb-group">
+      <button class="tb-btn" onclick="insertCell('code')" id="btnAddCode"></button>
+      <button class="tb-btn" onclick="insertCell('md')" id="btnAddMd"></button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <button class="tb-btn run" onclick="runSelected()" id="btnRun"></button>
+      <button class="tb-btn" onclick="runAll()" id="btnRunAll"></button>
+      <button class="tb-btn" onclick="interruptKernel()" id="btnStop"></button>
+    </div>
+    <span class="tb-sep"></span>
+    <div class="tb-group">
+      <button class="tb-btn" onclick="restartKernel()" id="btnRestart"></button>
+      <div class="wb-dropdown">
+        <button class="kernel-chip" onclick="wbToggleMenu(this,event)">
+          <span class="kernel-dot idle" id="kernelDot"></span>
+          <span id="kernelLabel">Python 3 [conda:base]</span>
+        </button>
+        <div class="wb-menu right">
+          <button onclick="setKernel('Python 3 [conda:base]');return false;">Python 3 [conda:base]</button>
+          <button onclick="setKernel('Python 3.10 [conda:ml]');return false;">Python 3.10 [conda:ml]</button>
+          <button onclick="setKernel('PySpark [分布式]');return false;">PySpark [分布式]</button>
+        </div>
+      </div>
+    </div>
+    <span class="spacer"></span>
+    <span class="text-sm muted" id="cellCount"></span>
+  </div>
+  </div>
+
+  <div class="nb-layout">
+    <!-- 左侧栏 -->
+    <aside class="nb-side" style="padding:14px 10px;">
+      <div class="ft-group-title" style="padding-left:8px;">打开的标签</div>
+      <div class="ft-item active"><span style="width:12px;"></span><span class="wb-logo-mark" style="width:18px;height:18px;border-radius:5px;font-size:9px;">λ</span><span>03-模型评估.ipynb</span></div>
+      <a class="ft-item" href="files.html"><span style="width:12px;"></span><span class="wb-logo-mark" style="width:18px;height:18px;border-radius:5px;font-size:9px;background:#B9BEC8;">+</span><span>新建 / 浏览…</span></a>
+      <div class="ft-group-title" style="padding-left:8px;">工作区文件</div>
+      <div id="sideFiles"></div>
+    </aside>
+
+    <!-- Cells -->
+    <div class="nb-cells" id="nbCells">
+      <!-- m1 · Markdown -->
+      <div class="nb-cell md" data-cell="m1" onclick="selectCell(this)">
+        <div class="cell-prompt"></div>
+        <div class="cell-body">
+          <div class="md-render"></div>
+          <div class="cell-input md-edit mono text-sm" contenteditable="true" style="min-height:60px;"></div>
+        </div>
+      </div>
+
+      <!-- c2 · 导入 -->
+      <div class="nb-cell code" data-cell="c2" onclick="selectCell(this)">
+        <div class="cell-prompt">In&nbsp;[<span class="exec-count">&nbsp;</span>]:</div>
+        <div class="cell-body">
+          <div class="cell-input" contenteditable="true"></div>
+          <div class="cell-output-wrap hidden"><div class="out-label">Out:</div><div class="cell-output"></div></div>
+        </div>
+      </div>
+
+      <!-- c3 · 读取数据 -->
+      <div class="nb-cell code" data-cell="c3" onclick="selectCell(this)">
+        <div class="cell-prompt">In&nbsp;[<span class="exec-count">&nbsp;</span>]:</div>
+        <div class="cell-body">
+          <div class="cell-input" contenteditable="true"></div>
+          <div class="cell-output-wrap hidden"><div class="out-label">Out:</div><div class="cell-output"></div></div>
+        </div>
+      </div>
+
+      <!-- c4 · 指标 -->
+      <div class="nb-cell code" data-cell="c4" onclick="selectCell(this)">
+        <div class="cell-prompt">In&nbsp;[<span class="exec-count">&nbsp;</span>]:</div>
+        <div class="cell-body">
+          <div class="cell-input" contenteditable="true"></div>
+          <div class="cell-output-wrap hidden"><div class="out-label">Out:</div><div class="cell-output"></div></div>
+        </div>
+      </div>
+
+      <!-- c5 · 绘图 -->
+      <div class="nb-cell code" data-cell="c5" onclick="selectCell(this)">
+        <div class="cell-prompt">In&nbsp;[<span class="exec-count">&nbsp;</span>]:</div>
+        <div class="cell-body">
+          <div class="cell-input" contenteditable="true"></div>
+          <div class="cell-output-wrap hidden"><div class="out-label">Out:</div><div class="cell-output"></div></div>
+        </div>
+      </div>
+
+      <!-- m2 · 结论 -->
+      <div class="nb-cell md" data-cell="m2" onclick="selectCell(this)">
+        <div class="cell-prompt"></div>
+        <div class="cell-body">
+          <div class="md-render"></div>
+          <div class="cell-input md-edit mono text-sm" contenteditable="true" style="min-height:60px;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 状态栏 -->
+  <div class="nb-statusbar">
+    <span class="s-item"><span class="kernel-dot idle" id="statusDot"></span><span id="statusText">内核空闲</span></span>
+    <span class="s-item mono">Python 3.11.8 · conda base</span>
+    <span class="s-item" id="modeText">模式：命令模式</span>
+    <span class="spacer"></span>
+    <span class="s-item" id="saveHint">自动保存已开启 · 每 120 秒</span>
+  </div>
+
+  <script src="assets/js/wb.js"></script>
+  <script>
+    initWb('notebook');
+
+    /* 顶栏 / 菜单栏+工具栏 的实际高度写入 CSS 变量，保证吸顶层层对齐（换行也能自适应） */
+    function syncHeadOffset() {
+      var header = document.querySelector('.wb-header'), head = document.getElementById('nbHead');
+      var hh = header ? header.getBoundingClientRect().height : 55;
+      document.documentElement.style.setProperty('--wb-header-h', Math.round(hh) + 'px');
+      if (head) {
+        document.documentElement.style.setProperty('--nb-head-h', Math.round(hh + head.getBoundingClientRect().height) + 'px');
+      }
+    }
+    syncHeadOffset();
+    window.addEventListener('resize', syncHeadOffset);
+
+    /* ==================== 工具栏图标 ==================== */
+    document.getElementById('btnAddCode').innerHTML = wbIcon('plus') + 'Code';
+    document.getElementById('btnAddMd').innerHTML = wbIcon('edit') + 'Markdown';
+    document.getElementById('btnRun').innerHTML = wbIcon('play') + '运行';
+    document.getElementById('btnRunAll').innerHTML = wbIcon('play') + '运行全部';
+    document.getElementById('btnStop').innerHTML = wbIcon('stop') + '中断';
+    document.getElementById('btnRestart').innerHTML = wbIcon('refresh') + '重启内核';
+    /* 图标填充后高度可能变化，重新校准一次 */
+    syncHeadOffset();
+    window.addEventListener('load', syncHeadOffset);
+
+    /* ==================== 侧栏文件 ==================== */
+    document.getElementById('sideFiles').innerHTML = WB_FS.children.map(function (c) {
+      if (c.dir) {
+        return '<div class="ft-item" onclick="notebookToast(\'演示：目录导航请使用文件页\')">' +
+          '<span style="width:12px;"></span>' + wbIcon('folder') + '<span>' + c.name + '/</span></div>';
+      }
+      return '<div class="ft-item" onclick="notebookToast(\'演示：当前演示文件为 03-模型评估.ipynb\')">' +
+        '<span style="width:12px;"></span>' + wbIcon('file') + '<span>' + c.name + '</span></div>';
+    }).join('');
+
+    /* ==================== 迷你 Markdown 渲染 ==================== */
+    function mdRender(src) {
+      var esc = src.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      var lines = esc.split('\n'), out = [], inList = false;
+      lines.forEach(function (ln) {
+        var t = ln.trim();
+        var inline = function (s) {
+          return s.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                  .replace(/`(.+?)`/g, '<code>$1</code>');
+        };
+        if (/^###\s/.test(t)) { out.push('<h3>' + inline(t.slice(4)) + '</h3>'); inList = false; }
+        else if (/^##\s/.test(t)) { out.push('<h2>' + inline(t.slice(3)) + '</h2>'); inList = false; }
+        else if (/^#\s/.test(t)) { out.push('<h1>' + inline(t.slice(2)) + '</h1>'); inList = false; }
+        else if (/^-\s/.test(t)) {
+          if (!inList) { out.push('<ul>'); inList = true; }
+          out.push('<li>' + inline(t.slice(2)) + '</li>');
+        }
+        else if (t === '') { if (inList) { out.push('</ul>'); inList = false; } }
+        else { if (inList) { out.push('</ul>'); inList = false; } out.push('<p>' + inline(t) + '</p>'); }
+      });
+      if (inList) out.push('</ul>');
+      return out.join('');
+    }
+
+    /* ==================== 代码内容（带高亮） ==================== */
+    var CODE = {
+      c2: '<span class="tok-kw">import</span> <span class="tok-mod">pandas</span> <span class="tok-kw">as</span> pd\n' +
+          '<span class="tok-kw">import</span> <span class="tok-mod">numpy</span> <span class="tok-kw">as</span> np\n' +
+          '<span class="tok-kw">from</span> <span class="tok-mod">sklearn.metrics</span> <span class="tok-kw">import</span> mean_absolute_error, r2_score\n\n' +
+          '<span class="tok-com"># 读取 v3 模型与特征定义</span>\n' +
+          'model = joblib.load(<span class="tok-str">"models/xgb_v3.pkl"</span>)\n' +
+          'FEATURES = [<span class="tok-str">"price"</span>, <span class="tok-str">"stock"</span>, <span class="tok-str">"holiday"</span>, <span class="tok-str">"lag_7"</span>]\n' +
+          '<span class="tok-fn">print</span>(<span class="tok-str">"pandas"</span>, pd.__version__, <span class="tok-str">"| numpy"</span>, np.__version__)',
+      c3: 'df = pd.<span class="tok-fn">read_csv</span>(<span class="tok-str">"data/sales_2026.csv"</span>, parse_dates=[<span class="tok-str">"date"</span>])\n' +
+          'df = df[df[<span class="tok-str">"region"</span>] == <span class="tok-str">"华东"</span>].<span class="tok-fn">reset_index</span>(drop=<span class="tok-kw">True</span>)\n' +
+          '<span class="tok-com"># 查看前 5 行</span>\n' +
+          'df.<span class="tok-fn">head</span>()',
+      c4: 'y_true = df[<span class="tok-str">"units"</span>].values\n' +
+          'y_pred = model.<span class="tok-fn">predict</span>(df[FEATURES])\n\n' +
+          'mae = <span class="tok-fn">mean_absolute_error</span>(y_true, y_pred)\n' +
+          'r2&nbsp;&nbsp;= <span class="tok-fn">r2_score</span>(y_true, y_pred)\n\n' +
+          '<span class="tok-fn">print</span>(<span class="tok-str">f"MAE = {mae:.2f}"</span>)\n' +
+          '<span class="tok-fn">print</span>(<span class="tok-str">f"R²&nbsp; = {r2:.4f}"</span>)',
+      c5: 'plt.<span class="tok-fn">figure</span>(figsize=(<span class="tok-num">9</span>, <span class="tok-num">3.2</span>))\n' +
+          'plt.<span class="tok-fn">plot</span>(df[<span class="tok-str">"date"</span>], y_true, label=<span class="tok-str">"实际销量"</span>, lw=<span class="tok-num">1.6</span>)\n' +
+          'plt.<span class="tok-fn">plot</span>(df[<span class="tok-str">"date"</span>], y_pred, label=<span class="tok-str">"预测销量"</span>, lw=<span class="tok-num">1.6</span>, ls=<span class="tok-str">"--"</span>)\n' +
+          'plt.<span class="tok-fn">legend</span>(); plt.<span class="tok-fn">tight_layout</span>(); plt.<span class="tok-fn">show</span>()'
+    };
+
+    /* ==================== 输出内容 ==================== */
+    function chartSVG() {
+      var W = 640, H = 210, L = 44, R = 12, T = 12, B = 26;
+      var n = 24, y1 = [], y2 = [];
+      for (var i = 0; i < n; i++) {
+        y1.push(140 + Math.sin(i / 3.1) * 46 + (i * 7) % 23 - 10);
+        y2.push(138 + Math.sin(i / 3.1) * 43 + (i * 5) % 18 - 8);
+      }
+      var all = y1.concat(y2), lo = Math.min.apply(null, all) - 10, hi = Math.max.apply(null, all) + 10;
+      var X = function (i) { return L + (W - L - R) * (i / (n - 1)); };
+      var Y = function (v) { return T + (H - T - B) * (1 - (v - lo) / (hi - lo)); };
+      var p1 = y1.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ');
+      var p2 = y2.map(function (v, i) { return X(i).toFixed(1) + ',' + Y(v).toFixed(1); }).join(' ');
+      var grid = '';
+      for (var g = 0; g <= 3; g++) {
+        var gy = T + (H - T - B) * g / 3, gv = (hi - (hi - lo) * g / 3).toFixed(0);
+        grid += '<line x1="' + L + '" y1="' + gy + '" x2="' + (W - R) + '" y2="' + gy + '" stroke="#ECEDEF"/>' +
+                '<text x="' + (L - 7) + '" y="' + (gy + 4) + '" font-size="10" fill="#9BA1AD" text-anchor="end">' + gv + '</text>';
+      }
+      var area = '<polygon points="' + L + ',' + (H - B) + ' ' + p1 + ' ' + (W - R) + ',' + (H - B) + '" fill="rgba(15,153,96,0.06)"/>';
+      return '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '" xmlns="http://www.w3.org/2000/svg">' + grid +
+        area +
+        '<polyline points="' + p1 + '" fill="none" stroke="#0F9960" stroke-width="1.8"/>' +
+        '<polyline points="' + p2 + '" fill="none" stroke="#ED7B2F" stroke-width="1.8" stroke-dasharray="5 4"/>' +
+        '<line x1="' + L + '" y1="' + (H - B) + '" x2="' + (W - R) + '" y2="' + (H - B) + '" stroke="#D8DAE0"/>' +
+        '<text x="' + L + '" y="' + (H - 8) + '" font-size="10" fill="#9BA1AD">07-01</text>' +
+        '<text x="' + (W - R) / 2 + '" y="' + (H - 8) + '" font-size="10" fill="#9BA1AD" text-anchor="middle">07-12</text>' +
+        '<text x="' + (W - R) + '" y="' + (H - 8) + '" font-size="10" fill="#9BA1AD" text-anchor="end">07-24</text>' +
+        '<rect x="' + (W - 168) + '" y="16" width="156" height="20" rx="5" fill="#F7F8FA"/>' +
+        '<line x1="' + (W - 158) + '" y1="26" x2="' + (W - 138) + '" y2="26" stroke="#0F9960" stroke-width="2.4"/>' +
+        '<text x="' + (W - 132) + '" y="30" font-size="11" fill="#5C6270">实际销量</text>' +
+        '<line x1="' + (W - 76) + '" y1="26" x2="' + (W - 56) + '" y2="26" stroke="#ED7B2F" stroke-width="2.4" stroke-dasharray="4 3"/>' +
+        '<text x="' + (W - 50) + '" y="30" font-size="11" fill="#5C6270">预测</text>' +
+        '</svg>';
+    }
+
+    var headTable = '<table class="out-table"><thead><tr>' +
+      ['date', 'region', 'sku', 'price', 'units', 'gmv'].map(function (h) { return '<th>' + h + '</th>'; }).join('') +
+      '</tr></thead><tbody>' + [
+        ['2026-07-01', '华东', 'SKU-1001', '89.0', '312', '27,768'],
+        ['2026-07-01', '华东', 'SKU-1002', '129.0', '208', '26,832'],
+        ['2026-07-01', '华东', 'SKU-1003', '45.9', '540', '24,786'],
+        ['2026-07-02', '华东', 'SKU-1001', '89.0', '305', '27,145'],
+        ['2026-07-02', '华东', 'SKU-1002', '129.0', '221', '28,509']
+      ].map(function (r) {
+        return '<tr>' + r.map(function (c) { return '<td>' + c + '</td>'; }).join('') + '</tr>';
+      }).join('') + '</tbody></table>';
+
+    var OUTPUTS = {
+      c2: 'pandas 2.2.1 | numpy 1.26.4\n[模型已加载] models/xgb_v3.pkl · 特征 4 维',
+      c3: headTable,
+      c4: 'MAE = 42.18\nR²  = 0.9312',
+      c5: chartSVG()
+    };
+
+    /* ==================== Cell 初始化 ==================== */
+    var MD_SRC = {
+      m1: '# 销量预测 · 模型评估\n使用 XGBoost 对华东区域 2026 年销量做回测，对比 **实际销量** 与 **预测销量**。\n\n- 数据：`data/sales_2026.csv`（日粒度 · 12 万行）\n- 模型：`models/xgb_v3.pkl`（v3）\n- 指标：MAE / R² / 时序曲线对比',
+      m2: '## 结论\n- R² = **0.9312**，较 v2 提升 2.4 个百分点\n- 促销日误差仍偏高（MAE 78.3），建议追加 `promo` 特征重训\n- 下一步：接入实时特征服务，做 A/B 部署'
+    };
+
+    document.querySelectorAll('.nb-cell').forEach(function (cell) {
+      var id = cell.dataset.cell;
+      if (CODE[id]) cell.querySelector('.cell-input').innerHTML = CODE[id];
+      if (MD_SRC[id]) {
+        cell.querySelector('.md-edit').textContent = MD_SRC[id];
+        cell.querySelector('.md-render').innerHTML = mdRender(MD_SRC[id]);
+      }
+      /* 悬浮工具 */
+      var tools = document.createElement('div');
+      tools.className = 'cell-tools';
+      tools.innerHTML =
+        '<button title="运行" onclick="runCell(this.closest(\'.nb-cell\'));event.stopPropagation();">' + wbIcon('play', 13) + '</button>' +
+        '<button title="上移" onclick="moveCell(this.closest(\'.nb-cell\'),-1);event.stopPropagation();">' + wbIcon('up', 13) + '</button>' +
+        '<button title="下移" onclick="moveCell(this.closest(\'.nb-cell\'),1);event.stopPropagation();">' + wbIcon('down', 13) + '</button>' +
+        '<button title="删除" class="danger" onclick="removeCell(this.closest(\'.nb-cell\'));event.stopPropagation();">' + wbIcon('trash', 13) + '</button>';
+      cell.appendChild(tools);
+    });
+
+    /* ==================== 选择 / 计数 ==================== */
+    var selected = null;
+    function selectCell(cell) {
+      document.querySelectorAll('.nb-cell').forEach(function (c) { c.classList.remove('selected'); });
+      cell.classList.add('selected');
+      selected = cell;
+    }
+
+    function updateCount() {
+      document.getElementById('cellCount').textContent =
+        document.querySelectorAll('.nb-cell').length + ' 个 Cell · ' + execCounter + ' 次执行';
+    }
+
+    /* ==================== 内核状态 ==================== */
+    var execCounter = 0;
+    var runTimer = null;
+
+    function setKernelStatus(status) {
+      var dot = document.getElementById('kernelDot'), sdot = document.getElementById('statusDot');
+      dot.className = 'kernel-dot ' + status;
+      sdot.className = 'kernel-dot ' + status;
+      document.getElementById('statusText').textContent =
+        status === 'busy' ? '内核忙碌' : (status === 'idle' ? '内核空闲' : '内核已中断');
+    }
+
+    /* ==================== 运行 ==================== */
+    function runCell(cell) {
+      if (!cell) return;
+      selectCell(cell);
+      var id = cell.dataset.cell;
+
+      /* Markdown Cell：编辑 → 渲染 */
+      if (cell.classList.contains('md')) {
+        var src = cell.querySelector('.md-edit').textContent;
+        cell.querySelector('.md-render').innerHTML = mdRender(src || '*空 Markdown Cell*');
+        cell.classList.remove('editing');
+        var next = cell.nextElementSibling;
+        if (next) selectCell(next);
+        updateCount();
+        return;
+      }
+
+      /* 代码 Cell：模拟执行 */
+      var counter = cell.querySelector('.exec-count');
+      counter.textContent = '*';
+      setKernelStatus('busy');
+      if (runTimer) clearTimeout(runTimer);
+      runTimer = setTimeout(function () {
+        execCounter++;
+        counter.textContent = execCounter;
+        var wrap = cell.querySelector('.cell-output-wrap');
+        var out = cell.querySelector('.cell-output');
+        out.innerHTML = OUTPUTS[id] !== undefined ? OUTPUTS[id]
+          : '<span class="t-dim"># 此 Cell 为演示新增，无预置输出</span>';
+        wrap.classList.remove('hidden');
+        setKernelStatus('idle');
+        var next = cell.nextElementSibling;
+        if (next) selectCell(next);
+        updateCount();
+      }, 750);
+    }
+
+    window.runSelected = function () {
+      if (!selected) { notebookToast('请先点击选择一个 Cell'); return; }
+      runCell(selected);
+    };
+
+    window.runAll = function () {
+      var cells = Array.prototype.slice.call(document.querySelectorAll('.nb-cell'));
+      var i = 0;
+      (function next() {
+        if (i >= cells.length) { notebookToast('全部 Cell 执行完成', 'ok'); return; }
+        var c = cells[i++];
+        if (c.classList.contains('md')) {
+          runCell(c);
+          setTimeout(next, 120);
+        } else {
+          runCell(c);
+          setTimeout(next, 950);
+        }
+      })();
+    };
+
+    window.interruptKernel = function () {
+      if (runTimer) clearTimeout(runTimer);
+      document.querySelectorAll('.exec-count').forEach(function (el) {
+        if (el.textContent === '*') el.textContent = '\u00A0';
+      });
+      setKernelStatus('idle');
+      notebookToast('已向内核发送中断信号（SIGINT）', 'ok');
+    };
+
+    window.restartKernel = function () {
+      interruptKernel();
+      execCounter = 0;
+      document.querySelectorAll('.nb-cell.code').forEach(function (c) {
+        c.querySelector('.exec-count').innerHTML = '&nbsp;';
+        c.querySelector('.cell-output-wrap').classList.add('hidden');
+      });
+      updateCount();
+      notebookToast('内核已重启，输出已清空', 'ok');
+    };
+
+    window.setKernel = function (name) {
+      document.getElementById('kernelLabel').textContent = name;
+      notebookToast('已切换内核：' + name + '（演示）', 'ok');
+    };
+
+    /* ==================== 增删移动 ==================== */
+    window.insertCell = function (type) {
+      var cells = document.getElementById('nbCells');
+      var cell = document.createElement('div');
+      cell.className = 'nb-cell ' + (type === 'md' ? 'md' : 'code');
+      cell.dataset.cell = 'new-' + Date.now();
+      cell.setAttribute('onclick', 'selectCell(this)');
+      if (type === 'md') {
+        cell.innerHTML = '<div class="cell-prompt"></div><div class="cell-body">' +
+          '<div class="md-render"></div>' +
+          '<div class="cell-input md-edit mono text-sm" contenteditable="true" style="min-height:60px;">## 新 Markdown Cell\n双击编辑，运行后渲染</div></div>';
+      } else {
+        cell.innerHTML = '<div class="cell-prompt">In&nbsp;[<span class="exec-count">&nbsp;</span>]:</div><div class="cell-body">' +
+          '<div class="cell-input" contenteditable="true"></div>' +
+          '<div class="cell-output-wrap hidden"><div class="out-label">Out:</div><div class="cell-output"></div></div></div>';
+      }
+      cells.appendChild(cell);
+      /* 补挂悬浮工具 */
+      var tools = document.createElement('div');
+      tools.className = 'cell-tools';
+      tools.innerHTML =
+        '<button title="运行" onclick="runCell(this.closest(\'.nb-cell\'));event.stopPropagation();">' + wbIcon('play', 13) + '</button>' +
+        '<button title="上移" onclick="moveCell(this.closest(\'.nb-cell\'),-1);event.stopPropagation();">' + wbIcon('up', 13) + '</button>' +
+        '<button title="下移" onclick="moveCell(this.closest(\'.nb-cell\'),1);event.stopPropagation();">' + wbIcon('down', 13) + '</button>' +
+        '<button title="删除" class="danger" onclick="removeCell(this.closest(\'.nb-cell\'));event.stopPropagation();">' + wbIcon('trash', 13) + '</button>';
+      cell.appendChild(tools);
+      selectCell(cell);
+      cell.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      updateCount();
+    };
+
+    window.removeCell = function (cell) {
+      if (document.querySelectorAll('.nb-cell').length <= 1) {
+        notebookToast('至少保留一个 Cell', 'err'); return;
+      }
+      cell.remove();
+      updateCount();
+    };
+
+    window.moveCell = function (cell, dir) {
+      if (dir < 0 && cell.previousElementSibling) {
+        cell.parentNode.insertBefore(cell, cell.previousElementSibling);
+      } else if (dir > 0 && cell.nextElementSibling) {
+        cell.parentNode.insertBefore(cell.nextElementSibling, cell);
+      }
+    };
+
+    /* ==================== 其他交互 ==================== */
+    window.notebookToast = wbToast;
+    window.saveNotebook = function () {
+      var t = new Date();
+      document.getElementById('lastSave').textContent =
+        ('0' + t.getHours()).slice(-2) + ':' + ('0' + t.getMinutes()).slice(-2);
+      notebookToast('已保存并创建检查点', 'ok');
+    };
+
+    /* 双击 Markdown 进入编辑 */
+    document.addEventListener('dblclick', function (e) {
+      var cell = e.target.closest && e.target.closest('.nb-cell.md');
+      if (cell) cell.classList.add('editing');
+    });
+
+    /* Ctrl+Enter 运行选中 Cell */
+    document.addEventListener('keydown', function (e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        runSelected();
+      }
+    });
+
+    /* 点击输入区 → 编辑模式提示 */
+    document.addEventListener('focusin', function (e) {
+      if (e.target.classList && e.target.classList.contains('cell-input')) {
+        document.getElementById('modeText').textContent = '模式：编辑模式';
+      }
+    });
+    document.addEventListener('focusout', function () {
+      document.getElementById('modeText').textContent = '模式：命令模式';
+    });
+
+    /* 初始：选中第一个代码 Cell，展示已有执行计数（演示已跑过 3 个） */
+    execCounter = 3;
+    var first = document.querySelector('.nb-cell.code');
+    if (first) selectCell(first);
+    updateCount();
+  </script>
+</body>
+</html>

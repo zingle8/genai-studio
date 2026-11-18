@@ -172,6 +172,7 @@ const menus = [
   { label: '模型广场', icon: 'models', to: '/fe-models/models' },
   { label: '模型管理', icon: 'models', to: '/fe-models/model-admin' },
   { label: '体验中心', icon: 'chat', to: '/fe-chats/playground' },
+  { label: '提示词广场', icon: 'pen', to: '/fe-prompt/square' },
   { label: '提示词管理', icon: 'pen', to: '/fe-prompt/prompts' },
   { label: 'RAG 管理', icon: 'search', to: '/fe-knowledgebase/rag', },
   { label: '知识库', icon: 'book', to: '/fe-knowledgebase/kb', },

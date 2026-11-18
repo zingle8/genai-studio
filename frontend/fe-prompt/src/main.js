@@ -16,7 +16,7 @@ const base = location.pathname.startsWith('/fe-prompt/') ? '/fe-prompt/' : '/'
 
 const router = createRouter({
   history: createWebHistory(base),
-  routes: [{ path: '/', redirect: '/prompts' }, { path: '/prompts', component: () => import('./views/Prompts.vue') }]
+  routes: [{ path: '/', redirect: '/square' }, { path: '/square', component: () => import('./views/Square.vue') }, { path: '/prompts', component: () => import('./views/Prompts.vue') }]
 })
 
 function renderApp(props = {}) {

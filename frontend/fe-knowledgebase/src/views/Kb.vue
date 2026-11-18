@@ -1,91 +1,136 @@
 <template>
   <div class="page-header">
-    <div><div class="page-title">知识库</div><div class="page-subtitle">知识空间 / 库配置（ES·PG·内置）/ 文档切分 / 检索测试</div></div>
+    <div><div class="page-title">知识库</div><div class="page-subtitle">空间管理 / 知识库管理 / 文档管理 / 检索测试</div></div>
     <div class="page-actions">
-      <button class="btn btn-ghost" @click="spaceOpen = true">＋ 新建空间</button>
-      <button class="btn btn-primary" @click="openNewKb">＋ 新建知识库</button>
+      <button v-if="tab === 'spaces'" class="btn btn-primary" @click="spaceOpen = true">＋ 新建空间</button>
+      <button v-if="tab === 'kbs'" class="btn btn-primary" @click="openNewKb">＋ 新建知识库</button>
+      <button v-if="tab === 'docs' && curKb" class="btn btn-primary" @click="docOpen = true">＋ 上传文档</button>
     </div>
   </div>
-  <div class="kb-layout">
-    <!-- 左：空间 -->
-    <div class="card kb-side"><div class="card-body no-pad">
-      <div style="padding:10px 14px; border-bottom:1px solid var(--border-light);"><b class="text-sm">知识空间</b></div>
-      <div class="kb-item" :class="{ active: curSpace === 0 }" @click="curSpace = 0; loadKbs()">
-        <div><b>全部</b></div>
-      </div>
-      <div class="kb-item" v-for="s in spaces" :key="s.id" :class="{ active: curSpace === s.id }" @click="curSpace = s.id; loadKbs()">
-        <div><b>{{ s.name }}</b></div>
-        <div class="text-xs muted">{{ s.kbCount }} 个库 · {{ s.description || '—' }}</div>
-      </div>
-      <div v-if="!spaces.length" class="side-empty text-sm muted">暂无空间，点右上角新建</div>
-    </div></div>
-    <!-- 中：知识库列表 -->
-    <div class="card kb-side2"><div class="card-body no-pad">
-      <div style="padding:10px 14px; border-bottom:1px solid var(--border-light);"><b class="text-sm">知识库</b></div>
-      <div class="kb-item" v-for="k in kbs" :key="k.id" :class="{ active: curKb?.id === k.id }" @click="pickKb(k)">
-        <div style="display:flex; align-items:center; gap:6px;">
-          <b>{{ k.name }}</b>
-          <span class="tag" style="font-size:11px;" :class="k.kb_type === 'golden_answer' ? 'tag-accent' : ''">{{ typeLabel(k.kb_type) }}</span>
-        </div>
-        <div class="text-xs muted">{{ k.docCount }} 文档 · {{ storeLabel(k.db_type) }} <span v-if="k.db_type !== 'sqlite'" class="dot-mini" :class="k.dbOk ? 'green' : 'red'"></span></div>
-        <div class="text-xs muted" v-if="k.embedding_model">emb: {{ k.embedding_model }} <template v-if="k.reranker_model && k.reranker_model !== '（无）'">· rerank: {{ k.reranker_model }}</template></div>
-      </div>
-      <div v-if="!kbs.length" class="side-empty text-sm muted">当前范围暂无知识库</div>
-    </div></div>
-    <!-- 右：文档 + 检索 -->
-    <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:12px;">
-      <template v-if="curKb">
-        <div class="card"><div class="card-body">
-          <div class="row-head">
-            <b>{{ curKb.name }}</b>
-            <span class="tag">{{ typeLabel(curKb.kb_type) }}</span>
-            <span class="tag">{{ storeLabel(curKb.db_type) }}</span>
-            <span class="text-xs muted">{{ curKb.description || '—' }}</span>
-            <span style="flex:1"></span>
-            <button class="btn btn-ghost btn-sm" @click="editKb(curKb)">配置</button>
-            <button class="btn btn-ghost btn-sm" @click="delKb(curKb)">删除库</button>
-          </div>
-          <div class="text-xs muted" style="margin-top:6px;">切分：{{ modeLabel(curKb.chunk_mode) }} / {{ curKb.chunk_len }} 字</div>
-        </div></div>
 
-        <div class="card"><div class="card-body">
-          <div class="row-head" style="margin-bottom:10px;">
-            <b>文档列表</b><span style="flex:1"></span>
-            <button class="btn btn-primary btn-sm" @click="docOpen = true">＋ 上传文档</button>
-          </div>
-          <div class="table-wrap"><table>
-            <thead><tr><th>文档名</th><th>分块</th><th>大小</th><th>状态</th><th>时间</th><th class="text-right">操作</th></tr></thead>
-            <tbody>
-              <tr v-for="d in docs" :key="d.id">
-                <td>{{ d.name }}</td><td>{{ d.chunks }}</td><td>{{ fmtSize(d.size) }}</td>
-                <td><span class="tag tag-success">{{ d.status }}</span></td>
-                <td class="text-xs muted">{{ d.created_at }}</td>
-                <td class="text-right"><button class="btn btn-ghost btn-sm" @click="viewChunks(d)">分块</button> <button class="btn btn-ghost btn-sm" @click="delDoc(d)">删除</button></td>
-              </tr>
-              <tr v-if="!docs.length"><td colspan="6" class="text-center muted">暂无文档</td></tr>
-            </tbody>
-          </table></div>
-        </div></div>
-
-        <div class="card"><div class="card-body">
-          <b style="display:block; margin-bottom:8px;">检索测试 <span class="text-xs muted" v-if="lastBackend">（{{ storeLabel(lastBackend) }}）</span></b>
-          <div class="row-head" style="gap:8px;">
-            <input class="form-input" v-model="query" placeholder="输入查询" @keyup.enter="search" style="flex:1;" />
-            <button class="btn btn-primary" @click="search">检索</button>
-          </div>
-          <div v-if="searched" class="search-res">
-            <div class="text-xs muted" style="margin:8px 0;">命中 {{ hits.length }} 条</div>
-            <div class="hit" v-for="h in hits" :key="h.chunkId + '-' + h.idx">
-              <span class="tag">{{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
-              <div class="hit-text">{{ h.content }}</div>
-            </div>
-            <div v-if="!hits.length" class="text-sm muted">无命中</div>
-          </div>
-        </div></div>
-      </template>
-      <div v-else class="card"><div class="card-body text-center muted" style="padding:40px 0;">从左侧选择知识库，或新建一个</div></div>
-    </div>
+  <div class="mode-tabs">
+    <button class="mode-tab" :class="{ active: tab === 'spaces' }" @click="tab = 'spaces'">空间管理</button>
+    <button class="mode-tab" :class="{ active: tab === 'kbs' }" @click="tab = 'kbs'">知识库管理</button>
+    <button class="mode-tab" :class="{ active: tab === 'docs' }" @click="tab = 'docs'">文档管理</button>
+    <button class="mode-tab" :class="{ active: tab === 'search' }" @click="tab = 'search'">检索测试</button>
   </div>
+
+  <!-- 面包屑 -->
+  <div class="kb-crumbs" v-if="crumbs.length">
+    <template v-for="(c, i) in crumbs" :key="i">
+      <span class="crumb-link" v-if="c.go" @click="c.go()">{{ c.label }}</span>
+      <span class="crumb-cur" v-else>{{ c.label }}</span>
+      <span class="crumb-sep" v-if="i < crumbs.length - 1">/</span>
+    </template>
+  </div>
+
+  <!-- ═══ Tab 1: 空间管理 ═══ -->
+  <div class="card" v-if="tab === 'spaces'"><div class="card-body">
+    <div class="table-wrap"><table>
+      <thead><tr><th>空间名称</th><th>描述</th><th>知识库数</th><th>创建时间</th><th class="text-right">操作</th></tr></thead>
+      <tbody>
+        <tr v-for="s in spaces" :key="s.id">
+          <td><b>{{ s.name }}</b></td>
+          <td class="text-xs muted">{{ s.description || '—' }}</td>
+          <td><span class="tag">{{ s.kbCount }}</span></td>
+          <td class="text-xs muted">{{ s.created_at }}</td>
+          <td class="text-right">
+            <button class="btn btn-ghost btn-sm" @click="gotoSpaceKbs(s)">查看知识库</button>
+            <button class="btn btn-ghost btn-sm" @click="delSpace(s)">删除</button>
+          </td>
+        </tr>
+        <tr v-if="!spaces.length"><td colspan="5" class="text-center muted">暂无空间，点右上角新建</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+
+  <!-- ═══ Tab 2: 知识库管理 ═══ -->
+  <div class="card" v-if="tab === 'kbs'"><div class="card-body">
+    <div class="row-head" style="margin-bottom:10px;">
+      <span class="text-sm muted">空间过滤</span>
+      <select class="form-input" v-model="curSpace" style="width:180px;" @change="loadKbs()">
+        <option :value="0">全部空间</option>
+        <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
+      </select>
+      <span style="flex:1"></span>
+      <span class="text-xs muted" v-if="curKb">当前选中：<b>{{ curKb.name }}</b></span>
+    </div>
+    <div class="table-wrap"><table>
+      <thead><tr><th>所属空间</th><th>知识库</th><th>类型</th><th>存储</th><th>文档</th><th>模型</th><th class="text-right">操作</th></tr></thead>
+      <tbody>
+        <tr v-for="k in kbs" :key="k.id" :class="{ 'row-active': curKb?.id === k.id }">
+          <td class="text-xs">{{ spaceName(k.space_id) }}</td>
+          <td><b>{{ k.name }}</b><div class="text-xs muted">{{ k.description || '' }}</div></td>
+          <td><span class="tag" :class="k.kb_type === 'golden_answer' ? 'tag-accent' : ''">{{ typeLabel(k.kb_type) }}</span></td>
+          <td>{{ storeLabel(k.db_type) }} <span v-if="k.db_type !== 'sqlite'" class="dot-mini" :class="k.dbOk ? 'green' : 'red'"></span></td>
+          <td>{{ k.docCount }}</td>
+          <td class="text-xs muted">{{ k.embedding_model || '—' }}</td>
+          <td class="text-right">
+            <button class="btn btn-ghost btn-sm" @click="gotoDocs(k)">文档</button>
+            <button class="btn btn-ghost btn-sm" @click="gotoSearch(k)">检索</button>
+            <button class="btn btn-ghost btn-sm" @click="editKb(k)">配置</button>
+            <button class="btn btn-ghost btn-sm" @click="delKb(k)">删除</button>
+          </td>
+        </tr>
+        <tr v-if="!kbs.length"><td colspan="7" class="text-center muted">当前范围暂无知识库</td></tr>
+      </tbody>
+    </table></div>
+  </div></div>
+
+  <!-- ═══ Tab 3: 文档管理 ═══ -->
+  <div class="card" v-if="tab === 'docs'"><div class="card-body">
+    <div class="row-head" style="margin-bottom:10px;">
+      <span class="text-sm muted">知识库</span>
+      <select class="form-input" style="width:220px;" :value="curKb?.id || ''" @change="pickKbById(Number($event.target.value))">
+        <option value="">— 请选择知识库 —</option>
+        <option v-for="k in allKbs" :key="k.id" :value="k.id">{{ spaceName(k.space_id) }} / {{ k.name }}</option>
+      </select>
+      <span style="flex:1"></span>
+      <button class="btn btn-primary btn-sm" v-if="curKb" @click="docOpen = true">＋ 上传文档</button>
+    </div>
+    <template v-if="curKb">
+      <div class="text-xs muted" style="margin-bottom:8px;">切分：{{ modeLabel(curKb.chunk_mode) }} / {{ curKb.chunk_len }} 字 · 类型 {{ typeLabel(curKb.kb_type) }} · 存储 {{ storeLabel(curKb.db_type) }}</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>文档名</th><th>分块</th><th>大小</th><th>状态</th><th>时间</th><th class="text-right">操作</th></tr></thead>
+        <tbody>
+          <tr v-for="d in docs" :key="d.id">
+            <td><b>{{ d.name }}</b></td><td>{{ d.chunks }}</td><td>{{ fmtSize(d.size) }}</td>
+            <td><span class="tag tag-success">{{ d.status }}</span></td>
+            <td class="text-xs muted">{{ d.created_at }}</td>
+            <td class="text-right">
+              <button class="btn btn-ghost btn-sm" @click="viewChunks(d)">分块</button>
+              <button class="btn btn-ghost btn-sm" @click="delDoc(d)">删除</button>
+            </td>
+          </tr>
+          <tr v-if="!docs.length"><td colspan="6" class="text-center muted">该库暂无文档</td></tr>
+        </tbody>
+      </table></div>
+    </template>
+    <div v-else class="text-center muted" style="padding:36px 0;">先在上方选择一个知识库</div>
+  </div></div>
+
+  <!-- ═══ Tab 4: 检索测试 ═══ -->
+  <div class="card" v-if="tab === 'search'"><div class="card-body">
+    <div class="row-head" style="margin-bottom:10px;">
+      <span class="text-sm muted">知识库</span>
+      <select class="form-input" style="width:220px;" :value="curKb?.id || ''" @change="pickKbById(Number($event.target.value))">
+        <option value="">— 请选择知识库 —</option>
+        <option v-for="k in allKbs" :key="k.id" :value="k.id">{{ spaceName(k.space_id) }} / {{ k.name }}</option>
+      </select>
+    </div>
+    <div class="row-head" style="gap:8px;">
+      <input class="form-input" v-model="query" placeholder="输入查询" @keyup.enter="search" style="flex:1;" />
+      <button class="btn btn-primary" @click="search" :disabled="!curKb">检索</button>
+    </div>
+    <div v-if="searched" class="search-res">
+      <div class="text-xs muted" style="margin:8px 0;">命中 {{ hits.length }} 条 <template v-if="lastBackend">（{{ storeLabel(lastBackend) }}）</template></div>
+      <div class="hit" v-for="h in hits" :key="h.chunkId + '-' + h.idx">
+        <span class="tag">{{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
+        <div class="hit-text">{{ h.content }}</div>
+      </div>
+      <div v-if="!hits.length" class="text-sm muted">无命中</div>
+    </div>
+  </div></div>
 
   <!-- 新建空间 -->
   <div class="modal-mask" v-if="spaceOpen" @click.self="spaceOpen = false">
@@ -192,10 +237,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api } from '../api'
+const tab = ref('spaces')
 const spaces = ref([]); const curSpace = ref(0)
-const kbs = ref([]); const curKb = ref(null); const docs = ref([])
+const kbs = ref([]); const allKbs = ref([]); const curKb = ref(null); const docs = ref([])
 const opts = ref({ dbTypes: [], kbTypes: [], chunkModes: [], embeddingModels: [], rerankerModels: [] })
 const spaceOpen = ref(false); const spaceForm = ref({ name: '', description: '' })
 const kbOpen = ref(false); const kbForm = ref({}); const connCfg = ref({}); const pingMsg = ref('')
@@ -211,12 +257,44 @@ async function loadPub() {
     if (r.code === 0) { const m = {}; for (const it of (r.data.list || r.data || [])) m[it.configKey] = it.configValue; pub.value = m }
   } catch {}
 }
-onMounted(async () => { loadPub(); loadSpaces(); loadKbs(); const r = await api('/api/kb/options'); if (r.code === 0) opts.value = r.data })
+onMounted(async () => { loadPub(); loadSpaces(); loadKbs(true); const r = await api('/api/kb/options'); if (r.code === 0) opts.value = r.data })
 
 async function loadSpaces() { const r = await api('/api/kb/spaces'); if (r.code === 0) spaces.value = r.data }
-async function loadKbs() { const r = await api('/api/kb/list' + (curSpace.value ? '?space_id=' + curSpace.value : '')); if (r.code === 0) kbs.value = r.data }
-function pickKb(k) { curKb.value = k; loadDocs() }
-async function loadDocs() { const r = await api(`/api/kb/${curKb.value.id}/docs`); if (r.code === 0) docs.value = r.data }
+async function loadKbs(all = false) {
+  const r = await api('/api/kb/list' + (curSpace.value ? '?space_id=' + curSpace.value : ''))
+  if (r.code === 0) kbs.value = r.data
+  if (all) { const ra = await api('/api/kb/list'); if (ra.code === 0) allKbs.value = ra.data }
+}
+function spaceName(id) { const s = spaces.value.find(x => x.id === id); return s ? s.name : '— 未归属 —' }
+async function pickKbById(id) {
+  const k = allKbs.value.find(x => x.id === id)
+  if (k) { curKb.value = k; await loadDocs() } else { curKb.value = null; docs.value = [] }
+}
+async function loadDocs() { if (!curKb.value) return; const r = await api(`/api/kb/${curKb.value.id}/docs`); if (r.code === 0) docs.value = r.data }
+
+/* 面包屑 */
+const crumbs = computed(() => {
+  const arr = []
+  if (tab.value === 'spaces') arr.push({ label: '知识空间' })
+  if (tab.value === 'kbs') {
+    arr.push({ label: '知识空间', go: () => tab.value = 'spaces' })
+    if (curSpace.value) arr.push({ label: spaceName(curSpace.value) })
+  }
+  if (tab.value === 'docs') {
+    arr.push({ label: '知识空间', go: () => tab.value = 'spaces' })
+    if (curKb.value) arr.push({ label: spaceName(curKb.value.space_id), go: () => { curSpace.value = curKb.value.space_id; tab.value = 'kbs' } })
+    else arr.push({ label: '知识库', go: () => tab.value = 'kbs' })
+    if (curKb.value) arr.push({ label: curKb.value.name })
+  }
+  if (tab.value === 'search') {
+    arr.push({ label: '知识库', go: () => tab.value = 'kbs' })
+    if (curKb.value) arr.push({ label: spaceName(curKb.value.space_id) + ' / ' + curKb.value.name })
+  }
+  return arr
+})
+function gotoSpaceKbs(s) { curSpace.value = s.id; loadKbs(); tab.value = 'kbs' }
+function gotoDocs(k) { curKb.value = k; loadDocs(); tab.value = 'docs' }
+function gotoSearch(k) { curKb.value = k; searched.value = false; tab.value = 'search' }
 
 function blankKb() {
   const p = pub.value
@@ -242,6 +320,12 @@ function saveSpace() {
     if (r.code === 0) { spaceOpen.value = false; spaceForm.value = { name: '', description: '' }; loadSpaces() } else alert(r.detail || '失败')
   })
 }
+async function delSpace(s) {
+  if (!confirm(`删除空间「${s.name}」？（库会保留为未归属）`)) return
+  await api('/api/kb/spaces/' + s.id, { method: 'DELETE' })
+  if (curSpace.value === s.id) curSpace.value = 0
+  loadSpaces(); loadKbs(true)
+}
 async function pingDb() {
   syncConfig()
   const r = await api('/api/kb/ping', { method: 'POST', body: JSON.stringify({ db_type: kbForm.value.db_type, db_config: JSON.stringify(connCfg.value) }) })
@@ -257,13 +341,13 @@ async function saveKb() {
   const r = kbForm.value.id
     ? await api('/api/kb/' + kbForm.value.id, { method: 'PUT', body: JSON.stringify(body) })
     : await api('/api/kb', { method: 'POST', body: JSON.stringify(body) })
-  if (r.code === 0) { kbOpen.value = false; loadKbs(); if (kbForm.value.id) loadDocs() } else alert(r.detail || '失败')
+  if (r.code === 0) { kbOpen.value = false; loadKbs(true); if (kbForm.value.id) loadDocs() } else alert(r.detail || '失败')
 }
 async function delKb(k) {
   if (!confirm(`删除知识库「${k.name}」及其全部文档${k.db_type === 'es' ? '（含 ES 索引）' : ''}？`)) return
   await api(`/api/kb/${k.id}`, { method: 'DELETE' })
   if (curKb.value?.id === k.id) { curKb.value = null; docs.value = [] }
-  loadKbs()
+  loadKbs(true)
 }
 async function saveDoc() {
   if (!docFile.value && !docText.value.trim()) { alert('请选择文件或粘贴文本'); return }
@@ -284,7 +368,7 @@ async function viewChunks(d) {
   if (r.code === 0) { chunks.value = r.data; chunkOpen.value = true }
 }
 async function search() {
-  if (!query.value.trim()) return
+  if (!query.value.trim() || !curKb.value) return
   searched.value = true
   const r = await api(`/api/kb/${curKb.value.id}/search?q=` + encodeURIComponent(query.value))
   if (r.code === 0) { hits.value = r.data; lastBackend.value = r.backend }
@@ -296,13 +380,24 @@ function modeLabel(m) { return ({ paragraph: '段落', sentence: '句子', fixed
 </script>
 
 <style>
-.kb-layout { display: flex; gap: 12px; flex: 1; min-height: 0; }
-.kb-side { width: 190px; flex-shrink: 0; overflow-y: auto; }
-.kb-side2 { width: 240px; flex-shrink: 0; overflow-y: auto; }
-.kb-item { padding: 10px 14px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: background .15s; }
-.kb-item:hover { background: var(--bg-soft); }
-.kb-item.active { background: var(--bg-soft); border-left: 3px solid var(--accent, #4d6bfe); }
-.side-empty { padding: 20px; text-align: center; }
+.mode-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+.mode-tab {
+  padding: 8px 18px; font-size: 13px; cursor: pointer;
+  border: 1px solid var(--border-light); border-radius: 8px;
+  background: #fff; color: var(--text, #1f2430); transition: all .15s; font-weight: 500;
+}
+.mode-tab:hover { border-color: var(--primary, #4d6bfe); color: var(--primary, #4d6bfe); }
+.mode-tab.active { background: var(--primary, #4d6bfe); border-color: var(--primary, #4d6bfe); color: #fff; font-weight: 600; }
+.kb-crumbs {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  font-size: 13px; margin-bottom: 12px; padding: 8px 14px;
+  background: var(--bg-soft, #f7f8fa); border-radius: 8px;
+}
+.crumb-link { color: var(--primary, #4d6bfe); cursor: pointer; }
+.crumb-link:hover { text-decoration: underline; }
+.crumb-cur { color: var(--text, #1f2430); font-weight: 600; }
+.crumb-sep { color: #b9c2d4; }
+.row-active { background: var(--bg-soft, #f7f8fa); }
 .row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hit { background: var(--bg-soft); border: 1px solid var(--border-light); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
 .hit-text { font-size: 13px; margin-top: 6px; line-height: 1.6; white-space: pre-wrap; }

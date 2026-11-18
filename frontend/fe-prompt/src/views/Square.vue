@@ -12,8 +12,9 @@
       <button class="btn btn-primary" @click="load">查询</button>
       <div class="spacer"></div><span class="text-sm muted">当前 {{ filteredList.length }} / 共 {{ total }} 个模板</span>
     </div>
-    <div class="type-tabs">
-      <button v-for="t in tabs" :key="t.key" class="type-tab" :class="{ active: tab === t.key }" @click="tab = t.key">
+    <div class="type-tabs" v-for="g in tabGroups" :key="g" style="margin-top:6px;">
+      <span class="tab-group-label">{{ g }}</span>
+      <button v-for="t in tabs.filter(x => x.group === g)" :key="t.key" class="type-tab" :class="{ active: tab === t.key }" @click="tab = t.key">
         {{ t.label }}<span class="tab-count">{{ countOf(t) }}</span>
       </button>
     </div>
@@ -73,23 +74,41 @@ const detailOpen = ref(false); const cur = ref(null); const copied = ref(false)
 
 /* 分类 tab：静态常用分类 + 动态合并数据里出现过的标签 */
 const STATIC_TABS = [
-  { key: 'all', label: '全部', match: null },
-  { key: 'c通用', label: '通用', match: ['通用'] },
-  { key: 'c编程', label: '编程', match: ['编程', '代码', 'SQL'] },
-  { key: 'c办公', label: '办公', match: ['办公', '周报', '总结'] },
-  { key: 'cRAG', label: 'RAG 问答', match: ['RAG', '问答'] },
-  { key: 'c翻译', label: '翻译', match: ['翻译'] },
-  { key: 'c教育', label: '教育', match: ['教育', '科普', '面试'] }
+  { key: 'all', label: '全部', match: null, group: '领域' },
+  { key: 'c通用', label: '通用', match: ['通用'], group: '领域' },
+  { key: 'c编程', label: '编程开发', match: ['编程', '代码', 'SQL'], group: '领域' },
+  { key: 'c办公', label: '办公效能', match: ['办公', '周报', '总结'], group: '领域' },
+  { key: 'cRAG', label: 'RAG 问答', match: ['RAG', '问答'], group: '领域' },
+  { key: 'c翻译', label: '翻译', match: ['翻译'], group: '领域' },
+  { key: 'c教育', label: '教育培训', match: ['教育', '科普', '面试'], group: '领域' },
+  { key: 'c医疗', label: '医疗健康', match: ['医疗', '健康'], group: '行业' },
+  { key: 'c法律', label: '法律', match: ['法律', '法务'], group: '行业' },
+  { key: 'c金融', label: '金融', match: ['金融', '投资'], group: '行业' },
+  { key: 'c营销', label: '市场营销', match: ['营销', '广告', '公关'], group: '行业' },
+  { key: 'c电商', label: '电商', match: ['电商', '详情页'], group: '行业' },
+  { key: 'c新媒体', label: '新媒体', match: ['新媒体', '种草', '自媒体'], group: '行业' },
+  { key: 'cHR', label: '人力资源', match: ['HR', '简历', '招聘'], group: '行业' },
+  { key: 'c客服', label: '客服', match: ['客服', '话术'], group: '行业' },
+  { key: 'c数据', label: '数据分析', match: ['数据分析', 'BI'], group: '行业' },
+  { key: 'c产品', label: '产品', match: ['产品经理', '需求'], group: '行业' },
+  { key: 'cIT', label: 'IT 运维', match: ['IT运维', '运维', 'SRE'], group: '行业' },
+  { key: 'c学术', label: '学术科研', match: ['学术', '论文'], group: '行业' },
+  { key: 'c生活', label: '生活服务', match: ['生活', '旅行'], group: '行业' }
 ]
 const tabs = computed(() => {
   const seen = new Set(STATIC_TABS.flatMap(t => t.match || []))
   const extra = []
   for (const p of list.value) {
     for (const t of tagList(p)) {
-      if (!seen.has(t) && !extra.some(x => x.label === t)) extra.push({ key: 'x' + t, label: t, match: [t] })
+      if (!seen.has(t) && !extra.some(x => x.label === t)) extra.push({ key: 'x' + t, label: t, match: [t], group: '其他' })
     }
   }
   return [...STATIC_TABS, ...extra]
+})
+const tabGroups = computed(() => {
+  const gs = []
+  for (const t of tabs.value) if (!gs.includes(t.group)) gs.push(t.group)
+  return gs
 })
 const tab = ref('all')
 
@@ -169,7 +188,8 @@ function goAdmin() { router.push('/fe-prompt/prompts') }
   border-radius: 4px; padding: 1px 5px; color: var(--primary, #4d6bfe);
 }
 .tag-muted { background: #f3f4f6; color: #6b7280; }
-.type-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+.type-tabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }
+.tab-group-label { font-size: 12px; font-weight: 700; color: var(--text-muted, #6b7280); margin-right: 4px; min-width: 44px; }
 .type-tab {
   display: inline-flex; align-items: center; gap: 6px;
   padding: 7px 14px; font-size: 13px; cursor: pointer;

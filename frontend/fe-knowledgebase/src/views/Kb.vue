@@ -3,7 +3,7 @@
     <div><div class="page-title">知识库</div><div class="page-subtitle">知识空间 / 库配置（ES·PG·内置）/ 文档切分 / 检索测试</div></div>
     <div class="page-actions">
       <button class="btn btn-ghost" @click="spaceOpen = true">＋ 新建空间</button>
-      <button class="btn btn-primary" @click="kbOpen = true">＋ 新建知识库</button>
+      <button class="btn btn-primary" @click="openNewKb">＋ 新建知识库</button>
     </div>
   </div>
   <div class="kb-layout">
@@ -111,9 +111,10 @@
           </select></div>
         <div class="form-row"><label class="form-label">知识库名</label><input class="form-input" v-model="kbForm.name" /></div>
         <div class="form-row"><label class="form-label">描述</label><input class="form-input" v-model="kbForm.description" /></div>
+        <div class="text-xs muted" style="margin:0 0 8px 118px;">模型/切分默认值来自平台配置（kb.*），可在「平台配置」统一维护</div>
         <div class="form-row"><label class="form-label">存储数据库</label>
           <div style="display:flex; gap:8px; flex:1;">
-            <select class="form-input" v-model="kbForm.db_type" style="flex:1;">
+            <select class="form-input" v-model="kbForm.db_type" style="flex:1;" @change="connCfg = cfgFor(kbForm.db_type, kbForm.db_config || '')">
               <option v-for="t in opts.dbTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
             </select>
             <button v-if="kbForm.db_type !== 'sqlite'" class="btn btn-ghost" @click="pingDb">测试连接</button>
@@ -202,7 +203,15 @@ const docOpen = ref(false); const docFile = ref(null); const docText = ref(''); 
 const chunkOpen = ref(false); const chunkDoc = ref(null); const chunks = ref([])
 const query = ref(''); const hits = ref([]); const searched = ref(false); const lastBackend = ref('')
 
-onMounted(async () => { loadSpaces(); loadKbs(); const r = await api('/api/kb/options'); if (r.code === 0) opts.value = r.data })
+const pub = ref({})
+async function loadPub() {
+  try {
+    const res = await fetch('/api/configs?size=100').catch(() => fetch('http://localhost:38087/api/configs?size=100'))
+    const r = await res.json()
+    if (r.code === 0) { const m = {}; for (const it of (r.data.list || r.data || [])) m[it.configKey] = it.configValue; pub.value = m }
+  } catch {}
+}
+onMounted(async () => { loadPub(); loadSpaces(); loadKbs(); const r = await api('/api/kb/options'); if (r.code === 0) opts.value = r.data })
 
 async function loadSpaces() { const r = await api('/api/kb/spaces'); if (r.code === 0) spaces.value = r.data }
 async function loadKbs() { const r = await api('/api/kb/list' + (curSpace.value ? '?space_id=' + curSpace.value : '')); if (r.code === 0) kbs.value = r.data }
@@ -210,14 +219,23 @@ function pickKb(k) { curKb.value = k; loadDocs() }
 async function loadDocs() { const r = await api(`/api/kb/${curKb.value.id}/docs`); if (r.code === 0) docs.value = r.data }
 
 function blankKb() {
+  const p = pub.value
   return { id: null, name: '', description: '', space_id: curSpace.value || 0, db_type: 'sqlite',
-           kb_type: 'doc', chunk_mode: 'paragraph', chunk_len: 500, embedding_model: '', reranker_model: '' }
+           kb_type: 'doc', chunk_mode: p['kb.chunk.mode'] || 'paragraph', chunk_len: Number(p['kb.chunk.len']) || 500,
+           embedding_model: p['kb.embedding.model'] || '', reranker_model: p['kb.reranker.model'] || '' }
 }
 function editKb(k) {
   kbForm.value = { ...k }
-  connCfg.value = JSON.parse(k.db_config || '{}')
+  connCfg.value = cfgFor(k.db_type, k.db_config)
   pingMsg.value = ''
   kbOpen.value = true
+}
+function cfgFor(dbType, raw) {
+  if (raw) { try { const c = JSON.parse(raw); if (Object.keys(c).length) return c } catch {} }
+  const p = pub.value
+  if (dbType === 'es') return { url: p['kb.es.url'] || 'http://localhost:9200', user: p['kb.es.user'] || '', password: p['kb.es.password'] || '' }
+  if (dbType === 'pg') return { host: p['kb.pg.host'] || 'localhost', port: Number(p['kb.pg.port']) || 5432, user: p['kb.pg.user'] || 'postgres', password: p['kb.pg.password'] || '', dbname: p['kb.pg.dbname'] || 'postgres' }
+  return {}
 }
 function saveSpace() {
   api('/api/kb/spaces', { method: 'POST', body: JSON.stringify(spaceForm.value) }).then(r => {
@@ -230,12 +248,9 @@ async function pingDb() {
   pingMsg.value = r.message || (r.data?.ok ? '连接成功' : '连接失败')
 }
 function syncConfig() {
-  if (kbForm.value.db_type === 'es') {
-    connCfg.value = { url: connCfg.value.url || 'http://localhost:9200', user: connCfg.value.user || '', password: connCfg.value.password || '' }
-  } else if (kbForm.value.db_type === 'pg') {
-    connCfg.value = { host: connCfg.value.host || 'localhost', port: Number(connCfg.value.port || 5432), user: connCfg.value.user || 'postgres', password: connCfg.value.password || '', dbname: connCfg.value.dbname || 'postgres' }
-  }
+  if (kbForm.value.db_type !== 'sqlite') connCfg.value = cfgFor(kbForm.value.db_type, null)
 }
+function openNewKb() { kbForm.value = blankKb(); connCfg.value = {}; pingMsg.value = ''; kbOpen.value = true }
 async function saveKb() {
   syncConfig()
   const body = { ...kbForm.value, db_config: kbForm.value.db_type === 'sqlite' ? '' : JSON.stringify(connCfg.value) }

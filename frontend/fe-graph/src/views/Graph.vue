@@ -2,7 +2,7 @@
   <div class="page-header">
     <div><div class="page-title">知识图谱</div><div class="page-subtitle">图谱（数据库概念）/ 实体类型 / 节点·属性·关系 / 版本（自动快照·可恢复）</div></div>
     <div class="page-actions">
-      <button class="btn btn-ghost" @click="graphOpen = true">＋ 新建图谱</button>
+      <button class="btn btn-ghost" @click="openNewGraph">＋ 新建图谱</button>
       <template v-if="curGraph">
         <button class="btn btn-ghost" @click="entityOpen = true">＋ 实体类型</button>
         <button class="btn btn-ghost" @click="nodeOpen = true">＋ 节点</button>
@@ -151,11 +151,12 @@
       <div class="modal-body">
         <div class="form-row"><label class="form-label">图谱名</label><input class="form-input" v-model="graphForm.name" /></div>
         <div class="form-row"><label class="form-label">存储后端</label>
-          <select class="form-input" v-model="graphForm.db_type">
+          <select class="form-input" v-model="graphForm.db_type" @change="onDbTypeChange">
             <option value="sqlite">内置存储（SQLite）</option>
             <option value="neo4j">Neo4j（图数据库）</option>
           </select></div>
         <template v-if="graphForm.db_type === 'neo4j'">
+          <div class="text-xs muted" style="margin:0 0 8px 118px;">已从平台配置（graph.neo4j.*）带入默认值，可覆盖；密码在「平台配置」中统一维护</div>
           <div class="form-row"><label class="form-label">Neo4j HTTP 地址</label><input class="form-input" v-model="n4cfg.uri" placeholder="http://localhost:7474" /></div>
           <div class="form-row"><label class="form-label">用户 / 密码</label>
             <div class="row-head" style="flex:1; gap:6px;">
@@ -235,7 +236,15 @@ const entityOpen = ref(false); const entityForm = ref({ id: null, name: '', prop
 const nodeOpen = ref(false); const nodeForm = ref({ id: null, entity_id: 0, name: '', props: '{}' })
 const edgeOpen = ref(false); const edgeForm = ref({ id: null, source_id: '', rel_type: '', target_id: '' })
 const verDetail = ref(null)
-onMounted(loadGraphs)
+const pub = ref({})
+async function loadPub() {
+  try {
+    const res = await fetch('/api/configs?size=100').catch(() => fetch('http://localhost:38087/api/configs?size=100'))
+    const r = await res.json()
+    if (r.code === 0) { const m = {}; for (const it of (r.data.list || r.data || [])) m[it.configKey] = it.configValue; pub.value = m }
+  } catch {}
+}
+onMounted(() => { loadPub(); loadGraphs() })
 
 async function loadGraphs() {
   const r = await api(withBase('/api/graphs'))
@@ -281,6 +290,18 @@ function propsSchemaText(s) {
   try { const a = JSON.parse(s || '[]'); return a.length ? a.map(x => x.name + ':' + x.type).join('、') : '（无属性定义）' } catch { return '—' }
 }
 
+function onDbTypeChange() {
+  if (graphForm.value.db_type === 'neo4j' && !n4cfg.value.uri) {
+    const p = pub.value
+    n4cfg.value = { uri: p['graph.neo4j.url'] || 'http://localhost:7474', user: p['graph.neo4j.user'] || 'neo4j', password: p['graph.neo4j.password'] || '' }
+  }
+}
+function openNewGraph() {
+  const p = pub.value
+  graphForm.value = { name: '', db_type: 'sqlite', description: '' }
+  n4cfg.value = { uri: p['graph.neo4j.url'] || 'http://localhost:7474', user: p['graph.neo4j.user'] || 'neo4j', password: p['graph.neo4j.password'] || '' }
+  graphOpen.value = true
+}
 async function saveGraph() {
   const body = { ...graphForm.value, db_config: graphForm.value.db_type === 'neo4j' ? JSON.stringify(n4cfg.value) : '' }
   const r = await api(withBase('/api/graphs'), { method: 'POST', body: JSON.stringify(body) })

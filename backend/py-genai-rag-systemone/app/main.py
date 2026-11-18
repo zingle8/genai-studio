@@ -39,6 +39,9 @@ def create_app() -> FastAPI:
     app.include_router(laya_router(service))
     app.include_router(nanojev_router(service))
     app.include_router(common_router(service))
+    # SystemOne 统一入口（Jev 协议 /v1/systemone + OpenAI 兼容 /v1/chat/completions）
+    from app.controller.systemone_controller import create_router as systemone_router
+    app.include_router(systemone_router(service))
     # RAG 管理（管道配置/索引统计/检索测试）
     from app.controller.rag_admin_controller import create_router as rag_admin_router
     app.include_router(rag_admin_router())
@@ -58,8 +61,8 @@ def create_app() -> FastAPI:
     async def index():
         return {"service": settings.service_id, "name": settings.service_name,
                 "packages": ["controller", "service", "engine", "dto", "config", "common"],
-                "routes": ["/health", "/v1/laya/decide", "/v1/laya/decide/batch",
-                           "/v1/laya/route", "/v1/nanojev/decide", "/v1/models", "/v1/config"]}
+                "routes": ["/health", "/v1/systemone", "/v1/chat/completions",
+                           "/v1/laya/*", "/v1/nanojev/*", "/v1/models", "/v1/config", "/api/rag/*"]}
 
     return app
 

@@ -8,6 +8,8 @@ from typing import Optional
 KB_BASE = os.environ.get("KB_BASE", "http://localhost:38126")
 RR_BASE = os.environ.get("RR_BASE", "http://localhost:38104")
 EM_BASE = os.environ.get("EM_BASE", "http://localhost:38103")
+GRAPH_BASE = os.environ.get("GRAPH_BASE", "http://localhost:38137")
+ONTO_BASE = os.environ.get("ONTO_BASE", "http://localhost:38105")
 DB_PATH = os.environ.get("RAG_ADMIN_DB", os.path.join(os.path.dirname(__file__), "..", "..", "rag_admin.db"))
 
 
@@ -26,6 +28,13 @@ def init_db():
           strategy TEXT DEFAULT 'keyword' CHECK(strategy IN ('keyword','vector','hybrid')),
           embed_model TEXT DEFAULT 'bge-m3', rerank_model TEXT DEFAULT 'bge-reranker-v2-m3',
           rerank_on INTEGER DEFAULT 0, top_k INTEGER DEFAULT 5, chunk_size INTEGER DEFAULT 500,
+          created_at TEXT DEFAULT (datetime('now','localtime')));
+        CREATE TABLE IF NOT EXISTS tb_rag_eval(
+          id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL,
+          source_type TEXT DEFAULT 'kb', source_id INTEGER, source_name TEXT DEFAULT '',
+          q TEXT NOT NULL, expect TEXT DEFAULT '', top_k INTEGER DEFAULT 5,
+          hit INTEGER DEFAULT 0, rank INTEGER DEFAULT 0, score REAL DEFAULT 0,
+          latency_ms INTEGER DEFAULT 0,
           created_at TEXT DEFAULT (datetime('now','localtime')));
         """)
 
@@ -61,6 +70,26 @@ class PipelineIn(BaseModel):
     rerank_on: bool = False
     top_k: int = 5
     chunk_size: int = 500
+
+
+class QueryIn(BaseModel):
+    source_type: str = "kb"          # kb | graph | onto
+    source_id: int
+    q: str
+    top_k: int = 5
+
+
+class EvalCase(BaseModel):
+    q: str
+    expect: str = ""                 # 期望关键词（空则仅要求有结果）
+
+
+class EvalIn(BaseModel):
+    source_type: str = "kb"
+    source_id: int
+    source_name: str = ""
+    top_k: int = 5
+    cases: list  # [{q, expect}]
 
 
 async def _svc_ok(base):
@@ -158,5 +187,154 @@ def create_router():
                 return {"code": 0, "data": res.json().get("data", [])}
         except Exception:
             return {"code": 0, "data": []}
+
+    # ===== RAG 查询（多源：知识库 / 知识图谱 / 本体图谱） =====
+    @r.get("/api/rag/sources")
+    async def rag_sources():
+        """三类知识源实例列表：kb / graph / onto"""
+        out = {"kb": [], "graph": [], "onto": []}
+        try:
+            async with httpx.AsyncClient(timeout=5) as cli:
+                res = await cli.get(KB_BASE + "/api/kb/list")
+                if res.status_code == 200:
+                    out["kb"] = [{"id": x["id"], "name": x["name"], "chunkCount": x.get("chunkCount", 0),
+                                  "meta": (x.get("db_type") or "") + "/" + (x.get("kb_type") or "")}
+                                 for x in res.json().get("data", [])]
+                res = await cli.get(GRAPH_BASE + "/api/graphs")
+                if res.status_code == 200:
+                    out["graph"] = [{"id": x["id"], "name": x["name"], "chunkCount": x.get("nodeCount", 0),
+                                     "meta": x.get("db_type") or ""} for x in res.json().get("data", [])]
+                res = await cli.get(ONTO_BASE + "/api/onto/ontologies")
+                if res.status_code == 200:
+                    items = res.json().get("data", [])
+                    if isinstance(items, dict):
+                        items = items.get("data", items.get("list", []))
+                    out["onto"] = [{"id": x.get("id"), "name": x.get("name"),
+                                    "chunkCount": x.get("classCount", 0), "meta": "ontology"}
+                                   for x in items if isinstance(x, dict)]
+        except Exception:
+            pass
+        return {"code": 0, "data": out}
+
+    @r.post("/api/rag/query")
+    async def rag_query(b: QueryIn):
+        """统一 RAG 查询：kb 全文检索 / graph 关键词匹配节点+邻域子图 / onto 类目匹配"""
+        import re as _re, json as _json
+        if not b.q.strip():
+            raise HTTPException(400, "q 不能为空")
+        terms = [x for x in _re.split(r"[\s，。,、;；]+", b.q) if x] or [b.q.strip()]
+        try:
+            async with httpx.AsyncClient(timeout=8) as cli:
+                if b.source_type == "kb":
+                    res = await cli.get(f"{KB_BASE}/api/kb/{b.source_id}/search",
+                                        params={"q": b.q, "top_k": b.top_k})
+                    if res.status_code != 200:
+                        raise HTTPException(400, "知识库检索失败：" + res.text[:120])
+                    j = res.json()
+                    hits = [{"title": h.get("doc", ""), "content": h.get("content", ""),
+                             "score": h.get("score", 0), "meta": f"chunk #{h.get('idx', '?')}"}
+                            for h in j.get("data", [])]
+                    return {"code": 0, "data": {"backend": j.get("backend", "kb"), "hits": hits}}
+                if b.source_type == "graph":
+                    res = await cli.get(f"{GRAPH_BASE}/api/graphs/{b.source_id}/nodes")
+                    nodes = (res.json().get("data") or {}).get("nodes", [])
+                    res = await cli.get(f"{GRAPH_BASE}/api/graphs/{b.source_id}/edges")
+                    edges = res.json().get("data") or []
+                    nm = {n["id"]: n.get("name", "?") for n in nodes}
+                    matched = [n for n in nodes
+                               if any(t.lower() in _json.dumps(n, ensure_ascii=False).lower() for t in terms)][: b.top_k]
+                    hits = []
+                    for n in matched:
+                        rels = [e for e in edges
+                                if e.get("source_id") == n["id"] or e.get("target_id") == n["id"]][: 8]
+                        content = "\n".join(f"{nm.get(e.get('source_id'), '?')} -[{e.get('rel_type')}]-> "
+                                            f"{nm.get(e.get('target_id'), '?')}" for e in rels) or "（无关系边）"
+                        hits.append({"title": n.get("name", ""), "content": content,
+                                     "score": 1.0, "meta": f"graph node #{n['id']}"})
+                    return {"code": 0, "data": {"backend": "graph", "hits": hits}}
+                if b.source_type == "onto":
+                    res = await cli.get(f"{ONTO_BASE}/api/onto/{b.source_id}/full")
+                    data = res.json().get("data") or {}
+                    classes = data.get("classes", [])
+                    matched = [c for c in classes
+                               if any(t.lower() in ((c.get("name") or "") + (c.get("comment") or "")
+                                                    + (c.get("description") or "")).lower()
+                                      for t in terms)][: b.top_k]
+                    hits = [{"title": c.get("name", ""), "content": c.get("comment") or c.get("description") or "（无描述）",
+                             "score": 1.0, "meta": f"onto class #{c.get('id')}"} for c in matched]
+                    return {"code": 0, "data": {"backend": "ontology", "hits": hits}}
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(400, f"查询失败：{str(e)[:160]}")
+        raise HTTPException(400, f"未知源类型 {b.source_type}（kb / graph / onto）")
+
+    # ===== RAG 评估（测试集检索 → hit@k / MRR / 平均分 / 时延，结果落库留痕） =====
+    @r.post("/api/rag/evaluate")
+    async def rag_evaluate(b: EvalIn):
+        import uuid as _uuid
+        if not b.cases:
+            raise HTTPException(400, "cases 不能为空")
+        rid = _uuid.uuid4().hex[:10]
+        details = []
+        try:
+            async with httpx.AsyncClient(timeout=10) as cli:
+                for cse in b.cases:
+                    q = cse.get("q") if isinstance(cse, dict) else cse.q
+                    expect = (cse.get("expect") or "") if isinstance(cse, dict) else (cse.expect or "")
+                    if not (q or "").strip():
+                        continue
+                    ts = time.time()
+                    res = await cli.get(f"{KB_BASE}/api/kb/{b.source_id}/search",
+                                        params={"q": q, "top_k": b.top_k})
+                    latency = int((time.time() - ts) * 1000)
+                    hits = res.json().get("data", []) if res.status_code == 200 else []
+                    expect = (expect or "").strip()
+                    rank = 0
+                    if expect:
+                        for i, h in enumerate(hits, 1):
+                            blob = (h.get("content", "") + h.get("doc", "")).lower()
+                            if expect.lower() in blob:
+                                rank = i
+                                break
+                    hit = (rank > 0) if expect else bool(hits)
+                    score = hits[0].get("score", 0) if hits else 0
+                    run("INSERT INTO tb_rag_eval(run_id, source_type, source_id, source_name, q, expect, top_k, hit, rank, score, latency_ms) "
+                        "VALUES(?,?,?,?,?,?,?,?,?,?,?)",
+                        (rid, b.source_type, b.source_id, b.source_name, q, expect, b.top_k,
+                         1 if hit else 0, rank, score, latency))
+                    details.append({"q": q, "expect": expect, "hit": hit, "rank": rank,
+                                    "score": score, "latencyMs": latency,
+                                    "topContent": (hits[0].get("content", "")[:120] if hits else "")})
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(400, f"评估执行失败：{str(e)[:160]}")
+        n = len(details) or 1
+        summary = {"cases": len(details),
+                   "hitRate": round(sum(1 for d in details if d["hit"]) / n, 3),
+                   "mrr": round(sum(1 / d["rank"] for d in details if d["rank"] > 0) / n, 3),
+                   "avgScore": round(sum(d["score"] for d in details) / n, 2),
+                   "avgLatencyMs": round(sum(d["latencyMs"] for d in details) / n)}
+        return {"code": 0, "data": {"runId": rid, "summary": summary, "details": details}}
+
+    @r.get("/api/rag/evals")
+    async def rag_eval_history(limit: int = 30):
+        rows_ = rows("SELECT * FROM tb_rag_eval ORDER BY id DESC LIMIT ?", (limit,))
+        runs = {}
+        for x in rows_:
+            g = runs.setdefault(x["run_id"], {"runId": x["run_id"], "sourceType": x["source_type"],
+                                              "sourceId": x["source_id"], "sourceName": x["source_name"],
+                                              "createdAt": x["created_at"], "cases": 0, "hits": 0,
+                                              "avgLatencyMs": 0, "mrr": 0.0})
+            g["cases"] += 1
+            g["hits"] += 1 if x["hit"] else 0
+            g["avgLatencyMs"] += x["latency_ms"]
+            g["mrr"] += (1 / x["rank"]) if x["rank"] else 0
+        for g in runs.values():
+            g["hitRate"] = round(g["hits"] / max(1, g["cases"]), 3)
+            g["mrr"] = round(g["mrr"] / max(1, g["cases"]), 3)
+            g["avgLatencyMs"] = round(g["avgLatencyMs"] / max(1, g["cases"]))
+        return {"code": 0, "data": list(runs.values())}
 
     return r

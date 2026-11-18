@@ -213,14 +213,30 @@ def pg_insert_chunks(kb, kid, doc_id, doc_name, chunks):
         c.commit()
 
 
+def _split_terms(q):
+    """分词：空白/标点切分 + 中文长词滑窗双字（bigram）子词，解决无空格中文整句匹配问题"""
+    import re
+    base = [x for x in re.split(r"[\s，。,、;；？?！!]+", q) if x]
+    terms = list(base)
+    for w in base:
+        if len(w) >= 2 and re.fullmatch(r"[\u4e00-\u9fff]+", w):
+            terms += [w[i:i + 2] for i in range(len(w) - 1)]
+    return terms or [q]
+
+
 def pg_search(kb, kid, q, top_k):
     pg_ensure_table(kb, kid)
+    terms = _split_terms(q)
+    where = " OR ".join(["content ILIKE %s"] * len(terms))
     with pg_conn(kb) as c:
         cur = c.cursor()
-        cur.execute("SELECT doc_id, idx, doc, content FROM kb_%d_chunks WHERE content ILIKE %%s LIMIT %%s" % kid,
-                    ("%" + q + "%", top_k))
-        return [{"chunkId": r[1], "docId": r[0], "doc": r[2], "idx": r[1], "score": 1, "content": r[3]}
-                for r in cur.fetchall()]
+        cur.execute(f"SELECT doc_id, idx, doc, content FROM kb_{kid}_chunks WHERE {where} LIMIT %s",
+                    (*[f"%{t}%" for t in terms], max(top_k * 5, 20)))
+        rows_ = cur.fetchall()
+    rows_.sort(key=lambda r: -sum(1 for t in terms if t.lower() in (r[3] or "").lower()))
+    return [{"chunkId": r[1], "docId": r[0], "doc": r[2], "idx": r[1],
+             "score": sum(1 for t in terms if t.lower() in (r[3] or "").lower()), "content": r[3]}
+            for r in rows_[:top_k]]
 
 
 def pg_delete_doc(kb, kid, doc_id):
@@ -258,10 +274,14 @@ def search_chunks(kb, kid, q, top_k):
         return es_search(kb, kid, q, top_k), "es"
     if t == "pg":
         return pg_search(kb, kid, q, top_k), "pg"
-    hits = rows("SELECT id, doc_id, idx, content FROM tb_kb_chunk WHERE kb_id=? AND content LIKE ? LIMIT ?",
-                (kid, "%" + q + "%", top_k))
-    return [{"chunkId": h["id"], "docId": h["doc_id"], "doc": "", "idx": h["idx"], "score": 1, "content": h["content"]}
-            for h in hits], "sqlite"
+    terms = _split_terms(q)
+    where = " OR ".join(["content LIKE ?"] * len(terms))
+    hits = rows(f"SELECT id, doc_id, idx, content FROM tb_kb_chunk WHERE kb_id=? AND ({where}) LIMIT ?",
+                (kid, *[f"%{t}%" for t in terms], max(top_k * 5, 20)))
+    hits.sort(key=lambda h: -sum(1 for t in terms if t.lower() in (h["content"] or "").lower()))
+    return [{"chunkId": h["id"], "docId": h["doc_id"], "doc": "", "idx": h["idx"],
+             "score": sum(1 for t in terms if t.lower() in (h["content"] or "").lower()), "content": h["content"]}
+            for h in hits[:top_k]], "sqlite"
 
 
 def delete_doc_chunks(kb, kid, doc_id):

@@ -21,6 +21,13 @@ def init_db():
           text TEXT DEFAULT '', error TEXT DEFAULT '', cost_ms INTEGER DEFAULT 0,
           created_at TEXT DEFAULT (datetime('now','localtime')));
         """)
+        for ddl in ["ALTER TABLE tb_ocr_task ADD COLUMN prompt TEXT DEFAULT ''",
+                    "ALTER TABLE tb_ocr_task ADD COLUMN image_path TEXT DEFAULT ''"]:
+            try:
+                c.execute(ddl)
+                c.commit()
+            except Exception:
+                pass
 
 
 def rows(sql, args=()):

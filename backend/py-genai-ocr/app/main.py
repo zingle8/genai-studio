@@ -37,11 +37,11 @@ def detect_engines():
     return engines
 
 
-def ocr_by_ollama(image_path, model):
+def ocr_by_ollama(image_path, model, prompt="识别图片中的全部文字，按原样输出，不要解释。"):
     with open(image_path, "rb") as f:
         b64 = base64.b64encode(f.read()).decode()
     r = httpx.post(OLLAMA_BASE + "/api/generate", timeout=120, json={
-        "model": model, "stream": False, "prompt": "识别图片中的全部文字，按原样输出，不要解释。",
+        "model": model, "stream": False, "prompt": prompt,
         "images": [b64]})
     r.raise_for_status()
     return r.json().get("response", "").strip()
@@ -67,17 +67,19 @@ async def engines():
 
 
 @app.post("/api/ocr/recognize")
-async def recognize(file: UploadFile = File(...), engine: str = Form("auto")):
+async def recognize(file: UploadFile = File(...), engine: str = Form("auto"),
+                    prompt: str = Form("识别图片中的全部文字，按原样输出，不要解释。")):
     raw = await file.read()
     if not raw:
         raise HTTPException(400, "文件为空")
     name = file.filename or "image"
     t0 = time.time()
-    tid = storage.run("INSERT INTO tb_ocr_task(name, engine, size, status) VALUES(?,?,?, 'running')",
-                      (name, engine, len(raw)))
+    tid = storage.run("INSERT INTO tb_ocr_task(name, engine, size, status, prompt) VALUES(?,?,?, 'running', ?)",
+                      (name, engine, len(raw), prompt))
     path = os.path.join(UPLOAD_DIR, f"{tid}_{name}")
     with open(path, "wb") as f:
         f.write(raw)
+    storage.run("UPDATE tb_ocr_task SET image_path=? WHERE id=?", (path, tid))
 
     try:
         av = detect_engines()
@@ -90,7 +92,7 @@ async def recognize(file: UploadFile = File(...), engine: str = Form("auto")):
             else:
                 used = "none"
         if used.startswith("ollama:"):
-            text = ocr_by_ollama(path, used.split(":", 1)[1])
+            text = ocr_by_ollama(path, used.split(":", 1)[1], prompt)
         elif used == "tesseract":
             text = ocr_by_tesseract(path)
         else:
@@ -109,6 +111,15 @@ async def tasks(limit: int = 50):
     out = storage.rows("SELECT id, name, engine, size, status, cost_ms, substr(text,1,120) AS preview, error, created_at "
                        "FROM tb_ocr_task ORDER BY id DESC LIMIT ?", (limit,))
     return {"code": 0, "data": out}
+
+
+@app.get("/api/ocr/tasks/{tid}/image")
+async def task_image(tid: int):
+    t = storage.one("SELECT * FROM tb_ocr_task WHERE id=?", (tid,))
+    if not t or not t.get("image_path") or not os.path.exists(t["image_path"]):
+        raise HTTPException(404, "图片不存在")
+    from fastapi.responses import FileResponse
+    return FileResponse(t["image_path"])
 
 
 @app.get("/api/ocr/tasks/{tid}")

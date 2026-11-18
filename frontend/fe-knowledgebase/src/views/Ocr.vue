@@ -4,7 +4,7 @@
     <div class="page-actions">
       <span class="tag" v-for="v in visionModels" :key="v" style="margin-right:6px;">视觉引擎 {{ v }}</span>
       <button class="btn btn-primary" @click="fileInput?.click()">＋ 上传图片识别</button>
-      <input ref="fileInput" type="file" accept="image/*" style="display:none;" @change="onFile" />
+      <input ref="fileInput" type="file" accept="image/*" style="display:none;" @change="onFilePicked" />
     </div>
   </div>
 
@@ -45,10 +45,38 @@
     </div></div>
   </div>
 
+  <div class="modal-mask" v-if="promptOpen" @click.self="promptOpen = false">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">识别提示词（OCR Prompt）</div><button class="modal-close" @click="promptOpen = false">×</button></div>
+      <div class="modal-body">
+        <div class="text-xs muted" style="margin-bottom:6px;">图片：{{ pendingFile?.name }}，提交后按此提示词调用视觉模型</div>
+        <textarea class="form-input" v-model="ocrPrompt" rows="4"></textarea>
+      </div>
+      <div class="modal-footer"><button class="btn btn-ghost" @click="promptOpen = false">取消</button><button class="btn btn-primary" @click="startRecognize">开始识别</button></div>
+    </div>
+  </div>
+
   <div class="modal-mask" v-if="detail" @click.self="detail = null">
     <div class="modal modal-lg">
-      <div class="modal-header"><div class="modal-title">{{ detail.name }} — 识别结果</div><button class="modal-close" @click="detail = null">×</button></div>
-      <div class="modal-body"><div class="hit-text" style="max-height:50vh; overflow:auto;">{{ detail.text || detail.error || '（空）' }}</div></div>
+      <div class="modal-header"><div class="modal-title">{{ detail.name }} — 任务详情</div><button class="modal-close" @click="detail = null">×</button></div>
+      <div class="modal-body">
+        <div class="ocr-detail-grid">
+          <div>
+            <img v-if="detail.id" :src="withBase('/api/ocr/tasks/' + detail.id + '/image')" class="ocr-img" @error="e => e.target.style.display = 'none'" />
+            <div class="text-xs muted" style="margin-top:6px;">原图</div>
+          </div>
+          <div class="ocr-params">
+            <div class="param-row"><span class="param-label">引擎</span><span class="tag">{{ detail.engine }}</span></div>
+            <div class="param-row"><span class="param-label">状态</span><span class="tag" :class="detail.status === 'done' ? 'tag-success' : 'tag-danger'">{{ detail.status }}</span></div>
+            <div class="param-row"><span class="param-label">耗时</span><b>{{ detail.cost_ms ? detail.cost_ms + ' ms' : '—' }}</b></div>
+            <div class="param-row"><span class="param-label">文件大小</span>{{ detail.size ? (detail.size / 1024).toFixed(1) + ' KB' : '—' }}</div>
+            <div class="param-row"><span class="param-label">创建时间</span>{{ detail.created_at }}</div>
+            <div class="param-row" style="align-items:flex-start;"><span class="param-label">提示词</span><div class="prompt-box">{{ detail.prompt || '（默认）' }}</div></div>
+          </div>
+        </div>
+        <b class="text-sm" style="display:block; margin:12px 0 6px;">识别回复</b>
+        <div class="hit-text" style="background:var(--bg-soft); border:1px solid var(--border-light); border-radius:8px; padding:10px; max-height:30vh; overflow:auto;">{{ detail.text || detail.error || '（空）' }}</div>
+      </div>
     </div>
   </div>
 </template>
@@ -59,19 +87,29 @@ import { api, withBase } from '../api'
 const fileInput = ref(null)
 const preview = ref(''); const busy = ref(false); const ocrText = ref('')
 const lastEngine = ref(''); const lastCost = ref(0)
+const promptOpen = ref(false); const pendingFile = ref(null); const ocrPrompt = ref('识别图片中的全部文字，按原样输出，不要解释。')
 const tasks = ref([]); const detail = ref(null); const visionModels = ref([])
 onMounted(async () => { loadTasks(); const r = await api('/api/ocr/engines'); if (r.code === 0) visionModels.value = r.data['ollama-vision'] })
 
 async function loadTasks() { const r = await api('/api/ocr/tasks'); if (r.code === 0) tasks.value = r.data }
 
-async function onFile(e) {
+function onFilePicked(e) {
   const f = e.target.files[0]
   if (!f) return
+  pendingFile.value = f
+  promptOpen.value = true
+  e.target.value = ''
+}
+async function startRecognize() {
+  const f = pendingFile.value
+  if (!f) return
+  promptOpen.value = false
   preview.value = URL.createObjectURL(f)
   busy.value = true; ocrText.value = ''; lastEngine.value = ''; lastCost.value = 0
   try {
     const fd = new FormData()
     fd.append('file', f)
+    fd.append('prompt', ocrPrompt.value || '识别图片中的全部文字，按原样输出，不要解释。')
     const res = await fetch(withBase('/api/ocr/recognize'), { method: 'POST', body: fd })
     const r = await res.json()
     if (r.code === 0) { ocrText.value = r.data.text; lastEngine.value = r.data.engine; lastCost.value = r.data.costMs }
@@ -79,7 +117,7 @@ async function onFile(e) {
     loadTasks()
   } finally {
     busy.value = false
-    e.target.value = ''
+    pendingFile.value = null
   }
 }
 async function viewTask(t) { const r = await api('/api/ocr/tasks/' + t.id); if (r.code === 0) detail.value = r.data }
@@ -95,4 +133,10 @@ function copyText() { navigator.clipboard?.writeText(ocrText.value); alert('已�
 .row-head { display: flex; align-items: center; gap: 10px; }
 .hit-text { font-size: 13px; line-height: 1.7; white-space: pre-wrap; }
 .tag-danger { color: #ef4444; background: #fef2f2; border-color: #fecaca; }
+.ocr-detail-grid { display: flex; gap: 14px; }
+.ocr-detail-grid > div:first-child { width: 260px; flex-shrink: 0; }
+.ocr-params { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+.param-row { display: flex; align-items: center; gap: 10px; font-size: 13px; }
+.param-label { width: 62px; color: var(--text-secondary); font-size: 12px; flex-shrink: 0; }
+.prompt-box { flex: 1; background: var(--bg-soft); border: 1px solid var(--border-light); border-radius: 6px; padding: 6px 9px; font-size: 12.5px; line-height: 1.5; }
 </style>

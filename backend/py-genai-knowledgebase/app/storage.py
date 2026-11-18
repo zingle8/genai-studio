@@ -124,7 +124,13 @@ def es_req(kb, method, path, body=None, params=None):
     auth = None
     if cfg.get("user"):
         auth = (cfg["user"], cfg.get("password", ""))
-    r = requests.request(method, url, json=body, params=params, auth=auth, timeout=10)
+    kw = {"params": params, "auth": auth, "timeout": 10}
+    if isinstance(body, str):
+        kw["data"] = body.encode("utf-8")
+        kw["headers"] = {"Content-Type": "application/x-ndjson"}
+    else:
+        kw["json"] = body
+    r = requests.request(method, url, **kw)
     j = r.json()
     if r.status_code >= 400 and "error" in j:
         raise RuntimeError("ES: " + str(j["error"].get("reason", j["error"]))[:200])
@@ -133,9 +139,13 @@ def es_req(kb, method, path, body=None, params=None):
 
 def es_ensure_index(kb, kid):
     idx = "kb_%d" % kid
-    es_req(kb, "PUT", f"/{idx}", {"mappings": {"properties": {
-        "doc_id": {"type": "integer"}, "idx": {"type": "integer"},
-        "doc": {"type": "keyword"}, "content": {"type": "text"}}}})
+    try:
+        es_req(kb, "PUT", f"/{idx}", {"mappings": {"properties": {
+            "doc_id": {"type": "integer"}, "idx": {"type": "integer"},
+            "doc": {"type": "keyword"}, "content": {"type": "text"}}}})
+    except RuntimeError as e:
+        if "already exists" not in str(e):
+            raise
     return idx
 
 

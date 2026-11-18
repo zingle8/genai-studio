@@ -6,7 +6,9 @@
 """
 import sqlite3, os, json, requests
 
-DB_PATH = os.environ.get("GRAPH_DB", os.path.join(os.path.dirname(__file__), "..", "graph.db"))
+from app.config.settings import settings
+
+DB_PATH = settings.db_path
 
 
 def conn():

@@ -5,7 +5,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
 
-KB_BASE = os.environ.get("KB_BASE", "http://localhost:38106")
+KB_BASE = os.environ.get("KB_BASE", "http://localhost:38126")
 RR_BASE = os.environ.get("RR_BASE", "http://localhost:38104")
 EM_BASE = os.environ.get("EM_BASE", "http://localhost:38103")
 DB_PATH = os.environ.get("RAG_ADMIN_DB", os.path.join(os.path.dirname(__file__), "..", "..", "rag_admin.db"))
@@ -106,12 +106,13 @@ def create_router():
     @r.get("/api/rag/stats")
     async def stats():
         """索引统计：知识库列表 + 依赖服务健康"""
-        kbs, em_ok, rr_ok = [], False, False
+        kbs, kb_ok, em_ok, rr_ok = [], False, False, False
         try:
             async with httpx.AsyncClient(timeout=3) as cli:
                 r = await cli.get(KB_BASE + "/api/kb/list")
                 if r.status_code == 200:
                     kbs = r.json().get("data", [])
+                    kb_ok = True
                 em_ok = (await cli.get(EM_BASE + "/health")).status_code == 200
                 rr_ok = (await cli.get(RR_BASE + "/health")).status_code == 200
         except Exception:
@@ -119,7 +120,7 @@ def create_router():
         return {"code": 0, "data": {
             "kbs": [{"id": k["id"], "name": k["name"], "docCount": k.get("docCount", 0),
                      "chunkCount": k.get("chunkCount", 0)} for k in kbs],
-            "services": {"knowledgebase(38106)": True, "embedding(38103)": em_ok,
+            "services": {"knowledgebase(38126)": kb_ok, "embedding(38103)": em_ok,
                          "reranker(38104)": rr_ok, "systemone(38109)": True},
             "totalChunks": sum(k.get("chunkCount", 0) for k in kbs)}}
 

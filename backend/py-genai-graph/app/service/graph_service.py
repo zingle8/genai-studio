@@ -1,0 +1,67 @@
+# -*- coding: utf-8 -*-
+"""图谱业务层接口（service）：定义对外业务能力契约（Spring Service 风格）"""
+import abc
+
+
+class GraphService(abc.ABC):
+    """知识图谱业务接口——impl 由 service/impl/graph_service_impl.py 提供"""
+
+    @abc.abstractmethod
+    def graph_list(self) -> list: ...
+
+    @abc.abstractmethod
+    def graph_create(self, b) -> dict: ...
+
+    @abc.abstractmethod
+    def graph_update(self, gid: int, b) -> dict: ...
+
+    @abc.abstractmethod
+    def graph_delete(self, gid: int) -> None: ...
+
+    @abc.abstractmethod
+    def entity_list(self, gid: int) -> list: ...
+
+    @abc.abstractmethod
+    def entity_create(self, gid: int, b) -> dict: ...
+
+    @abc.abstractmethod
+    def entity_update(self, gid: int, eid: int, b) -> dict: ...
+
+    @abc.abstractmethod
+    def entity_delete(self, gid: int, eid: int) -> None: ...
+
+    @abc.abstractmethod
+    def node_list(self, gid: int) -> dict: ...
+
+    @abc.abstractmethod
+    def node_create(self, gid: int, b) -> dict: ...
+
+    @abc.abstractmethod
+    def node_update(self, gid: int, nid: int, b) -> dict: ...
+
+    @abc.abstractmethod
+    def node_delete(self, gid: int, nid: int) -> None: ...
+
+    @abc.abstractmethod
+    def edge_list(self, gid: int) -> list: ...
+
+    @abc.abstractmethod
+    def edge_create(self, gid: int, b) -> dict: ...
+
+    @abc.abstractmethod
+    def edge_update(self, gid: int, eid: int, b) -> dict: ...
+
+    @abc.abstractmethod
+    def edge_delete(self, gid: int, eid: int) -> None: ...
+
+    @abc.abstractmethod
+    def neighborhood(self, gid: int, nid: int, depth: int) -> dict: ...
+
+    @abc.abstractmethod
+    def version_list(self, gid: int) -> list: ...
+
+    @abc.abstractmethod
+    def version_detail(self, gid: int, no: int) -> dict: ...
+
+    @abc.abstractmethod
+    def version_restore(self, gid: int, no: int) -> None: ...

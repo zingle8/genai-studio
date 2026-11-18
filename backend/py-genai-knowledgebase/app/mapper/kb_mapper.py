@@ -8,7 +8,9 @@
 """
 import sqlite3, os, json, requests
 
-DB_PATH = os.environ.get("KB_DB", os.path.join(os.path.dirname(__file__), "..", "kb.db"))
+from app.config.settings import settings
+
+DB_PATH = settings.db_path
 
 
 def conn():

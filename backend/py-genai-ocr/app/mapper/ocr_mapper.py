@@ -1,12 +1,12 @@
 # -*- coding: utf-8 -*-
-"""OCR 服务存储层（SQLite：识别任务 / 结果）"""
+"""OCR 数据访问层（mapper）：SQLite tb_ocr_task 读写（迁移自 storage.py）"""
 import sqlite3, os
 
-DB_PATH = os.environ.get("OCR_DB", os.path.join(os.path.dirname(__file__), "..", "ocr.db"))
+from app.config.settings import settings
 
 
 def conn():
-    c = sqlite3.connect(DB_PATH)
+    c = sqlite3.connect(settings.db_path)
     c.row_factory = sqlite3.Row
     return c
 
@@ -48,4 +48,5 @@ def one(sql, args=()):
         return dict(r) if r else None
 
 
-init_db()
+def delete(tid: int):
+    run("DELETE FROM tb_ocr_task WHERE id=?", (tid,))

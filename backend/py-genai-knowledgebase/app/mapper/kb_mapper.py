@@ -55,6 +55,14 @@ def init_db():
                 pass
 
 
+def migrate_ensure_space():
+    """知识库必须归属空间：保证至少一个空间存在，并把未归属(space_id=0/NULL)的存量库归入默认空间"""
+    if not one("SELECT id FROM tb_kb_space LIMIT 1"):
+        run("INSERT INTO tb_kb_space(name, description) VALUES('默认空间','系统自动创建')")
+    d = one("SELECT id FROM tb_kb_space ORDER BY id LIMIT 1")
+    run("UPDATE tb_kb SET space_id=? WHERE space_id IS NULL OR space_id=0", (d["id"],))
+
+
 def rows(sql, args=()):
     with conn() as c:
         return [dict(r) for r in c.execute(sql, args).fetchall()]
@@ -318,3 +326,4 @@ def delete_doc_chunks(kb, kid, doc_id):
 
 
 init_db()
+migrate_ensure_space()

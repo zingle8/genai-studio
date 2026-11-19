@@ -92,9 +92,16 @@ class KbServiceImpl(KbService):
                 k["dbOk"] = storage.pg_ping(storage.jload(k.get("db_config"), {}))
         return kbs
 
+    @staticmethod
+    def _require_space(space_id) -> None:
+        """知识库必须归属知识空间"""
+        if not (space_id and storage.one("SELECT id FROM tb_kb_space WHERE id=?", (space_id,))):
+            raise HTTPException(400, "知识库必须归属知识空间，请选择有效空间")
+
     def kb_create(self, b) -> dict:
         if not b.name.strip():
             raise HTTPException(400, "name 不能为空")
+        self._require_space(b.space_id)
         if b.db_type == "es" and not storage.es_ping(storage.jload(b.db_config, {})):
             raise HTTPException(400, "ES 连接失败，请检查地址/凭据")
         if b.db_type == "pg" and not storage.pg_ping(storage.jload(b.db_config, {})):
@@ -114,6 +121,7 @@ class KbServiceImpl(KbService):
     def kb_update(self, kid: int, b) -> dict:
         if not storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,)):
             raise HTTPException(404, "知识库不存在")
+        self._require_space(b.space_id)
         storage.run(
             "UPDATE tb_kb SET name=?, description=?, space_id=?, db_type=?, db_config=?, kb_type=?, chunk_mode=?, chunk_len=?, embedding_model=?, reranker_model=? WHERE id=?",
             (b.name.strip(), b.description, b.space_id, b.db_type, b.db_config, b.kb_type,

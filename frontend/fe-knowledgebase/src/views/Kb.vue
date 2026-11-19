@@ -163,9 +163,9 @@
     <div class="modal modal-lg">
       <div class="modal-header"><div class="modal-title">{{ kbForm.id ? '知识库配置' : '新建知识库' }}</div><button class="modal-close" @click="kbOpen = false">×</button></div>
       <div class="modal-body">
-        <div class="form-row"><label class="form-label">知识空间</label>
+        <div class="form-row"><label class="form-label">知识空间 <span style="color:#ef4444;">*</span></label>
           <select class="form-input" v-model="kbForm.space_id">
-            <option :value="0">— 不归属空间 —</option>
+            <option :value="0" disabled>— 请选择知识空间（必选）—</option>
             <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
           </select></div>
         <div class="form-row"><label class="form-label">知识库名</label><input class="form-input" v-model="kbForm.name" /></div>
@@ -289,16 +289,15 @@ async function loadKbs() {
 function spaceName(id) { const s = spaces.value.find(x => x.id === id); return s ? s.name : '— 未归属 —' }
 const curSpaceObj = computed(() => spaces.value.find(x => x.id === selSpace.value))
 
-/* 左树：space_id 分组（0 = 未归属组） */
+/* 左树：space_id 分组（知识库必须归属空间） */
 const tree = computed(() => {
   const f = treeFilter.value.trim().toLowerCase()
   const groups = spaces.value.map(s => ({ id: s.id, name: s.name, description: s.description, open: s.open, children: [] }))
-  const loose = { id: 0, name: '— 未归属 —', description: '', open: true, children: [] }
   for (const k of allKbs.value) {
-    const g = groups.find(x => x.id === k.space_id) || loose
-    g.children.push(k)
+    const g = groups.find(x => x.id === k.space_id)
+    if (g) g.children.push(k)
   }
-  const all = [...groups, loose].filter(g => g.children.length || !f)
+  const all = groups.filter(g => g.children.length || !f)
   if (!f) return all
   return all.map(g => ({ ...g, children: g.children.filter(k => (k.name || '').toLowerCase().includes(f)) }))
     .filter(g => g.children.length || g.name.toLowerCase().includes(f))
@@ -320,7 +319,9 @@ async function loadDocs() { if (!selKb.value) return; const r = await api(`/api/
 
 function blankKb() {
   const p = pub.value
-  return { id: null, name: '', description: '', space_id: selSpace.value || 0, db_type: 'sqlite',
+  // 知识库必须归属空间：默认当前空间，否则取第一个空间
+  const sid = selSpace.value || (spaces.value[0]?.id ?? 0)
+  return { id: null, name: '', description: '', space_id: sid, db_type: 'sqlite',
            kb_type: 'doc', chunk_mode: p['kb.chunk.mode'] || 'paragraph', chunk_len: Number(p['kb.chunk.len']) || 500,
            embedding_model: p['kb.embedding.model'] || '', reranker_model: p['kb.reranker.model'] || '' }
 }
@@ -343,7 +344,7 @@ function saveSpace() {
   })
 }
 async function delSpace(s) {
-  if (!confirm(`删除空间「${s.name}」？（库会保留为未归属）`)) return
+  if (!confirm(`删除空间「${s.name}」？（空间下需无知识库方可删除）`)) return
   await api('/api/kb/spaces/' + s.id, { method: 'DELETE' })
   if (selSpace.value === s.id) selSpace.value = 0
   loadSpaces(); loadKbs()
@@ -358,6 +359,7 @@ function syncConfig() {
 }
 function openNewKb() { kbForm.value = blankKb(); connCfg.value = {}; pingMsg.value = ''; kbOpen.value = true }
 async function saveKb() {
+  if (!kbForm.value.space_id) { alert('知识库必须归属知识空间，请先选择空间'); return }
   syncConfig()
   const body = { ...kbForm.value, db_config: kbForm.value.db_type === 'sqlite' ? '' : JSON.stringify(connCfg.value) }
   const r = kbForm.value.id

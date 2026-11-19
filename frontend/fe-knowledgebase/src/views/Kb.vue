@@ -399,18 +399,18 @@ function modeLabel(m) { return ({ paragraph: '段落', sentence: '句子', fixed
 <style>
 .kb-layout { display: flex; gap: 14px; align-items: flex-start; }
 .kb-tree {
-  width: 262px; flex-shrink: 0; background: #fff;
+  width: 320px; flex-shrink: 0; background: #fff;
   border: 1px solid var(--border-light, #e5e7eb); border-radius: 12px;
   padding: 10px; max-height: calc(100vh - 170px); overflow-y: auto; position: sticky; top: 12px;
 }
 .tree-filter { font-size: 12px; margin-bottom: 8px; }
 .kb-tree-item {
-  padding: 7px 10px; border-radius: 8px; cursor: pointer;
-  display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 1.3;
+  padding: 8px 10px; border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; gap: 7px; font-size: 13px; line-height: 1.3;
 }
 .kb-tree-item:hover { background: var(--bg-soft, #f5f6fa); }
 .kb-tree-item.active { background: rgba(77, 107, 254, .09); color: var(--primary, #4d6bfe); font-weight: 600; }
-.kb-tree-leaf { padding-left: 26px; }
+.kb-tree-leaf { padding-left: 32px; padding-right: 10px; }
 .tree-fold { color: #9aa3b5; font-size: 10px; width: 12px; }
 .tree-ico { font-size: 13px; }
 .tree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }

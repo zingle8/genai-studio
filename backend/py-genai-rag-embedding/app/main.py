@@ -9,12 +9,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from app.common.gateway_report import gateway_report
+from app.common.compat_patch import install_flagembedding_pad_patch
 from app.config import settings
 from app.engine import EmbeddingEngine
 from app.service import EmbeddingService
 
 
 def create_app() -> FastAPI:
+    install_flagembedding_pad_patch()  # Transformers v5 pad 兼容（return_colbert 透传 500）
     engine = EmbeddingEngine()
     service = EmbeddingService(engine)
 

@@ -2,6 +2,7 @@
 """知识库业务实现（service/impl）：空间/库/文档/检索的编排与多存储后端路由（sqlite/es/pg）"""
 from fastapi import HTTPException
 
+from app.config.settings import settings
 from app.mapper import kb_mapper as storage
 from app.service.kb_service import KbService
 
@@ -202,3 +203,43 @@ class KbServiceImpl(KbService):
                                "idx": c["idx"], "score": score, "content": c["content"][:400]})
         scored.sort(key=lambda x: -x["score"])
         return {"hits": scored[:top_k], "backend": "sqlite"}
+
+    def semantic_search(self, kid: int, q: str, top_k: int = 5) -> dict:
+        """语义检索：bge-m3 向量化 query + 全部分块，余弦相似度排序"""
+        kb = storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,))
+        if not kb:
+            raise HTTPException(404, "知识库不存在")
+        chunks = storage.all_chunks(kb, kid)
+        if not chunks:
+            return {"hits": [], "backend": "semantic"}
+        texts = [q] + [(c["content"] or "")[:512] for c in chunks]
+        import requests as _rq
+        try:
+            r = _rq.post(settings.embedding_base + "/v1/embeddings",
+                         json={"input": texts, "model": settings.embedding_model}, timeout=180)
+            if r.status_code != 200:
+                raise RuntimeError(f"向量服务 {r.status_code}：{r.text[:120]}")
+            vecs = [d["embedding"] for d in r.json()["data"]]
+        except HTTPException:
+            raise
+        except Exception as e:
+            raise HTTPException(503, f"语义检索不可用（embedding 服务）：{e}")
+        qv = self._normalize(vecs[0])
+        scored = []
+        for c, v in zip(chunks, vecs[1:]):
+            cos = sum(a * b for a, b in zip(qv, self._normalize(v)))
+            did = c.get("docId", c.get("doc_id"))
+            doc = c.get("doc") or ""
+            if not doc and did:
+                d = storage.one("SELECT name FROM tb_kb_doc WHERE id=?", (did,))
+                doc = d["name"] if d else ""
+            scored.append({"chunkId": c["chunkId"], "docId": did, "doc": doc,
+                           "idx": c["idx"], "score": round(cos, 4), "content": c["content"][:400]})
+        scored.sort(key=lambda x: -x["score"])
+        return {"hits": scored[:top_k], "backend": "semantic:" + settings.embedding_model}
+
+    @staticmethod
+    def _normalize(vec) -> list:
+        import math
+        n = math.sqrt(sum(x * x for x in vec)) or 1.0
+        return [x / n for x in vec]

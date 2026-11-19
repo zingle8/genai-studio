@@ -284,6 +284,29 @@ def search_chunks(kb, kid, q, top_k):
             for h in hits[:top_k]], "sqlite"
 
 
+def all_chunks(kb, kid, limit=3000):
+    """语义检索用：拉取知识库全部分块（三存储统一格式）"""
+    t = kb.get("db_type", "sqlite")
+    if t == "es":
+        idx = "kb_%d" % kid
+        j = es_req(kb, "POST", f"/{idx}/_search",
+                   {"query": {"match_all": {}}, "size": limit,
+                    "sort": [{"doc_id": "asc"}, {"idx": "asc"}]})
+        return [{"chunkId": h["_source"].get("idx", 0), "docId": h["_source"].get("doc_id"),
+                 "doc": h["_source"].get("doc", ""), "idx": h["_source"].get("idx", 0),
+                 "content": h["_source"].get("content", "")}
+                for h in j["hits"]["hits"]]
+    if t == "pg":
+        pg_ensure_table(kb, kid)
+        with pg_conn(kb) as c:
+            cur = c.cursor()
+            cur.execute(f"SELECT doc_id, idx, doc, content FROM kb_{kid}_chunks LIMIT %s", (limit,))
+            return [{"chunkId": r[1], "docId": r[0], "doc": r[2], "idx": r[1], "content": r[3]}
+                    for r in cur.fetchall()]
+    return [{"chunkId": h["id"], "docId": h["doc_id"], "doc": "", "idx": h["idx"], "content": h["content"]}
+            for h in rows("SELECT id, doc_id, idx, content FROM tb_kb_chunk WHERE kb_id=? LIMIT ?", (kid, limit))]
+
+
 def delete_doc_chunks(kb, kid, doc_id):
     t = kb.get("db_type", "sqlite")
     if t == "es":

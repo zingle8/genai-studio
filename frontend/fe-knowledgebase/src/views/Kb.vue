@@ -120,12 +120,21 @@
 
         <!-- 检索测试 -->
         <div v-else class="panel-body">
-          <div class="row-head" style="gap:8px;">
-            <input class="form-input" v-model="query" placeholder="输入查询，直接检索「{{ selKb.name }}」…" @keyup.enter="search" style="flex:1;" />
-            <button class="btn btn-primary" @click="search" :disabled="!query.trim()">检索</button>
+          <div class="row-head" style="gap:8px; flex-wrap:nowrap;">
+            <div class="search-mode-seg">
+              <button class="seg-btn" :class="{ active: searchMode === 'keyword' }" @click="searchMode = 'keyword'">关键词检索</button>
+              <button class="seg-btn" :class="{ active: searchMode === 'semantic' }" @click="searchMode = 'semantic'">语义检索</button>
+            </div>
+            <input class="form-input" v-model="query" :placeholder="searchMode === 'semantic' ? '语义检索：支持同义/近义表述，如「费用怎么算」' : '关键词检索：按字面分词匹配'" @keyup.enter="search" style="flex:1; min-width:180px;" />
+            <button class="btn btn-primary" style="flex-shrink:0;" @click="search" :disabled="!query.trim() || searching">{{ searching ? '检索中…' : '检索' }}</button>
+          </div>
+          <div class="text-xs muted" style="margin-top:6px;" v-if="searchMode === 'semantic'">
+            语义检索调用向量服务（{{ semModel || 'bge-m3' }}）对查询与全部分块编码后按余弦相似度排序，chunk 较多时首次稍慢。
           </div>
           <div v-if="searched" class="search-res">
-            <div class="text-xs muted" style="margin:10px 0;">命中 {{ hits.length }} 条 <template v-if="lastBackend">（{{ storeLabel(lastBackend) }}）</template></div>
+            <div class="text-xs muted" style="margin:10px 0;">
+              命中 {{ hits.length }} 条 <template v-if="lastBackend">（{{ backendLabel(lastBackend) }}）</template>
+            </div>
             <div class="hit" v-for="h in hits" :key="h.chunkId + '-' + h.idx">
               <span class="tag">{{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
               <div class="hit-text">{{ h.content }}</div>
@@ -254,6 +263,7 @@ const kbOpen = ref(false); const kbForm = ref({}); const connCfg = ref({}); cons
 const docOpen = ref(false); const docFile = ref(null); const docText = ref(''); const docName = ref('')
 const chunkOpen = ref(false); const chunkDoc = ref(null); const chunks = ref([])
 const query = ref(''); const hits = ref([]); const searched = ref(false); const lastBackend = ref('')
+const searchMode = ref('keyword'); const searching = ref(false); const semModel = ref('')
 
 const pub = ref({})
 async function loadPub() {
@@ -390,9 +400,20 @@ async function viewChunks(d) {
 }
 async function search() {
   if (!query.value.trim() || !selKb.value) return
-  searched.value = true
-  const r = await api(`/api/kb/${selKb.value.id}/search?q=` + encodeURIComponent(query.value))
-  if (r.code === 0) { hits.value = r.data; lastBackend.value = r.backend }
+  searched.value = true; searching.value = true
+  try {
+    const path = searchMode.value === 'semantic' ? 'semantic_search' : 'search'
+    const r = await api(`/api/kb/${selKb.value.id}/${path}?q=` + encodeURIComponent(query.value))
+    if (r.code === 0) {
+      hits.value = r.data; lastBackend.value = r.backend
+      if (searchMode.value === 'semantic' && (r.backend || '').startsWith('semantic:'))
+        semModel.value = r.backend.split(':')[1] || 'bge-m3'
+    } else alert(r.detail || '检索失败')
+  } finally { searching.value = false }
+}
+function backendLabel(b) {
+  if ((b || '').startsWith('semantic:')) return '语义 · ' + b.split(':')[1]
+  return '关键词 · ' + storeLabel(b)
 }
 function fmtSize(n) { return n > 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B' }
 function typeLabel(t) { return ({ golden_answer: '标准答案', qa: 'QA', doc: '文档', faq: 'FAQ' })[t] || t }
@@ -463,6 +484,9 @@ function modeLabel(m) { return ({ paragraph: '段落', sentence: '句子', fixed
 .type-dot.faq { background: #f59e0b; }
 .type-dot.qa { background: #10b981; }
 .type-dot.golden_answer { background: #8b5cf6; }
+.search-mode-seg { display: inline-flex; background: var(--bg-soft, #f0f1f5); border: 1px solid var(--border-light, #e5e7eb); border-radius: 9px; padding: 3px; flex-shrink: 0; }
+.seg-btn { border: none; background: transparent; padding: 6px 14px; border-radius: 7px; font-size: 13px; cursor: pointer; color: var(--text-secondary, #6b7280); white-space: nowrap; }
+.seg-btn.active { background: #fff; color: var(--primary, #4d6bfe); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 .row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hit { background: var(--bg-soft, #f7f8fa); border: 1px solid var(--border-light, #e5e7eb); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
 .hit-text { font-size: 13px; margin-top: 6px; line-height: 1.6; white-space: pre-wrap; }

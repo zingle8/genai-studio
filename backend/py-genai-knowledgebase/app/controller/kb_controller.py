@@ -81,4 +81,12 @@ def create_routers(service):
         r = service.search(kid, q, top_k)
         return {"code": 0, "data": r["hits"], "total": len(r["hits"]), "backend": r["backend"]}
 
+    @router.get("/api/kb/{kid}/semantic_search")
+    async def kb_semantic_search(kid: int, q: str, top_k: int = 5):
+        """语义检索：bge-m3 向量 + 余弦相似度（依赖向量服务 38103）"""
+        if not q.strip():
+            raise HTTPException(400, "q 不能为空")
+        r = service.semantic_search(kid, q, top_k)
+        return {"code": 0, "data": r["hits"], "total": len(r["hits"]), "backend": r["backend"]}
+
     return router

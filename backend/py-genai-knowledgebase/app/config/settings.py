@@ -14,6 +14,9 @@ class Settings:
     gateway_client_token: str = os.environ.get("GATEWAY_CLIENT_TOKEN", "dev-gateway-token")
     # 知识库业务配置
     db_path: str = os.environ.get("KB_DB", os.path.join(os.path.dirname(__file__), "..", "..", "kb.db"))
+    # 语义检索：向量服务（py-genai-rag-embedding）
+    embedding_base: str = os.environ.get("EM_BASE", "http://localhost:38103")
+    embedding_model: str = os.environ.get("EM_MODEL", "bge-m3")
 
 
 settings = Settings()

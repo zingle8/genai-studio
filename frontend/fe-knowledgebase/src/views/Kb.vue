@@ -1,136 +1,140 @@
 <template>
   <div class="page-header">
-    <div><div class="page-title">知识库</div><div class="page-subtitle">空间管理 / 知识库管理 / 文档管理 / 检索测试</div></div>
+    <div><div class="page-title">知识库</div><div class="page-subtitle">空间 / 知识库 / 文档 / 检索 — 左树右面板工作台</div></div>
     <div class="page-actions">
-      <button v-if="tab === 'spaces'" class="btn btn-primary" @click="spaceOpen = true">＋ 新建空间</button>
-      <button v-if="tab === 'kbs'" class="btn btn-primary" @click="openNewKb">＋ 新建知识库</button>
-      <button v-if="tab === 'docs' && curKb" class="btn btn-primary" @click="docOpen = true">＋ 上传文档</button>
+      <button v-if="!selKb" class="btn btn-ghost" @click="spaceOpen = true">＋ 新建空间</button>
+      <button class="btn btn-primary" @click="openNewKb">＋ 新建知识库</button>
+      <button v-if="selKb" class="btn btn-primary" @click="docOpen = true">＋ 上传文档</button>
     </div>
   </div>
 
-  <div class="mode-tabs">
-    <button class="mode-tab" :class="{ active: tab === 'spaces' }" @click="tab = 'spaces'">空间管理</button>
-    <button class="mode-tab" :class="{ active: tab === 'kbs' }" @click="tab = 'kbs'">知识库管理</button>
-    <button class="mode-tab" :class="{ active: tab === 'docs' }" @click="tab = 'docs'">文档管理</button>
-    <button class="mode-tab" :class="{ active: tab === 'search' }" @click="tab = 'search'">检索测试</button>
-  </div>
-
-  <!-- 面包屑 -->
-  <div class="kb-crumbs" v-if="crumbs.length">
-    <template v-for="(c, i) in crumbs" :key="i">
-      <span class="crumb-link" v-if="c.go" @click="c.go()">{{ c.label }}</span>
-      <span class="crumb-cur" v-else>{{ c.label }}</span>
-      <span class="crumb-sep" v-if="i < crumbs.length - 1">/</span>
-    </template>
-  </div>
-
-  <!-- ═══ Tab 1: 空间管理 ═══ -->
-  <div class="card" v-if="tab === 'spaces'"><div class="card-body">
-    <div class="table-wrap"><table>
-      <thead><tr><th>空间名称</th><th>描述</th><th>知识库数</th><th>创建时间</th><th class="text-right">操作</th></tr></thead>
-      <tbody>
-        <tr v-for="s in spaces" :key="s.id">
-          <td><b>{{ s.name }}</b></td>
-          <td class="text-xs muted">{{ s.description || '—' }}</td>
-          <td><span class="tag">{{ s.kbCount }}</span></td>
-          <td class="text-xs muted">{{ s.created_at }}</td>
-          <td class="text-right">
-            <button class="btn btn-ghost btn-sm" @click="gotoSpaceKbs(s)">查看知识库</button>
-            <button class="btn btn-ghost btn-sm" @click="delSpace(s)">删除</button>
-          </td>
-        </tr>
-        <tr v-if="!spaces.length"><td colspan="5" class="text-center muted">暂无空间，点右上角新建</td></tr>
-      </tbody>
-    </table></div>
-  </div></div>
-
-  <!-- ═══ Tab 2: 知识库管理 ═══ -->
-  <div class="card" v-if="tab === 'kbs'"><div class="card-body">
-    <div class="row-head" style="margin-bottom:10px;">
-      <span class="text-sm muted">空间过滤</span>
-      <select class="form-input" v-model="curSpace" style="width:180px;" @change="loadKbs()">
-        <option :value="0">全部空间</option>
-        <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
-      </select>
-      <span style="flex:1"></span>
-      <span class="text-xs muted" v-if="curKb">当前选中：<b>{{ curKb.name }}</b></span>
-    </div>
-    <div class="table-wrap"><table>
-      <thead><tr><th>所属空间</th><th>知识库</th><th>类型</th><th>存储</th><th>文档</th><th>模型</th><th class="text-right">操作</th></tr></thead>
-      <tbody>
-        <tr v-for="k in kbs" :key="k.id" :class="{ 'row-active': curKb?.id === k.id }">
-          <td class="text-xs">{{ spaceName(k.space_id) }}</td>
-          <td><b>{{ k.name }}</b><div class="text-xs muted">{{ k.description || '' }}</div></td>
-          <td><span class="tag" :class="k.kb_type === 'golden_answer' ? 'tag-accent' : ''">{{ typeLabel(k.kb_type) }}</span></td>
-          <td>{{ storeLabel(k.db_type) }} <span v-if="k.db_type !== 'sqlite'" class="dot-mini" :class="k.dbOk ? 'green' : 'red'"></span></td>
-          <td>{{ k.docCount }}</td>
-          <td class="text-xs muted">{{ k.embedding_model || '—' }}</td>
-          <td class="text-right">
-            <button class="btn btn-ghost btn-sm" @click="gotoDocs(k)">文档</button>
-            <button class="btn btn-ghost btn-sm" @click="gotoSearch(k)">检索</button>
-            <button class="btn btn-ghost btn-sm" @click="editKb(k)">配置</button>
-            <button class="btn btn-ghost btn-sm" @click="delKb(k)">删除</button>
-          </td>
-        </tr>
-        <tr v-if="!kbs.length"><td colspan="7" class="text-center muted">当前范围暂无知识库</td></tr>
-      </tbody>
-    </table></div>
-  </div></div>
-
-  <!-- ═══ Tab 3: 文档管理 ═══ -->
-  <div class="card" v-if="tab === 'docs'"><div class="card-body">
-    <div class="row-head" style="margin-bottom:10px;">
-      <span class="text-sm muted">知识库</span>
-      <select class="form-input" style="width:220px;" :value="curKb?.id || ''" @change="pickKbById(Number($event.target.value))">
-        <option value="">— 请选择知识库 —</option>
-        <option v-for="k in allKbs" :key="k.id" :value="k.id">{{ spaceName(k.space_id) }} / {{ k.name }}</option>
-      </select>
-      <span style="flex:1"></span>
-      <button class="btn btn-primary btn-sm" v-if="curKb" @click="docOpen = true">＋ 上传文档</button>
-    </div>
-    <template v-if="curKb">
-      <div class="text-xs muted" style="margin-bottom:8px;">切分：{{ modeLabel(curKb.chunk_mode) }} / {{ curKb.chunk_len }} 字 · 类型 {{ typeLabel(curKb.kb_type) }} · 存储 {{ storeLabel(curKb.db_type) }}</div>
-      <div class="table-wrap"><table>
-        <thead><tr><th>文档名</th><th>分块</th><th>大小</th><th>状态</th><th>时间</th><th class="text-right">操作</th></tr></thead>
-        <tbody>
-          <tr v-for="d in docs" :key="d.id">
-            <td><b>{{ d.name }}</b></td><td>{{ d.chunks }}</td><td>{{ fmtSize(d.size) }}</td>
-            <td><span class="tag tag-success">{{ d.status }}</span></td>
-            <td class="text-xs muted">{{ d.created_at }}</td>
-            <td class="text-right">
-              <button class="btn btn-ghost btn-sm" @click="viewChunks(d)">分块</button>
-              <button class="btn btn-ghost btn-sm" @click="delDoc(d)">删除</button>
-            </td>
-          </tr>
-          <tr v-if="!docs.length"><td colspan="6" class="text-center muted">该库暂无文档</td></tr>
-        </tbody>
-      </table></div>
-    </template>
-    <div v-else class="text-center muted" style="padding:36px 0;">先在上方选择一个知识库</div>
-  </div></div>
-
-  <!-- ═══ Tab 4: 检索测试 ═══ -->
-  <div class="card" v-if="tab === 'search'"><div class="card-body">
-    <div class="row-head" style="margin-bottom:10px;">
-      <span class="text-sm muted">知识库</span>
-      <select class="form-input" style="width:220px;" :value="curKb?.id || ''" @change="pickKbById(Number($event.target.value))">
-        <option value="">— 请选择知识库 —</option>
-        <option v-for="k in allKbs" :key="k.id" :value="k.id">{{ spaceName(k.space_id) }} / {{ k.name }}</option>
-      </select>
-    </div>
-    <div class="row-head" style="gap:8px;">
-      <input class="form-input" v-model="query" placeholder="输入查询" @keyup.enter="search" style="flex:1;" />
-      <button class="btn btn-primary" @click="search" :disabled="!curKb">检索</button>
-    </div>
-    <div v-if="searched" class="search-res">
-      <div class="text-xs muted" style="margin:8px 0;">命中 {{ hits.length }} 条 <template v-if="lastBackend">（{{ storeLabel(lastBackend) }}）</template></div>
-      <div class="hit" v-for="h in hits" :key="h.chunkId + '-' + h.idx">
-        <span class="tag">{{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
-        <div class="hit-text">{{ h.content }}</div>
+  <div class="kb-layout">
+    <!-- ═══ 左栏：空间 → 知识库 两级树 ═══ -->
+    <div class="kb-tree">
+      <input class="form-input tree-filter" v-model="treeFilter" placeholder="过滤空间 / 知识库…" />
+      <div class="kb-tree-item" :class="{ active: !selSpace && !selKb }" @click="selAll">
+        <span class="tree-ico">🗂️</span><b>全部</b><span class="kb-badge">{{ allKbs.length }} 库</span>
       </div>
-      <div v-if="!hits.length" class="text-sm muted">无命中</div>
+      <template v-for="g in tree" :key="g.id">
+        <div class="kb-tree-item" :class="{ active: selSpace === g.id && !selKb }" @click="selSpaceKb(g)"
+             :title="g.description || ''">
+          <span class="tree-fold" @click.stop="g.open = !g.open">{{ g.open ? '▾' : '▸' }}</span>
+          <span class="tree-ico">📁</span>
+          <span class="tree-name" :title="g.name">{{ g.name }}</span>
+          <span class="kb-badge">{{ g.children.length }} 库</span>
+          <span class="tree-del" @click.stop="delSpace(g)" title="删除空间">×</span>
+        </div>
+        <div class="kb-tree-kbs" v-show="g.open || treeFilter">
+          <div class="kb-tree-item kb-tree-leaf" v-for="k in g.children" :key="k.id"
+               :class="{ active: selKb?.id === k.id }" @click="pickKb(k)" :title="k.description || ''">
+            <span class="type-dot" :class="k.kb_type"></span>
+            <span class="tree-name" :title="k.name">{{ k.name }}</span>
+            <span class="kb-badge">{{ k.docCount }} 文档</span>
+          </div>
+          <div v-if="!g.children.length" class="tree-empty text-xs muted">（无知识库）</div>
+        </div>
+      </template>
+      <div v-if="treeFilter && !tree.length" class="tree-empty text-sm muted">无匹配结果</div>
     </div>
-  </div></div>
+
+    <!-- ═══ 右栏：内容面板 ═══ -->
+    <div class="kb-main">
+      <!-- 面板 A：空间概览（全部/某空间） -->
+      <template v-if="!selKb">
+        <div class="panel-head">
+          <div>
+            <b style="font-size:15px;">{{ selSpace ? spaceName(selSpace) : '全部知识库' }}</b>
+            <div class="text-xs muted" v-if="selSpace">{{ curSpaceObj?.description || '—' }}</div>
+          </div>
+          <div class="row-head" style="gap:6px;">
+            <span class="text-xs muted">{{ panelKbs.length }} 个库 · {{ panelKbs.reduce((s, k) => s + (k.docCount || 0), 0) }} 文档 · {{ panelKbs.reduce((s, k) => s + (k.chunkCount || 0), 0) }} 分块</span>
+          </div>
+        </div>
+        <div class="kb-cards">
+          <div class="kb-card" v-for="k in panelKbs" :key="k.id" @click="pickKb(k)">
+            <div class="row-head" style="justify-content:space-between;">
+              <b class="kb-card-name" :title="k.name">{{ k.name }}</b>
+              <span class="tag" :class="k.kb_type === 'golden_answer' ? 'tag-accent' : ''">{{ typeLabel(k.kb_type) }}</span>
+            </div>
+            <div class="text-xs muted" style="margin:6px 0 10px; min-height:16px;">{{ k.description || '—' }}</div>
+            <div class="kb-card-meta">
+              <span><b>{{ k.docCount }}</b> 文档</span>
+              <span><b>{{ k.chunkCount }}</b> 分块</span>
+              <span>{{ storeLabel(k.db_type) }} <i class="dot-mini" :class="k.db_type === 'sqlite' || k.dbOk ? 'green' : 'red'"></i></span>
+            </div>
+            <div class="kb-card-acts" @click.stop>
+              <button class="btn btn-ghost btn-sm" @click="editKb(k)">配置</button>
+              <button class="btn btn-ghost btn-sm" @click="delKb(k)">删除</button>
+            </div>
+          </div>
+          <div v-if="!panelKbs.length" class="kb-empty">
+            <div class="text-sm muted" style="margin-bottom:12px;">{{ selSpace ? '该空间暂无知识库' : '暂无知识库' }}</div>
+            <button class="btn btn-primary" @click="openNewKb">＋ 新建知识库</button>
+          </div>
+        </div>
+      </template>
+
+      <!-- 面板 B：知识库详情（文档 | 检索测试 内嵌切换） -->
+      <template v-else>
+        <div class="panel-head">
+          <div>
+            <div class="row-head" style="gap:8px;">
+              <span class="crumb-link" @click="backToSpace">📁 {{ spaceName(selKb.space_id) }}</span>
+              <span class="muted">/</span>
+              <b style="font-size:15px;">{{ selKb.name }}</b>
+              <span class="tag" :class="selKb.kb_type === 'golden_answer' ? 'tag-accent' : ''">{{ typeLabel(selKb.kb_type) }}</span>
+            </div>
+            <div class="text-xs muted" style="margin-top:4px;">
+              切分：{{ modeLabel(selKb.chunk_mode) }} / {{ selKb.chunk_len }} 字 · 存储 {{ storeLabel(selKb.db_type) }}<i class="dot-mini" :class="selKb.db_type === 'sqlite' || selKb.dbOk ? 'green' : 'red'"></i>
+              · Embedding {{ selKb.embedding_model || '未启用' }} · Reranker {{ selKb.reranker_model || '（无）' }}
+            </div>
+          </div>
+          <div class="row-head" style="gap:6px;">
+            <button class="btn btn-ghost btn-sm" @click="editKb(selKb)">配置</button>
+            <button class="btn btn-primary btn-sm" @click="docOpen = true">＋ 上传文档</button>
+          </div>
+        </div>
+
+        <div class="sub-tabs">
+          <button class="sub-tab" :class="{ active: subTab === 'docs' }" @click="subTab = 'docs'">文档（{{ docs.length }}）</button>
+          <button class="sub-tab" :class="{ active: subTab === 'search' }" @click="subTab = 'search'">检索测试</button>
+        </div>
+
+        <!-- 文档 -->
+        <div v-if="subTab === 'docs'" class="table-wrap panel-body"><table>
+          <thead><tr><th>文档名</th><th>分块</th><th>大小</th><th>状态</th><th>时间</th><th class="text-right">操作</th></tr></thead>
+          <tbody>
+            <tr v-for="d in docs" :key="d.id">
+              <td><b>{{ d.name }}</b></td><td>{{ d.chunks }}</td><td>{{ fmtSize(d.size) }}</td>
+              <td><span class="tag tag-success">{{ d.status }}</span></td>
+              <td class="text-xs muted">{{ d.created_at }}</td>
+              <td class="text-right">
+                <button class="btn btn-ghost btn-sm" @click="viewChunks(d)">分块</button>
+                <button class="btn btn-ghost btn-sm" @click="delDoc(d)">删除</button>
+              </td>
+            </tr>
+            <tr v-if="!docs.length"><td colspan="6" class="text-center muted">该库暂无文档，点右上角上传</td></tr>
+          </tbody>
+        </table></div>
+
+        <!-- 检索测试 -->
+        <div v-else class="panel-body">
+          <div class="row-head" style="gap:8px;">
+            <input class="form-input" v-model="query" placeholder="输入查询，直接检索「{{ selKb.name }}」…" @keyup.enter="search" style="flex:1;" />
+            <button class="btn btn-primary" @click="search" :disabled="!query.trim()">检索</button>
+          </div>
+          <div v-if="searched" class="search-res">
+            <div class="text-xs muted" style="margin:10px 0;">命中 {{ hits.length }} 条 <template v-if="lastBackend">（{{ storeLabel(lastBackend) }}）</template></div>
+            <div class="hit" v-for="h in hits" :key="h.chunkId + '-' + h.idx">
+              <span class="tag">{{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
+              <div class="hit-text">{{ h.content }}</div>
+            </div>
+            <div v-if="!hits.length" class="text-sm muted">无命中</div>
+          </div>
+        </div>
+      </template>
+    </div>
+  </div>
 
   <!-- 新建空间 -->
   <div class="modal-mask" v-if="spaceOpen" @click.self="spaceOpen = false">
@@ -215,7 +219,7 @@
   <!-- 上传文档 -->
   <div class="modal-mask" v-if="docOpen" @click.self="docOpen = false">
     <div class="modal">
-      <div class="modal-header"><div class="modal-title">上传文档 → {{ curKb.name }}</div><button class="modal-close" @click="docOpen = false">×</button></div>
+      <div class="modal-header"><div class="modal-title">上传文档 → {{ selKb.name }}</div><button class="modal-close" @click="docOpen = false">×</button></div>
       <div class="modal-body">
         <div class="form-row"><label class="form-label">选择文件（txt / md）</label><input class="form-input" type="file" accept=".txt,.md,.json,.csv" @change="e => docFile = e.target.files[0]" /></div>
         <div class="form-row"><label class="form-label">或直接粘贴文本</label><textarea class="form-input" v-model="docText" rows="6"></textarea></div>
@@ -237,11 +241,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, reactive, onMounted } from 'vue'
 import { api } from '../api'
-const tab = ref('spaces')
-const spaces = ref([]); const curSpace = ref(0)
-const kbs = ref([]); const allKbs = ref([]); const curKb = ref(null); const docs = ref([])
+const selSpace = ref(0); const selKb = ref(null); const subTab = ref('docs')
+const treeFilter = ref('')
+const spaces = ref([])
+const allKbs = ref([]); const docs = ref([])
 const opts = ref({ dbTypes: [], kbTypes: [], chunkModes: [], embeddingModels: [], rerankerModels: [] })
 const spaceOpen = ref(false); const spaceForm = ref({ name: '', description: '' })
 const kbOpen = ref(false); const kbForm = ref({}); const connCfg = ref({}); const pingMsg = ref('')
@@ -257,48 +262,51 @@ async function loadPub() {
     if (r.code === 0) { const m = {}; for (const it of (r.data.list || r.data || [])) m[it.configKey] = it.configValue; pub.value = m }
   } catch {}
 }
-onMounted(async () => { loadPub(); loadSpaces(); loadKbs(true); const r = await api('/api/kb/options'); if (r.code === 0) opts.value = r.data })
+onMounted(async () => {
+  loadPub(); loadSpaces(); loadKbs()
+  const r = await api('/api/kb/options'); if (r.code === 0) opts.value = r.data
+})
 
-async function loadSpaces() { const r = await api('/api/kb/spaces'); if (r.code === 0) spaces.value = r.data }
-async function loadKbs(all = false) {
-  const r = await api('/api/kb/list' + (curSpace.value ? '?space_id=' + curSpace.value : ''))
-  if (r.code === 0) kbs.value = r.data
-  if (all) { const ra = await api('/api/kb/list'); if (ra.code === 0) allKbs.value = ra.data }
+async function loadSpaces() {
+  const r = await api('/api/kb/spaces')
+  if (r.code === 0) spaces.value = r.data.map(s => reactive({ ...s, open: true }))
+}
+async function loadKbs() {
+  const r = await api('/api/kb/list')
+  if (r.code === 0) allKbs.value = r.data
 }
 function spaceName(id) { const s = spaces.value.find(x => x.id === id); return s ? s.name : '— 未归属 —' }
-async function pickKbById(id) {
-  const k = allKbs.value.find(x => x.id === id)
-  if (k) { curKb.value = k; await loadDocs() } else { curKb.value = null; docs.value = [] }
-}
-async function loadDocs() { if (!curKb.value) return; const r = await api(`/api/kb/${curKb.value.id}/docs`); if (r.code === 0) docs.value = r.data }
+const curSpaceObj = computed(() => spaces.value.find(x => x.id === selSpace.value))
 
-/* 面包屑 */
-const crumbs = computed(() => {
-  const arr = []
-  if (tab.value === 'spaces') arr.push({ label: '知识空间' })
-  if (tab.value === 'kbs') {
-    arr.push({ label: '知识空间', go: () => tab.value = 'spaces' })
-    if (curSpace.value) arr.push({ label: spaceName(curSpace.value) })
+/* 左树：space_id 分组（0 = 未归属组） */
+const tree = computed(() => {
+  const f = treeFilter.value.trim().toLowerCase()
+  const groups = spaces.value.map(s => ({ id: s.id, name: s.name, description: s.description, open: s.open, children: [] }))
+  const loose = { id: 0, name: '— 未归属 —', description: '', open: true, children: [] }
+  for (const k of allKbs.value) {
+    const g = groups.find(x => x.id === k.space_id) || loose
+    g.children.push(k)
   }
-  if (tab.value === 'docs') {
-    arr.push({ label: '知识空间', go: () => tab.value = 'spaces' })
-    if (curKb.value) arr.push({ label: spaceName(curKb.value.space_id), go: () => { curSpace.value = curKb.value.space_id; tab.value = 'kbs' } })
-    else arr.push({ label: '知识库', go: () => tab.value = 'kbs' })
-    if (curKb.value) arr.push({ label: curKb.value.name })
-  }
-  if (tab.value === 'search') {
-    arr.push({ label: '知识库', go: () => tab.value = 'kbs' })
-    if (curKb.value) arr.push({ label: spaceName(curKb.value.space_id) + ' / ' + curKb.value.name })
-  }
-  return arr
+  const all = [...groups, loose].filter(g => g.children.length || !f)
+  if (!f) return all
+  return all.map(g => ({ ...g, open: true,
+    children: g.children.filter(k => (k.name || '').toLowerCase().includes(f) || g.name.toLowerCase().includes(f)) }))
+    .filter(g => g.children.length || g.name.toLowerCase().includes(f))
 })
-function gotoSpaceKbs(s) { curSpace.value = s.id; loadKbs(); tab.value = 'kbs' }
-function gotoDocs(k) { curKb.value = k; loadDocs(); tab.value = 'docs' }
-function gotoSearch(k) { curKb.value = k; searched.value = false; tab.value = 'search' }
+
+/* 面板数据源 */
+const panelKbs = computed(() => selSpace.value ? allKbs.value.filter(k => k.space_id === selSpace.value) : allKbs.value)
+
+/* 左树交互 */
+function selAll() { selSpace.value = 0; selKb.value = null }
+function selSpaceKb(g) { selSpace.value = g.id; selKb.value = null }
+async function pickKb(k) { selKb.value = k; subTab.value = 'docs'; searched.value = false; hits.value = []; await loadDocs() }
+function backToSpace() { selSpace.value = selKb.value.space_id; selKb.value = null }
+async function loadDocs() { if (!selKb.value) return; const r = await api(`/api/kb/${selKb.value.id}/docs`); if (r.code === 0) docs.value = r.data }
 
 function blankKb() {
   const p = pub.value
-  return { id: null, name: '', description: '', space_id: curSpace.value || 0, db_type: 'sqlite',
+  return { id: null, name: '', description: '', space_id: selSpace.value || 0, db_type: 'sqlite',
            kb_type: 'doc', chunk_mode: p['kb.chunk.mode'] || 'paragraph', chunk_len: Number(p['kb.chunk.len']) || 500,
            embedding_model: p['kb.embedding.model'] || '', reranker_model: p['kb.reranker.model'] || '' }
 }
@@ -323,8 +331,8 @@ function saveSpace() {
 async function delSpace(s) {
   if (!confirm(`删除空间「${s.name}」？（库会保留为未归属）`)) return
   await api('/api/kb/spaces/' + s.id, { method: 'DELETE' })
-  if (curSpace.value === s.id) curSpace.value = 0
-  loadSpaces(); loadKbs(true)
+  if (selSpace.value === s.id) selSpace.value = 0
+  loadSpaces(); loadKbs()
 }
 async function pingDb() {
   syncConfig()
@@ -341,36 +349,45 @@ async function saveKb() {
   const r = kbForm.value.id
     ? await api('/api/kb/' + kbForm.value.id, { method: 'PUT', body: JSON.stringify(body) })
     : await api('/api/kb', { method: 'POST', body: JSON.stringify(body) })
-  if (r.code === 0) { kbOpen.value = false; loadKbs(true); if (kbForm.value.id) loadDocs() } else alert(r.detail || '失败')
+  if (r.code === 0) {
+    kbOpen.value = false
+    await loadKbs()
+    if (kbForm.value.id && selKb.value?.id === kbForm.value.id) {
+      selKb.value = allKbs.value.find(x => x.id === kbForm.value.id) || selKb.value; loadDocs()
+    }
+  } else alert(r.detail || '失败')
 }
 async function delKb(k) {
   if (!confirm(`删除知识库「${k.name}」及其全部文档${k.db_type === 'es' ? '（含 ES 索引）' : ''}？`)) return
   await api(`/api/kb/${k.id}`, { method: 'DELETE' })
-  if (curKb.value?.id === k.id) { curKb.value = null; docs.value = [] }
-  loadKbs(true)
+  if (selKb.value?.id === k.id) { selKb.value = null; docs.value = [] }
+  loadKbs()
 }
 async function saveDoc() {
   if (!docFile.value && !docText.value.trim()) { alert('请选择文件或粘贴文本'); return }
   const fd = new FormData()
   if (docFile.value) { fd.append('file', docFile.value) } else { fd.append('name', docName.value || '未命名'); fd.append('text', docText.value) }
-  const res = await fetch(`/api/kb/${curKb.value.id}/docs`.replace(/^\/api\/kb/, 'http://localhost:38126/api/kb'), { method: 'POST', body: fd })
+  const res = await fetch(`/api/kb/${selKb.value.id}/docs`.replace(/^\/api\/kb/, 'http://localhost:38126/api/kb'), { method: 'POST', body: fd })
   const r = await res.json()
-  if (r.code === 0) { docOpen.value = false; docText.value = ''; docName.value = ''; docFile.value = null; loadDocs() } else alert(r.detail || '失败')
+  if (r.code === 0) {
+    docOpen.value = false; docText.value = ''; docName.value = ''; docFile.value = null
+    await loadKbs(); loadDocs()
+  } else alert(r.detail || '失败')
 }
 async function delDoc(d) {
   if (!confirm(`删除文档「${d.name}」？`)) return
-  await api(`/api/kb/${curKb.value.id}/docs/${d.id}`, { method: 'DELETE' })
-  loadDocs()
+  await api(`/api/kb/${selKb.value.id}/docs/${d.id}`, { method: 'DELETE' })
+  loadDocs(); loadKbs()
 }
 async function viewChunks(d) {
   chunkDoc.value = d
-  const r = await api(`/api/kb/${curKb.value.id}/docs/${d.id}/chunks`)
+  const r = await api(`/api/kb/${selKb.value.id}/docs/${d.id}/chunks`)
   if (r.code === 0) { chunks.value = r.data; chunkOpen.value = true }
 }
 async function search() {
-  if (!query.value.trim() || !curKb.value) return
+  if (!query.value.trim() || !selKb.value) return
   searched.value = true
-  const r = await api(`/api/kb/${curKb.value.id}/search?q=` + encodeURIComponent(query.value))
+  const r = await api(`/api/kb/${selKb.value.id}/search?q=` + encodeURIComponent(query.value))
   if (r.code === 0) { hits.value = r.data; lastBackend.value = r.backend }
 }
 function fmtSize(n) { return n > 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B' }
@@ -380,26 +397,54 @@ function modeLabel(m) { return ({ paragraph: '段落', sentence: '句子', fixed
 </script>
 
 <style>
-.mode-tabs { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
-.mode-tab {
-  padding: 8px 18px; font-size: 13px; cursor: pointer;
-  border: 1px solid var(--border-light); border-radius: 8px;
-  background: #fff; color: var(--text, #1f2430); transition: all .15s; font-weight: 500;
+.kb-layout { display: flex; gap: 14px; align-items: flex-start; }
+.kb-tree {
+  width: 262px; flex-shrink: 0; background: #fff;
+  border: 1px solid var(--border-light, #e5e7eb); border-radius: 12px;
+  padding: 10px; max-height: calc(100vh - 170px); overflow-y: auto; position: sticky; top: 12px;
 }
-.mode-tab:hover { border-color: var(--primary, #4d6bfe); color: var(--primary, #4d6bfe); }
-.mode-tab.active { background: var(--primary, #4d6bfe); border-color: var(--primary, #4d6bfe); color: #fff; font-weight: 600; }
-.kb-crumbs {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
-  font-size: 13px; margin-bottom: 12px; padding: 8px 14px;
-  background: var(--bg-soft, #f7f8fa); border-radius: 8px;
+.tree-filter { font-size: 12px; margin-bottom: 8px; }
+.kb-tree-item {
+  padding: 7px 10px; border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; gap: 6px; font-size: 13px; line-height: 1.3;
 }
-.crumb-link { color: var(--primary, #4d6bfe); cursor: pointer; }
-.crumb-link:hover { text-decoration: underline; }
-.crumb-cur { color: var(--text, #1f2430); font-weight: 600; }
-.crumb-sep { color: #b9c2d4; }
-.row-active { background: var(--bg-soft, #f7f8fa); }
+.kb-tree-item:hover { background: var(--bg-soft, #f5f6fa); }
+.kb-tree-item.active { background: rgba(77, 107, 254, .09); color: var(--primary, #4d6bfe); font-weight: 600; }
+.kb-tree-leaf { padding-left: 26px; }
+.tree-fold { color: #9aa3b5; font-size: 10px; width: 12px; }
+.tree-ico { font-size: 13px; }
+.tree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.kb-badge { margin-left: auto; font-size: 11px; color: var(--text-secondary, #6b7280); background: var(--bg-soft, #f0f1f5); border-radius: 10px; padding: 1px 7px; white-space: nowrap; }
+.kb-tree-item.active .kb-badge { background: #fff; }
+.tree-del { color: #c3cad8; font-size: 14px; padding: 0 3px; visibility: hidden; }
+.kb-tree-item:hover .tree-del { visibility: visible; }
+.tree-del:hover { color: #ef4444; }
+.kb-tree-kbs { padding-left: 8px; }
+.tree-empty { padding: 6px 12px 6px 30px; }
+.kb-main { flex: 1; min-width: 0; background: #fff; border: 1px solid var(--border-light, #e5e7eb); border-radius: 12px; padding: 16px; min-height: 420px; }
+.panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light, #eef0f4); margin-bottom: 12px; flex-wrap: wrap; }
+.kb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 10px; }
+.kb-card {
+  border: 1px solid var(--border-light, #e5e7eb); border-radius: 12px; padding: 14px;
+  cursor: pointer; transition: all .15s; position: relative; display: flex; flex-direction: column;
+}
+.kb-card:hover { border-color: var(--primary, #4d6bfe); box-shadow: 0 2px 10px rgba(77, 107, 254, .1); transform: translateY(-1px); }
+.kb-card-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+.kb-card-meta { display: flex; gap: 10px; font-size: 12px; color: var(--text-secondary, #6b7280); margin-top: auto; }
+.kb-card-meta b { color: var(--text, #1f2430); }
+.kb-card-acts { display: flex; gap: 4px; margin-top: 10px; padding-top: 8px; border-top: 1px dashed var(--border-light, #eef0f4); }
+.kb-empty { grid-column: 1 / -1; text-align: center; padding: 48px 0; }
+.sub-tabs { display: flex; gap: 2px; border-bottom: 2px solid var(--border-light, #eef0f4); margin-bottom: 12px; }
+.sub-tab { border: none; background: none; padding: 8px 16px; font-size: 13px; cursor: pointer; color: var(--text-secondary, #6b7280); border-bottom: 2px solid transparent; margin-bottom: -2px; }
+.sub-tab.active { color: var(--primary, #4d6bfe); border-bottom-color: var(--primary, #4d6bfe); font-weight: 600; }
+.panel-body { min-height: 200px; }
+.type-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.type-dot.doc { background: #4d6bfe; }
+.type-dot.faq { background: #f59e0b; }
+.type-dot.qa { background: #10b981; }
+.type-dot.golden_answer { background: #8b5cf6; }
 .row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.hit { background: var(--bg-soft); border: 1px solid var(--border-light); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
+.hit { background: var(--bg-soft, #f7f8fa); border: 1px solid var(--border-light, #e5e7eb); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
 .hit-text { font-size: 13px; margin-top: 6px; line-height: 1.6; white-space: pre-wrap; }
 .dot-mini { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-left: 4px; }
 .dot-mini.green { background: #22c55e; }
@@ -407,4 +452,6 @@ function modeLabel(m) { return ({ paragraph: '段落', sentence: '句子', fixed
 .ok-text { color: #16a34a; }
 .modal { min-width: 440px; }
 .modal-lg { min-width: 560px; }
+.crumb-link { color: var(--primary, #4d6bfe); cursor: pointer; font-size: 13px; }
+.crumb-link:hover { text-decoration: underline; }
 </style>

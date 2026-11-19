@@ -13,7 +13,6 @@ class KbServiceImpl(KbService):
     def options(self) -> dict:
         return {
             "dbTypes": [
-                {"value": "sqlite", "label": "内置存储（SQLite）"},
                 {"value": "es", "label": "Elasticsearch"},
                 {"value": "pg", "label": "PostgreSQL"}],
             "kbTypes": [
@@ -98,10 +97,17 @@ class KbServiceImpl(KbService):
         if not (space_id and storage.one("SELECT id FROM tb_kb_space WHERE id=?", (space_id,))):
             raise HTTPException(400, "知识库必须归属知识空间，请选择有效空间")
 
+    @staticmethod
+    def _require_db_type(b) -> None:
+        """内置 SQLite 存储已移除：新建仅支持 ES / PG（存量 sqlite 库可原样保留）"""
+        if b.db_type not in ("es", "pg"):
+            raise HTTPException(400, "内置 SQLite 存储已移除，存储仅支持 Elasticsearch / PostgreSQL")
+
     def kb_create(self, b) -> dict:
         if not b.name.strip():
             raise HTTPException(400, "name 不能为空")
         self._require_space(b.space_id)
+        self._require_db_type(b)
         if b.db_type == "es" and not storage.es_ping(storage.jload(b.db_config, {})):
             raise HTTPException(400, "ES 连接失败，请检查地址/凭据")
         if b.db_type == "pg" and not storage.pg_ping(storage.jload(b.db_config, {})):
@@ -119,9 +125,16 @@ class KbServiceImpl(KbService):
         return storage.one("SELECT * FROM tb_kb WHERE id=?", (nid,))
 
     def kb_update(self, kid: int, b) -> dict:
-        if not storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,)):
+        old = storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,))
+        if not old:
             raise HTTPException(404, "知识库不存在")
         self._require_space(b.space_id)
+        # 存量 sqlite 库允许原样保留；其余情况一律要求 es/pg
+        if b.db_type == "sqlite":
+            if old.get("db_type") != "sqlite":
+                raise HTTPException(400, "内置 SQLite 存储已移除，存储仅支持 Elasticsearch / PostgreSQL")
+        else:
+            self._require_db_type(b)
         storage.run(
             "UPDATE tb_kb SET name=?, description=?, space_id=?, db_type=?, db_config=?, kb_type=?, chunk_mode=?, chunk_len=?, embedding_model=?, reranker_model=? WHERE id=?",
             (b.name.strip(), b.description, b.space_id, b.db_type, b.db_config, b.kb_type,

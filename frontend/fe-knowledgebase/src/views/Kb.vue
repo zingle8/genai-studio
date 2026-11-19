@@ -175,6 +175,7 @@
           <div style="display:flex; gap:8px; flex:1;">
             <select class="form-input" v-model="kbForm.db_type" style="flex:1;" @change="connCfg = cfgFor(kbForm.db_type, kbForm.db_config || '')">
               <option v-for="t in opts.dbTypes" :key="t.value" :value="t.value">{{ t.label }}</option>
+              <option v-if="kbForm.id && kbForm.db_type === 'sqlite'" value="sqlite">内置存储（存量，仅可保留）</option>
             </select>
             <button v-if="kbForm.db_type !== 'sqlite'" class="btn btn-ghost" @click="pingDb">测试连接</button>
           </div>
@@ -319,9 +320,10 @@ async function loadDocs() { if (!selKb.value) return; const r = await api(`/api/
 
 function blankKb() {
   const p = pub.value
-  // 知识库必须归属空间：默认当前空间，否则取第一个空间
+  // 知识库必须归属空间：默认当前空间，否则取第一个空间；存储已移除 sqlite，默认 ES
   const sid = selSpace.value || (spaces.value[0]?.id ?? 0)
-  return { id: null, name: '', description: '', space_id: sid, db_type: 'sqlite',
+  connCfg.value = cfgFor('es', '')
+  return { id: null, name: '', description: '', space_id: sid, db_type: 'es',
            kb_type: 'doc', chunk_mode: p['kb.chunk.mode'] || 'paragraph', chunk_len: Number(p['kb.chunk.len']) || 500,
            embedding_model: p['kb.embedding.model'] || '', reranker_model: p['kb.reranker.model'] || '' }
 }

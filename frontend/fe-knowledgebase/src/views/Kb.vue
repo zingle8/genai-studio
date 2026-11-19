@@ -15,16 +15,17 @@
       <div class="kb-tree-item" :class="{ active: !selSpace && !selKb }" @click="selAll">
         <span class="tree-ico">🗂️</span><b>全部</b><span class="kb-badge">{{ allKbs.length }} 库</span>
       </div>
-      <template v-for="g in tree" :key="g.id">
-        <div class="kb-tree-item" :class="{ active: selSpace === g.id && !selKb }" @click="selSpaceKb(g)"
+      <div class="acc-group" v-for="g in tree" :key="g.id"
+           :class="{ open: g.open, forced: !!treeFilter.trim() }">
+        <div class="acc-head" :class="{ active: selSpace === g.id && !selKb }" @click="toggleGroup(g)"
              :title="g.description || ''">
-          <span class="tree-fold" @click.stop="g.open = !g.open">{{ g.open ? '▾' : '▸' }}</span>
+          <span class="acc-arrow">▶</span>
           <span class="tree-ico">📁</span>
           <span class="tree-name" :title="g.name">{{ g.name }}</span>
           <span class="kb-badge">{{ g.children.length }} 库</span>
           <span class="tree-del" @click.stop="delSpace(g)" title="删除空间">×</span>
         </div>
-        <div class="kb-tree-kbs" v-show="g.open || treeFilter">
+        <div class="acc-body"><div class="acc-body-inner">
           <div class="kb-tree-item kb-tree-leaf" v-for="k in g.children" :key="k.id"
                :class="{ active: selKb?.id === k.id }" @click="pickKb(k)" :title="k.description || ''">
             <span class="type-dot" :class="k.kb_type"></span>
@@ -32,8 +33,8 @@
             <span class="kb-badge">{{ k.docCount }} 文档</span>
           </div>
           <div v-if="!g.children.length" class="tree-empty text-xs muted">（无知识库）</div>
-        </div>
-      </template>
+        </div></div>
+      </div>
       <div v-if="treeFilter && !tree.length" class="tree-empty text-sm muted">无匹配结果</div>
     </div>
 
@@ -289,8 +290,7 @@ const tree = computed(() => {
   }
   const all = [...groups, loose].filter(g => g.children.length || !f)
   if (!f) return all
-  return all.map(g => ({ ...g, open: true,
-    children: g.children.filter(k => (k.name || '').toLowerCase().includes(f) || g.name.toLowerCase().includes(f)) }))
+  return all.map(g => ({ ...g, children: g.children.filter(k => (k.name || '').toLowerCase().includes(f)) }))
     .filter(g => g.children.length || g.name.toLowerCase().includes(f))
 })
 
@@ -299,7 +299,11 @@ const panelKbs = computed(() => selSpace.value ? allKbs.value.filter(k => k.spac
 
 /* 左树交互 */
 function selAll() { selSpace.value = 0; selKb.value = null }
-function selSpaceKb(g) { selSpace.value = g.id; selKb.value = null }
+function toggleGroup(g) {
+  const s = spaces.value.find(x => x.id === g.id)
+  if (s) s.open = !s.open          // 状态落在 reactive 源数据上，computed 树才会响应
+  selSpace.value = g.id; selKb.value = null
+}
 async function pickKb(k) { selKb.value = k; subTab.value = 'docs'; searched.value = false; hits.value = []; await loadDocs() }
 function backToSpace() { selSpace.value = selKb.value.space_id; selKb.value = null }
 async function loadDocs() { if (!selKb.value) return; const r = await api(`/api/kb/${selKb.value.id}/docs`); if (r.code === 0) docs.value = r.data }
@@ -399,28 +403,44 @@ function modeLabel(m) { return ({ paragraph: '段落', sentence: '句子', fixed
 <style>
 .kb-layout { display: flex; gap: 14px; align-items: flex-start; }
 .kb-tree {
-  width: 320px; flex-shrink: 0; background: #fff;
+  width: 380px; flex-shrink: 0; background: #fff;
   border: 1px solid var(--border-light, #e5e7eb); border-radius: 12px;
   padding: 10px; max-height: calc(100vh - 170px); overflow-y: auto; position: sticky; top: 12px;
 }
 .tree-filter { font-size: 12px; margin-bottom: 8px; }
+/* 手风琴分组 */
+.acc-group { border: 1px solid var(--border-light, #e9ebf0); border-radius: 10px; margin-bottom: 8px; overflow: hidden; transition: border-color .18s, box-shadow .18s; }
+.acc-group:hover { border-color: #c9d3ee; }
+.acc-group.open { box-shadow: 0 1px 6px rgba(77, 107, 254, .07); }
+.acc-head {
+  padding: 9px 12px; cursor: pointer; font-size: 13px;
+  display: flex; align-items: center; gap: 8px; background: var(--bg-soft, #f8f9fb);
+  user-select: none;
+}
+.acc-group.open .acc-head { background: #f3f5fd; }
+.acc-head.active { background: rgba(77, 107, 254, .12); color: var(--primary, #4d6bfe); font-weight: 600; }
+.acc-arrow { color: #9aa3b5; font-size: 9px; transition: transform .22s ease; width: 12px; text-align: center; }
+.acc-group.open .acc-arrow { transform: rotate(90deg); color: var(--primary, #4d6bfe); }
+.acc-body { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .24s ease, opacity .18s ease; }
+.acc-group.open .acc-body, .acc-group.forced .acc-body { grid-template-rows: 1fr; opacity: 1; }
+.acc-body-inner { overflow: hidden; min-height: 0; padding: 0 4px; }
+.acc-group.open .acc-body-inner, .acc-group.forced .acc-body-inner { padding: 4px; }
+.acc-body-inner > .kb-tree-item { transition: padding .18s; }
 .kb-tree-item {
   padding: 8px 10px; border-radius: 8px; cursor: pointer;
   display: flex; align-items: center; gap: 7px; font-size: 13px; line-height: 1.3;
 }
 .kb-tree-item:hover { background: var(--bg-soft, #f5f6fa); }
 .kb-tree-item.active { background: rgba(77, 107, 254, .09); color: var(--primary, #4d6bfe); font-weight: 600; }
-.kb-tree-leaf { padding-left: 32px; padding-right: 10px; }
-.tree-fold { color: #9aa3b5; font-size: 10px; width: 12px; }
+.kb-tree-leaf { padding-left: 30px; padding-right: 10px; }
 .tree-ico { font-size: 13px; }
 .tree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
-.kb-badge { margin-left: auto; font-size: 11px; color: var(--text-secondary, #6b7280); background: var(--bg-soft, #f0f1f5); border-radius: 10px; padding: 1px 7px; white-space: nowrap; }
-.kb-tree-item.active .kb-badge { background: #fff; }
+.kb-badge { margin-left: auto; font-size: 11px; color: var(--text-secondary, #6b7280); background: #fff; border: 1px solid var(--border-light, #e5e7eb); border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
+.kb-tree-item.active .kb-badge { background: #fff; border-color: rgba(77, 107, 254, .35); }
 .tree-del { color: #c3cad8; font-size: 14px; padding: 0 3px; visibility: hidden; }
-.kb-tree-item:hover .tree-del { visibility: visible; }
+.acc-head:hover .tree-del, .kb-tree-item:hover .tree-del { visibility: visible; }
 .tree-del:hover { color: #ef4444; }
-.kb-tree-kbs { padding-left: 8px; }
-.tree-empty { padding: 6px 12px 6px 30px; }
+.tree-empty { padding: 6px 12px 6px 34px; }
 .kb-main { flex: 1; min-width: 0; background: #fff; border: 1px solid var(--border-light, #e5e7eb); border-radius: 12px; padding: 16px; min-height: 420px; }
 .panel-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding-bottom: 12px; border-bottom: 1px solid var(--border-light, #eef0f4); margin-bottom: 12px; flex-wrap: wrap; }
 .kb-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(215px, 1fr)); gap: 10px; }

@@ -417,7 +417,15 @@ svg { flex-shrink: 0; }
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 12px;
+  flex-wrap: nowrap;
 }
+.card-footer > * { flex-shrink: 0; white-space: nowrap; }
+.card-footer > .pager-bar { margin-left: auto; }
+/* 分页条：禁止挤压导致文字竖排换行 */
+.pager-bar { display: flex; align-items: center; gap: 10px; flex-wrap: nowrap; flex-shrink: 0; white-space: nowrap; }
+.pager-bar .page-size-select { width: 112px; flex: 0 0 112px; }
+.pager-bar .page-info { white-space: nowrap; }
 
 /* 浅灰填充卡（DeepSeek 风格） */
 .card-soft {
@@ -783,7 +791,8 @@ tbody tr:last-child td { border-bottom: 0; }
   border: 1px solid var(--border); background: #fff;
   font-size: 13px; color: var(--text-secondary);
   display: inline-flex; align-items: center; justify-content: center;
-  padding: 0 8px;
+  padding: 0 10px;
+  white-space: nowrap; flex-shrink: 0;
 }
 .page-btn:hover { color: var(--text-primary); border-color: var(--text-quaternary); }
 .page-btn.active { background: var(--text-primary); color: #fff; border-color: var(--text-primary); }

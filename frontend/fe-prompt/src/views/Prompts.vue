@@ -34,14 +34,14 @@
     </div>
     <div class="card-footer">
       <div class="text-sm muted">共 {{ total }} 个模板</div>
-      <div style="display:flex; align-items:center; gap:12px;">
+      <div class="pager-bar">
         <select class="form-select page-size-select" v-model.number="size" @change="go(1)">
           <option :value="10">10 个/页</option>
           <option :value="20">20 个/页</option>
           <option :value="50">50 个/页</option>
           <option :value="100">100 个/页</option>
         </select>
-        <span class="text-sm muted">第 {{ page }} / {{ totalPages }} 页</span>
+        <span class="text-sm muted page-info">第 {{ page }} / {{ totalPages }} 页</span>
         <button class="page-btn" :disabled="page <= 1" @click="go(page - 1)">‹ 上一页</button>
         <button class="page-btn" :disabled="page >= totalPages" @click="go(page + 1)">下一页 ›</button>
       </div>

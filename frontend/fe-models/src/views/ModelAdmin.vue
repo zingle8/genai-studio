@@ -121,7 +121,7 @@ const list = ref([]); const total = ref(0); const keyword = ref(''); const open 
 /* 下拉筛选 */
 const fProvider = ref(''); const fVendor = ref(''); const fCategory = ref(''); const fTier = ref(''); const fStatus = ref('')
 /* 分页 */
-const page = ref(1); const pageSize = ref(20)
+const page = ref(1); const pageSize = ref(10)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize.value)))
 const hasFilter = computed(() => !!(keyword.value || fProvider.value || fVendor.value || fCategory.value || fTier.value || fStatus.value !== ''))
 const providers = ['智谱 AI', 'DeepSeek', 'OpenAI', 'Anthropic', 'Google', '阿里云', '月之暗面', 'MiniMax', '本地']

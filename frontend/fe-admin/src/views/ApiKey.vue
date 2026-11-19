@@ -29,8 +29,8 @@
         <option value="key">按 API Key</option>
         <option value="owner">按创建人</option>
       </select>
-      <input class="form-input" v-model="filterValue" placeholder="输入关键字" style="width:200px;" @keyup.enter="load" />
-      <button class="btn btn-primary" @click="load">查询</button>
+      <input class="form-input" v-model="filterValue" placeholder="输入关键字" style="width:200px;" @keyup.enter="search" />
+      <button class="btn btn-primary" @click="search">查询</button>
     </div>
 
     <div class="card">
@@ -86,6 +86,17 @@
         </div>
         <div class="card-footer">
           <div class="text-sm muted">共 {{ total }} 条</div>
+          <div class="pager">
+            <select class="form-select page-size-select" v-model.number="size" @change="search">
+              <option :value="10">10 个/页</option>
+              <option :value="20">20 个/页</option>
+              <option :value="50">50 个/页</option>
+              <option :value="100">100 个/页</option>
+            </select>
+            <span class="text-sm muted">第 {{ page }} / {{ totalPages }} 页</span>
+            <button class="page-btn" :disabled="page <= 1" @click="go(page - 1)">‹ 上一页</button>
+            <button class="page-btn" :disabled="page >= totalPages" @click="go(page + 1)">下一页 ›</button>
+          </div>
         </div>
       </div>
     </div>
@@ -169,12 +180,15 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api, getUser } from '../api'
 
 const owner = getUser()?.username || 'admin'
 const list = ref([])
 const total = ref(0)
+const page = ref(1)
+const size = ref(10)
+const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size.value)))
 const filterField = ref('name')
 const filterValue = ref('')
 const modalOpen = ref(false)
@@ -197,12 +211,16 @@ const form = ref(emptyForm())
 onMounted(load)
 
 async function load() {
-  const res = await api('/api/apikeys?page=1&size=50')
+  const res = await api('/api/apikeys?page=' + page.value + '&size=' + size.value)
   if (res.code === 0) {
     list.value = res.data.list || []
     total.value = res.data.total || 0
+    if (!list.value.length && page.value > 1) { page.value--; return load() }
   }
 }
+
+function search() { page.value = 1; load() }
+function go(p) { if (p < 1 || p > totalPages.value) return; page.value = p; load() }
 
 function openCreate() {
   editId.value = null
@@ -290,6 +308,16 @@ function isWarn(k) {
 </script>
 
 <style>
+/* 分页控件（对齐使用日志页） */
+.page-size-select { width: 96px; }
+.pager { display: flex; align-items: center; gap: 12px; }
+.page-btn {
+  height: 30px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px;
+  background: #fff; font-size: 12.5px; color: var(--text-secondary); cursor: pointer;
+  transition: all .15s; white-space: nowrap;
+}
+.page-btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
 .adv-divider { display: flex; align-items: center; gap: 12px; margin: 22px 0; cursor: pointer; user-select: none; }
 .adv-divider .line { flex: 1; height: 1px; background: var(--border-light); }
 .adv-divider .cap { font-size: 12px; font-weight: 600; color: var(--text-tertiary); letter-spacing: 2px; flex-shrink: 0; }

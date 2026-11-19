@@ -125,7 +125,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '../api'
 
-const size = ref(20)
+const size = ref(10)
 const summary = ref({})
 const list = ref([])
 const total = ref(0)

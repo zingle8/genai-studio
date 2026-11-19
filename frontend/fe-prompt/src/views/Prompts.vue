@@ -71,7 +71,7 @@ import { useRouter } from 'vue-router'
 import { api } from '../api'
 const router = useRouter()
 const list = ref([]); const total = ref(0); const keyword = ref(''); const open = ref(false); const editId = ref(null)
-const page = ref(1); const size = ref(20)
+const page = ref(1); const size = ref(10)
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / size.value)))
 const form = ref({ name: '', content: '', variables: '', tags: '' })
 onMounted(load)

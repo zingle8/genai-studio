@@ -174,7 +174,7 @@ const menus = [
   { label: '体验中心', icon: 'chat', to: '/fe-chats/playground' },
   { label: '提示词广场', icon: 'pen', to: '/fe-prompt/square' },
   { label: '提示词管理', icon: 'pen', to: '/fe-prompt/prompts' },
-  { label: '知识库', icon: 'book', to: '/fe-knowledgebase/kb', },
+  { label: '知识库kb', icon: 'book', to: '/fe-knowledgebase/kb', },
   { label: '知识图谱Graph', icon: 'graph', to: '/fe-graph/graph', },
   { label: '本体图谱Onto', icon: 'onto', to: '/fe-graph/onto' },
   { label: 'RAG 管理', icon: 'search', to: '/fe-knowledgebase/rag', },

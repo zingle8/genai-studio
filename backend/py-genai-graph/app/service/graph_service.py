@@ -7,6 +7,15 @@ class GraphService(abc.ABC):
     """知识图谱业务接口——impl 由 service/impl/graph_service_impl.py 提供"""
 
     @abc.abstractmethod
+    def space_list(self) -> list: ...
+
+    @abc.abstractmethod
+    def space_create(self, b) -> dict: ...
+
+    @abc.abstractmethod
+    def space_delete(self, sid: int) -> None: ...
+
+    @abc.abstractmethod
     def graph_list(self) -> list: ...
 
     @abc.abstractmethod

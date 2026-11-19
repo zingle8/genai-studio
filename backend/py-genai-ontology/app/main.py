@@ -15,6 +15,12 @@ app = FastAPI(title="py-genai-ontology")
 report: Optional[GatewayReport] = None
 
 
+def _require_space(space_id):
+    """本体必须归属本体空间"""
+    if not (space_id and one("SELECT id FROM tb_onto_space WHERE id=?", (space_id,))):
+        raise HTTPException(400, "本体必须归属本体空间，请选择有效空间")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "service": settings.service_id}
@@ -39,9 +45,15 @@ async def startup() -> None:
 # ========== 数据模型 ==========
 class OntoIn(BaseModel):
     name: str
+    space_id: int = 0              # 归属本体空间（必填，创建时校验）
     scope: str = "domain"          # domain=领域 / personal=个人
     namespace: str = ""
     authority: str = "normal"      # high/normal
+    comment: str = ""
+
+
+class SpaceIn(BaseModel):
+    name: str
     comment: str = ""
 
 
@@ -75,11 +87,36 @@ class ImportIn(BaseModel):
     text: str
 
 
+# ========== 本体空间（对齐知识库空间模型；须先于 /api/onto/{oid} 模板注册） ==========
+@app.get("/api/onto/spaces")
+async def list_space():
+    data = rows("SELECT s.*, (SELECT COUNT(*) FROM tb_ontology o WHERE o.space_id=s.id) AS onto_count"
+                " FROM tb_onto_space s ORDER BY s.id")
+    return {"code": 0, "data": data}
+
+
+@app.post("/api/onto/spaces")
+async def create_space(body: SpaceIn):
+    if not body.name.strip():
+        raise HTTPException(400, "空间名不能为空")
+    sid = run("INSERT INTO tb_onto_space(name, description) VALUES(?,?)", (body.name.strip(), body.comment))
+    return {"code": 0, "data": one("SELECT * FROM tb_onto_space WHERE id=?", (sid,))}
+
+
+@app.delete("/api/onto/spaces/{sid}")
+async def delete_space(sid: int):
+    if one("SELECT id FROM tb_ontology WHERE space_id=?", (sid,)):
+        raise HTTPException(400, "空间下还有本体，请先删除")
+    run("DELETE FROM tb_onto_space WHERE id=?", (sid,))
+    return {"code": 0}
+
+
 # ========== 本体 CRUD ==========
 @app.get("/api/onto/ontologies")
 async def list_onto():
     data = rows("SELECT o.*, (SELECT COUNT(*) FROM tb_onto_class c WHERE c.ontology_id=o.id) AS class_count,"
-                " (SELECT COUNT(*) FROM tb_onto_rel r WHERE r.ontology_id=o.id) AS rel_count"
+                " (SELECT COUNT(*) FROM tb_onto_rel r WHERE r.ontology_id=o.id) AS rel_count,"
+                " (SELECT s.name FROM tb_onto_space s WHERE s.id=o.space_id) AS space_name"
                 " FROM tb_ontology o ORDER BY o.id DESC")
     return {"code": 0, "data": data}
 
@@ -88,15 +125,17 @@ async def list_onto():
 async def create_onto(body: OntoIn):
     if not body.name.strip():
         raise HTTPException(400, "本体名称不能为空")
-    new_id = run("INSERT INTO tb_ontology(name, scope, namespace, authority, comment) VALUES(?,?,?,?,?)",
-                 (body.name.strip(), body.scope, body.namespace or body.name, body.authority, body.comment))
+    _require_space(body.space_id)
+    new_id = run("INSERT INTO tb_ontology(name, space_id, scope, namespace, authority, comment) VALUES(?,?,?,?,?,?)",
+                 (body.name.strip(), body.space_id, body.scope, body.namespace or body.name, body.authority, body.comment))
     return {"code": 0, "data": one("SELECT * FROM tb_ontology WHERE id=?", (new_id,))}
 
 
 @app.put("/api/onto/ontologies/{oid}")
 async def update_onto(oid: int, body: OntoIn):
-    run("UPDATE tb_ontology SET name=?, scope=?, namespace=?, authority=?, comment=? WHERE id=?",
-        (body.name.strip(), body.scope, body.namespace, body.authority, body.comment, oid))
+    _require_space(body.space_id)
+    run("UPDATE tb_ontology SET name=?, space_id=?, scope=?, namespace=?, authority=?, comment=? WHERE id=?",
+        (body.name.strip(), body.space_id, body.scope, body.namespace, body.authority, body.comment, oid))
     return {"code": 0}
 
 

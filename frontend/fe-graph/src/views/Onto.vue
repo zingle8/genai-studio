@@ -9,24 +9,30 @@
         <select class="form-select" v-model="dsId" style="width:180px;" @change="loadGraphData">
           <option v-for="d in datasources" :key="d.id" :value="d.id">{{ d.name }}</option>
         </select>
+        <button class="btn btn-secondary" @click="spaceOpen=true">＋ 新建空间</button>
         <button class="btn btn-primary" @click="openNewOnto">＋ 新建本体</button>
       </div>
     </div>
 
     <div class="onto-layout">
-      <aside class="onto-side card">
-        <div class="side-tabs">
-          <button :class="{on: scopeFilter==='all'}" @click="scopeFilter='all'">全部</button>
-          <button :class="{on: scopeFilter==='domain'}" @click="scopeFilter='domain'">领域</button>
-          <button :class="{on: scopeFilter==='personal'}" @click="scopeFilter==='personal'">个人</button>
-        </div>
-        <div class="onto-list">
-          <div v-for="o in filteredOntos" :key="o.id" class="onto-item" :class="{on: cur?.id===o.id}" @click="selectOnto(o)">
-            <div class="onto-name"><span class="scope-dot" :class="o.scope"></span>{{ o.name }}</div>
-            <div class="text-xs muted">{{ o.scope==='domain' ? '领域' : '个人' }} · {{ o.authority==='high' ? '高权威' : '普通' }} · {{ o.class_count }} 类 / {{ o.rel_count }} 规则</div>
+      <aside class="onto-side">
+        <div class="acc-group" v-for="sp in tree" :key="sp.id" :class="{ open: sp.open }">
+          <div class="acc-head" :class="{ active: selSpace === sp.id && !cur }" @click="toggleGroup(sp)" :title="sp.description || ''">
+            <span class="acc-arrow">▶</span>
+            <span class="tree-ico">📁</span>
+            <span class="tree-name">{{ sp.name }}</span>
+            <span class="tree-badge">{{ sp.children.length }} 本体</span>
+            <span class="tree-del" @click.stop="delSpace(sp)" title="删除空间">×</span>
           </div>
-          <div v-if="!filteredOntos.length" class="empty" style="padding:32px 0;">暂无本体，点击右上角新建</div>
+          <div class="acc-body"><div class="acc-body-inner">
+            <div v-for="o in sp.children" :key="o.id" class="onto-item" :class="{on: cur?.id===o.id}" @click="selectOnto(o)">
+              <div class="onto-name"><span class="scope-dot" :class="o.scope"></span>{{ o.name }}</div>
+              <div class="text-xs muted">{{ o.scope==='domain' ? '领域' : '个人' }} · {{ o.class_count }} 类 / {{ o.rel_count }} 规则</div>
+            </div>
+            <div v-if="!sp.children.length" class="tree-empty text-xs muted">（无本体）</div>
+          </div></div>
         </div>
+        <div v-if="!tree.length" class="text-center muted text-sm" style="padding:24px 0;">暂无本体空间</div>
       </aside>
 
       <section class="onto-main" v-if="cur">
@@ -156,12 +162,27 @@
       <div class="modal-card">
         <div class="modal-header"><div class="modal-title">新建本体</div><button class="modal-close" @click="newOpen=false">×</button></div>
         <div class="modal-body">
+          <div class="form-row"><label class="form-label">本体空间 <span style="color:#ef4444;">*</span></label>
+            <select class="form-select" v-model="ontoForm.space_id">
+              <option :value="0" disabled>— 请选择本体空间（必选）—</option>
+              <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select></div>
           <div class="form-row"><label class="form-label">名称</label><input class="form-input" v-model="ontoForm.name" placeholder="如 o1-组织管理"/></div>
           <div class="form-row"><label class="form-label">归属</label><select class="form-select" v-model="ontoForm.scope"><option value="domain">领域本体</option><option value="personal">个人本体</option></select></div>
           <div class="form-row"><label class="form-label">权威等级</label><select class="form-select" v-model="ontoForm.authority"><option value="normal">普通</option><option value="high">高权威（合并冲突时优先）</option></select></div>
           <div class="form-row"><label class="form-label">说明</label><input class="form-input" v-model="ontoForm.comment" placeholder="用途说明（可空）"/></div>
         </div>
         <div class="modal-footer"><button class="btn btn-secondary" @click="newOpen=false">取消</button><button class="btn btn-primary" @click="createOnto">创建</button></div>
+      </div>
+    </div>
+    <div v-if="spaceOpen" class="modal-mask" @click.self="spaceOpen=false">
+      <div class="modal-card">
+        <div class="modal-header"><div class="modal-title">新建本体空间</div><button class="modal-close" @click="spaceOpen=false">×</button></div>
+        <div class="modal-body">
+          <div class="form-row"><label class="form-label">空间名 <span style="color:#ef4444;">*</span></label><input class="form-input" v-model="spaceForm.name" placeholder="如 风控本体空间"/></div>
+          <div class="form-row"><label class="form-label">说明</label><input class="form-input" v-model="spaceForm.comment" placeholder="用途说明（可空）"/></div>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" @click="spaceOpen=false">取消</button><button class="btn btn-primary" @click="saveSpace">创建</button></div>
       </div>
     </div>
   </div>
@@ -176,9 +197,44 @@ const datasources = ref([])
 const dsId = ref(null)
 const cur = ref(null)
 const tab = ref('graph')
-const scopeFilter = ref('all')
+// 本体空间（对齐知识库 space 模型）
+const spaces = ref([]); const selSpace = ref(0)
+const spaceOpen = ref(false); const spaceForm = ref({ name: '', comment: '' })
+const tree = computed(() => {
+  const groups = spaces.value.map(s => ({ id: s.id, name: s.name, description: s.comment, open: s.open, children: [] }))
+  for (const o of ontos.value) {
+    const sp = groups.find(x => x.id === o.space_id)
+    if (sp) sp.children.push(o)
+  }
+  return groups
+})
+function toggleGroup(sp) {
+  const s = spaces.value.find(x => x.id === sp.id)
+  if (s) s.open = !s.open
+  selSpace.value = sp.id; cur.value = null
+}
+async function loadSpaces() {
+  const r = await api('/api/onto/spaces')
+  if (r.code === 0) {
+    const prev = new Map(spaces.value.map(s => [s.id, s.open]))
+    spaces.value = r.data.map(s => ({ ...s, open: prev.get(s.id) ?? true }))
+  }
+}
+async function saveSpace() {
+  if (!spaceForm.value.name.trim()) return alert('空间名不能为空')
+  const r = await api('/api/onto/spaces', { method: 'POST', body: spaceForm.value })
+  if (r.code !== 0) return alert(r.message || '创建失败')
+  spaceOpen.value = false; spaceForm.value = { name: '', comment: '' }; await loadSpaces()
+}
+async function delSpace(sp) {
+  if (!confirm(`删除本体空间「${sp.name}」？（空间下需无本体方可删除）`)) return
+  const r = await api(`/api/onto/spaces/${sp.id}`, { method: 'DELETE' })
+  if (r.code !== 0) return alert(r.message || r.detail || '失败')
+  if (selSpace.value === sp.id) selSpace.value = 0
+  await loadSpaces()
+}
 const newOpen = ref(false)
-const ontoForm = ref({ name: '', scope: 'domain', authority: 'normal', comment: '' })
+const ontoForm = ref({ name: '', space_id: 0, scope: 'domain', authority: 'normal', comment: '' })
 const clsForm = ref({ name: '', parentName: '', comment: '' })
 const relForm = ref({ name: '', subjClass: '', objClass: '', cardinality: 'many', nullable: true, inheritsFrom: '' })
 const mapForm = ref({ kind: 'node', ontoType: '', physicalType: '' })
@@ -192,7 +248,7 @@ const mappings = ref([])
 const graphData = ref({})
 const viewData = ref(null)
 
-const filteredOntos = computed(() => ontos.value.filter(o => scopeFilter.value === 'all' || o.scope === scopeFilter.value))
+const filteredOntos = computed(() => ontos.value)
 const classes = computed(() => cur.value?._classes || [])
 const nodes = computed(() => classes.value.map((c, i) => ({ ...c, x: 130 + (i % 3) * 170, y: 80 + Math.floor(i / 3) * 110 })))
 const graphEdges = computed(() => (cur.value?._rels || []).map(r => {
@@ -211,7 +267,7 @@ const physTypes = computed(() => [...new Set([...physNodes.value.map(n => n.type
 const viewNodes = computed(() => viewData.value?.nodes || [])
 const viewEdges = computed(() => viewData.value?.edges || [])
 
-onMounted(async () => { loadOntos(); const d = await api('/api/onto/datasources'); if (d.code === 0) { datasources.value = d.data; dsId.value = d.data[0]?.id; loadGraphData() } })
+onMounted(async () => { loadSpaces(); loadOntos(); const d = await api('/api/onto/datasources'); if (d.code === 0) { datasources.value = d.data; dsId.value = d.data[0]?.id; loadGraphData() } })
 
 async function loadOntos() {
   const r = await api('/api/onto/ontologies')
@@ -226,19 +282,25 @@ async function selectOnto(o) {
   const r = await api(`/api/onto/${o.id}/full`)
   if (r.code === 0) { cur.value = { ...r.data.ontology, _classes: r.data.classes, _rels: r.data.rels }; selNode.value = null; selEdge.value = null; tab.value = 'graph'; issues.value = []; await loadMappings() }
 }
-function openNewOnto() { ontoForm.value = { name: '', scope: 'domain', authority: 'normal', comment: '' }; newOpen.value = true }
+function openNewOnto() {
+  // 本体必须归属空间：默认当前空间，否则取第一个空间
+  const sid = selSpace.value || (spaces.value[0]?.id ?? 0)
+  ontoForm.value = { name: '', space_id: sid, scope: 'domain', authority: 'normal', comment: '' }
+  newOpen.value = true
+}
 async function createOnto() {
   if (!ontoForm.value.name.trim()) return alert('请输入本体名称')
+  if (!ontoForm.value.space_id) return alert('本体必须归属本体空间，请先选择空间')
   const r = await api('/api/onto/ontologies', { method: 'POST', body: ontoForm.value })
-  if (r.code !== 0) return alert(r.message || '创建失败')
-  newOpen.value = false; await loadOntos()
+  if (r.code !== 0) return alert(r.message || r.detail || '创建失败')
+  newOpen.value = false; await loadOntos(); await loadSpaces()
   const created = ontos.value.find(x => x.name === ontoForm.value.name.trim())
   if (created) selectOnto(created)
 }
 async function delOnto() {
   if (!confirm(`确认删除本体「${cur.value.name}」及其全部类与规则？`)) return
   await api(`/api/onto/ontologies/${cur.value.id}`, { method: 'DELETE' })
-  cur.value = null; await loadOntos()
+  cur.value = null; await loadOntos(); await loadSpaces()
 }
 async function createClass() {
   if (!clsForm.value.name.trim()) return alert('请输入类名')
@@ -279,10 +341,27 @@ async function loadView() { const r = await api(`/api/onto/${cur.value.id}/view-
 <style>
 .onto-page { padding: 20px 24px; }
 .onto-layout { display: flex; gap: 16px; height: calc(100vh - 170px); min-height: 480px; }
-.onto-side { width: 240px; flex-shrink: 0; display: flex; flex-direction: column; padding: 10px; overflow: hidden; }
-.side-tabs { display: flex; gap: 4px; margin-bottom: 8px; }
-.side-tabs button { flex: 1; border: none; background: transparent; padding: 5px 0; border-radius: 6px; font-size: 12.5px; color: var(--text-muted, #6b7280); cursor: pointer; }
-.side-tabs button.on { background: var(--bg-soft, #f0f2f7); color: var(--primary, #4d6bfe); font-weight: 600; }
+.onto-side { width: 260px; flex-shrink: 0; display: flex; flex-direction: column; padding: 10px; overflow-y: auto; max-height: calc(100vh - 160px); position: sticky; top: 12px; }
+/* 手风琴（对齐知识库 Kb.vue / Graph.vue） */
+.acc-group { border: 1px solid #e9ebf0; border-radius: 10px; margin-bottom: 8px; overflow: hidden; background: #fff; transition: border-color .18s, box-shadow .18s; }
+.acc-group:hover { border-color: #c9d3ee; }
+.acc-group.open { box-shadow: 0 1px 6px rgba(77, 107, 254, .07); }
+.acc-head { padding: 9px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; background: #f8f9fb; user-select: none; }
+.acc-group.open .acc-head { background: #f3f5fd; }
+.acc-head.active { background: rgba(77, 107, 254, .12); color: #4d6bfe; font-weight: 600; }
+.acc-arrow { color: #9aa3b5; font-size: 9px; transition: transform .22s ease; width: 12px; text-align: center; }
+.acc-group.open .acc-arrow { transform: rotate(90deg); color: #4d6bfe; }
+.acc-body { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .24s ease, opacity .18s ease; }
+.acc-group.open .acc-body { grid-template-rows: 1fr; opacity: 1; }
+.acc-body-inner { overflow: hidden; min-height: 0; padding: 0 4px; }
+.acc-group.open .acc-body-inner { padding: 4px; }
+.tree-ico { font-size: 13px; }
+.tree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.tree-badge { font-size: 11px; color: #6b7280; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
+.tree-del { color: #c3cad8; font-size: 14px; padding: 0 3px; visibility: hidden; }
+.acc-head:hover .tree-del { visibility: visible; }
+.tree-del:hover { color: #ef4444; }
+.tree-empty { padding: 6px 12px 6px 34px; }
 .onto-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 4px; }
 .onto-item { padding: 9px 10px; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
 .onto-item:hover { background: var(--bg-soft, #f7f8fa); }

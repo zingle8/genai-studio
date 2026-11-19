@@ -48,31 +48,58 @@ class GraphServiceImpl(GraphService):
             storage.run("DELETE FROM tb_graph_edge WHERE graph_id=? AND (source_id=? OR target_id=?)", (gid, nid, nid))
             storage.run("DELETE FROM tb_graph_node WHERE graph_id=? AND id=?", (gid, nid))
 
+    # ===== 图谱空间（对齐知识库空间模型） =====
+    def space_list(self):
+        ss = storage.rows("SELECT * FROM tb_graph_space ORDER BY id")
+        for s in ss:
+            s["graphCount"] = storage.one("SELECT COUNT(*) c FROM tb_graph WHERE space_id=?", (s["id"],))["c"]
+        return ss
+
+    def space_create(self, b):
+        if not b.name.strip():
+            raise HTTPException(400, "空间名不能为空")
+        sid = storage.run("INSERT INTO tb_graph_space(name, description) VALUES(?,?)",
+                          (b.name.strip(), b.description))
+        return storage.one("SELECT * FROM tb_graph_space WHERE id=?", (sid,))
+
+    def space_delete(self, sid):
+        if storage.one("SELECT id FROM tb_graph WHERE space_id=?", (sid,)):
+            raise HTTPException(400, "空间下还有图谱，请先删除")
+        storage.run("DELETE FROM tb_graph_space WHERE id=?", (sid,))
+
     # ===== 图谱（数据库概念） =====
     def graph_list(self):
         gs = storage.rows("SELECT * FROM tb_graph ORDER BY id")
         for g in gs:
             g["nodeCount"] = storage.one("SELECT COUNT(*) c FROM tb_graph_node WHERE graph_id=?", (g["id"],))["c"]
             g["versionCount"] = storage.one("SELECT COUNT(*) c FROM tb_graph_version WHERE graph_id=?", (g["id"],))["c"]
+            g["spaceName"] = (storage.one("SELECT name FROM tb_graph_space WHERE id=?", (g.get("space_id", 0),)) or {}).get("name", "")
             if g["db_type"] == "neo4j":
                 g["dbOk"] = storage.neo4j_ping(self._gcfg(g))
         return gs
 
+    @staticmethod
+    def _require_space(space_id):
+        if not (space_id and storage.one("SELECT id FROM tb_graph_space WHERE id=?", (space_id,))):
+            raise HTTPException(400, "图谱必须归属图谱空间，请选择有效空间")
+
     def graph_create(self, b):
         if not b.name.strip():
             raise HTTPException(400, "名称不能为空")
+        self._require_space(b.space_id)
         if b.db_type == "neo4j":
             if not storage.neo4j_ping(self._gcfg(b.model_dump())):
                 raise HTTPException(400, "Neo4j 连接失败，请检查地址/用户/密码（默认 http://localhost:7474）")
-        gid = storage.run("INSERT INTO tb_graph(name, db_type, db_config, description) VALUES(?,?,?,?)",
-                          (b.name.strip(), b.db_type, b.db_config, b.description))
+        gid = storage.run("INSERT INTO tb_graph(name, space_id, db_type, db_config, description) VALUES(?,?,?,?,?)",
+                          (b.name.strip(), b.space_id, b.db_type, b.db_config, b.description))
         storage.save_version(gid, "create_graph", "创建图谱")
         return storage.one("SELECT * FROM tb_graph WHERE id=?", (gid,))
 
     def graph_update(self, gid, b):
         self._get_graph(gid)
-        storage.run("UPDATE tb_graph SET name=?, db_type=?, db_config=?, description=? WHERE id=?",
-                    (b.name.strip(), b.db_type, b.db_config, b.description, gid))
+        self._require_space(b.space_id)
+        storage.run("UPDATE tb_graph SET name=?, space_id=?, db_type=?, db_config=?, description=? WHERE id=?",
+                    (b.name.strip(), b.space_id, b.db_type, b.db_config, b.description, gid))
         return storage.one("SELECT * FROM tb_graph WHERE id=?", (gid,))
 
     def graph_delete(self, gid):

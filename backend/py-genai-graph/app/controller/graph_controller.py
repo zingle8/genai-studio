@@ -2,11 +2,25 @@
 """图谱接口层（controller）：路由定义，业务委托 service（create_routers 工厂，风格同 infer）"""
 from fastapi import APIRouter, HTTPException
 
-from app.dto.graph_dto import EdgeIn, EntityIn, GraphIn, NodeIn, VersionIn
+from app.dto.graph_dto import EdgeIn, EntityIn, GraphIn, NodeIn, SpaceIn, VersionIn
 
 
 def create_routers(service):
     router = APIRouter()
+
+    # ===== 图谱空间（必须在 /api/graphs/{gid} 模板之前注册） =====
+    @router.get("/api/graphs/spaces")
+    async def space_list():
+        return {"code": 0, "data": service.space_list()}
+
+    @router.post("/api/graphs/spaces")
+    async def space_create(b: SpaceIn):
+        return {"code": 0, "data": service.space_create(b)}
+
+    @router.delete("/api/graphs/spaces/{sid}")
+    async def space_delete(sid: int):
+        service.space_delete(sid)
+        return {"code": 0, "data": "deleted"}
 
     # ===== 图谱（数据库概念） =====
     @router.get("/api/graphs")

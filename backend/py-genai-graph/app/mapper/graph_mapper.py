@@ -20,6 +20,9 @@ def conn():
 def init_db():
     with conn() as c:
         c.executescript("""
+        CREATE TABLE IF NOT EXISTS tb_graph_space(
+          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+          description TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
         CREATE TABLE IF NOT EXISTS tb_graph(
           id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
           db_type TEXT DEFAULT 'sqlite',           -- sqlite | neo4j | postgresql
@@ -47,6 +50,20 @@ def init_db():
           snapshot TEXT DEFAULT '{}',
           created_at TEXT DEFAULT (datetime('now','localtime')));
         """)
+        # 图谱归属空间（对齐知识库 space 模型）
+        try:
+            c.execute("ALTER TABLE tb_graph ADD COLUMN space_id INTEGER DEFAULT 0")
+            c.commit()
+        except Exception:
+            pass
+
+
+def migrate_ensure_space():
+    """图谱必须归属图谱空间：保证至少一个空间存在，并把未归属的存量图谱归入默认空间"""
+    if not one("SELECT id FROM tb_graph_space LIMIT 1"):
+        run("INSERT INTO tb_graph_space(name, description) VALUES('默认空间','系统自动创建')")
+    d = one("SELECT id FROM tb_graph_space ORDER BY id LIMIT 1")
+    run("UPDATE tb_graph SET space_id=? WHERE space_id IS NULL OR space_id=0", (d["id"],))
 
 
 def rows(sql, args=()):
@@ -129,4 +146,5 @@ def seed_demo():
 
 
 init_db()
+migrate_ensure_space()
 seed_demo()

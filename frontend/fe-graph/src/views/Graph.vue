@@ -2,6 +2,7 @@
   <div class="page-header">
     <div><div class="page-title">知识图谱</div><div class="page-subtitle">图谱（数据库概念）/ 实体类型 / 节点·属性·关系 / 版本（自动快照·可恢复）</div></div>
     <div class="page-actions">
+      <button class="btn btn-ghost" @click="spaceOpen = true">＋ 新建空间</button>
       <button class="btn btn-ghost" @click="openNewGraph">＋ 新建图谱</button>
       <template v-if="curGraph">
         <button class="btn btn-ghost" @click="entityOpen = true">＋ 实体类型</button>
@@ -12,20 +13,30 @@
   </div>
 
   <div class="graph-layout">
-    <!-- 左：图谱列表（数据库概念） -->
-    <div class="card graph-side-left"><div class="card-body no-pad">
-      <div style="padding:10px 14px; border-bottom:1px solid var(--border-light);"><b class="text-sm">图谱库</b></div>
-      <div class="side-row" v-for="g in graphs" :key="g.id" :class="{ active: curGraph?.id === g.id }" style="cursor:pointer;" @click="pickGraph(g)">
-        <span class="db-icon" :class="g.db_type === 'neo4j' ? 'neo' : ''">{{ g.db_type === 'neo4j' ? 'N4' : 'SQL' }}</span>
-        <div style="flex:1;">
-          <b class="text-sm">{{ g.name }}</b>
-          <div class="text-xs muted">{{ g.nodeCount }} 节点 · v{{ g.versionCount }}</div>
+    <!-- 左：图谱空间 → 图谱 两级手风琴树 -->
+    <div class="graph-side-left">
+      <div class="acc-group" v-for="sp in tree" :key="sp.id" :class="{ open: sp.open }">
+        <div class="acc-head" :class="{ active: selSpace === sp.id && !curGraph }" @click="toggleGroup(sp)" :title="sp.description || ''">
+          <span class="acc-arrow">▶</span>
+          <span class="tree-ico">📁</span>
+          <span class="tree-name">{{ sp.name }}</span>
+          <span class="tree-badge">{{ sp.children.length }} 图谱</span>
+          <span class="tree-del" @click.stop="delSpace(sp)" title="删除空间">×</span>
         </div>
-        <span v-if="g.db_type === 'neo4j'" class="dot-mini" :class="g.dbOk ? 'green' : 'red'" :title="g.dbOk ? 'Neo4j 已连接' : 'Neo4j 连接失败'"></span>
-        <button class="btn btn-ghost btn-sm" @click.stop="delGraph(g)">删</button>
+        <div class="acc-body"><div class="acc-body-inner">
+          <div class="acc-item" v-for="g in sp.children" :key="g.id"
+               :class="{ active: curGraph?.id === g.id }" @click="pickGraph(g)" :title="g.description || ''">
+            <span class="db-icon" :class="g.db_type === 'neo4j' ? 'neo' : ''">{{ g.db_type === 'neo4j' ? 'N4' : 'SQL' }}</span>
+            <span class="tree-name">{{ g.name }}</span>
+            <span class="tree-badge">{{ g.nodeCount }} 节点</span>
+            <span v-if="g.db_type === 'neo4j'" class="dot-mini" :class="g.dbOk ? 'green' : 'red'" :title="g.dbOk ? 'Neo4j 已连接' : 'Neo4j 连接失败'"></span>
+            <span class="tree-del" @click.stop="delGraph(g)" title="删除图谱">×</span>
+          </div>
+          <div v-if="!sp.children.length" class="tree-empty text-xs muted">（无图谱）</div>
+        </div></div>
       </div>
-      <div v-if="!graphs.length" class="text-center muted text-sm" style="padding:20px;">暂无图谱</div>
-    </div></div>
+      <div v-if="!tree.length" class="text-center muted text-sm" style="padding:20px;">暂无图谱空间</div>
+    </div>
 
     <template v-if="curGraph">
       <!-- 主区：tab -->
@@ -144,11 +155,28 @@
     <div v-else class="card" style="flex:1;"><div class="card-body text-center muted" style="padding:60px 0;">左侧选择图谱，或新建（可选 Neo4j 后端）</div></div>
   </div>
 
+  <!-- 新建空间 -->
+  <div class="modal-mask" v-if="spaceOpen" @click.self="spaceOpen = false">
+    <div class="modal">
+      <div class="modal-header"><div class="modal-title">新建图谱空间</div><button class="modal-close" @click="spaceOpen = false">×</button></div>
+      <div class="modal-body">
+        <div class="form-row"><label class="form-label">空间名 <span style="color:#ef4444;">*</span></label><input class="form-input" v-model="spaceForm.name" placeholder="如 风控图谱空间" /></div>
+        <div class="form-row"><label class="form-label">描述</label><input class="form-input" v-model="spaceForm.description" /></div>
+      </div>
+      <div class="modal-footer"><button class="btn btn-ghost" @click="spaceOpen = false">取消</button><button class="btn btn-primary" @click="saveSpace">创建</button></div>
+    </div>
+  </div>
+
   <!-- 新建/编辑图谱 -->
   <div class="modal-mask" v-if="graphOpen" @click.self="graphOpen = false">
     <div class="modal">
       <div class="modal-header"><div class="modal-title">新建图谱</div><button class="modal-close" @click="graphOpen = false">×</button></div>
       <div class="modal-body">
+        <div class="form-row"><label class="form-label">图谱空间 <span style="color:#ef4444;">*</span></label>
+          <select class="form-input" v-model="graphForm.space_id">
+            <option :value="0" disabled>— 请选择图谱空间（必选）—</option>
+            <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
+          </select></div>
         <div class="form-row"><label class="form-label">图谱名</label><input class="form-input" v-model="graphForm.name" /></div>
         <div class="form-row"><label class="form-label">存储后端</label>
           <select class="form-input" v-model="graphForm.db_type" @change="onDbTypeChange">
@@ -226,17 +254,51 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { api, withBase } from '../api'
 const graphs = ref([]); const curGraph = ref(null); const tab = ref('view')
 const entities = ref([]); const nodes = ref([]); const edges = ref([]); const versions = ref([])
 const focusId = ref(''); const depth = ref(1)
-const graphOpen = ref(false); const graphForm = ref({ name: '', db_type: 'sqlite', description: '' }); const n4cfg = ref({})
+const graphOpen = ref(false); const graphForm = ref({ name: '', space_id: 0, db_type: 'sqlite', description: '' }); const n4cfg = ref({})
 const entityOpen = ref(false); const entityForm = ref({ id: null, name: '', props_schema: '[]' })
 const nodeOpen = ref(false); const nodeForm = ref({ id: null, entity_id: 0, name: '', props: '{}' })
 const edgeOpen = ref(false); const edgeForm = ref({ id: null, source_id: '', rel_type: '', target_id: '' })
 const verDetail = ref(null)
 const pub = ref({})
+// 图谱空间（对齐知识库 space 模型）
+const spaces = ref([]); const selSpace = ref(0)
+const spaceOpen = ref(false); const spaceForm = ref({ name: '', description: '' })
+const tree = computed(() => {
+  const groups = spaces.value.map(s => ({ id: s.id, name: s.name, description: s.description, open: s.open, children: [] }))
+  for (const g of graphs.value) {
+    const sp = groups.find(x => x.id === g.space_id)
+    if (sp) sp.children.push(g)
+  }
+  return groups
+})
+function toggleGroup(sp) {
+  const s = spaces.value.find(x => x.id === sp.id)
+  if (s) s.open = !s.open
+  selSpace.value = sp.id; curGraph.value = null
+}
+async function loadSpaces() {
+  const r = await api(withBase('/api/graphs/spaces'))
+  if (r.code === 0) {
+    const prev = new Map(spaces.value.map(s => [s.id, s.open]))
+    spaces.value = r.data.map(s => ({ ...s, open: prev.get(s.id) ?? true }))
+  }
+}
+async function saveSpace() {
+  if (!spaceForm.value.name.trim()) { alert('空间名不能为空'); return }
+  const r = await api(withBase('/api/graphs/spaces'), { method: 'POST', body: JSON.stringify(spaceForm.value) })
+  if (r.code === 0) { spaceOpen.value = false; spaceForm.value = { name: '', description: '' }; loadSpaces() }
+  else alert(r.detail || '失败')
+}
+async function delSpace(sp) {
+  if (!confirm(`删除图谱空间「${sp.name}」？（空间下需无图谱方可删除）`)) return
+  const r = await api(withBase('/api/graphs/spaces/' + sp.id), { method: 'DELETE' })
+  if (r.code === 0) { if (selSpace.value === sp.id) selSpace.value = 0; loadSpaces() } else alert(r.detail || '失败')
+}
 async function loadPub() {
   try {
     const res = await fetch('/api/configs?size=100').catch(() => fetch('http://localhost:38087/api/configs?size=100'))
@@ -244,7 +306,7 @@ async function loadPub() {
     if (r.code === 0) { const m = {}; for (const it of (r.data.list || r.data || [])) m[it.configKey] = it.configValue; pub.value = m }
   } catch {}
 }
-onMounted(() => { loadPub(); loadGraphs() })
+onMounted(() => { loadPub(); loadGraphs(); loadSpaces() })
 
 async function loadGraphs() {
   const r = await api(withBase('/api/graphs'))
@@ -298,21 +360,24 @@ function onDbTypeChange() {
 }
 function openNewGraph() {
   const p = pub.value
-  graphForm.value = { name: '', db_type: 'sqlite', description: '' }
+  // 图谱必须归属空间：默认当前空间，否则取第一个空间
+  const sid = selSpace.value || (spaces.value[0]?.id ?? 0)
+  graphForm.value = { name: '', space_id: sid, db_type: 'sqlite', description: '' }
   n4cfg.value = { uri: p['graph.neo4j.url'] || 'http://localhost:7474', user: p['graph.neo4j.user'] || 'neo4j', password: p['graph.neo4j.password'] || '' }
   graphOpen.value = true
 }
 async function saveGraph() {
+  if (!graphForm.value.space_id) { alert('图谱必须归属图谱空间，请先选择空间'); return }
   const body = { ...graphForm.value, db_config: graphForm.value.db_type === 'neo4j' ? JSON.stringify(n4cfg.value) : '' }
   const r = await api(withBase('/api/graphs'), { method: 'POST', body: JSON.stringify(body) })
-  if (r.code === 0) { graphOpen.value = false; graphForm.value = { name: '', db_type: 'sqlite', description: '' }; loadGraphs(); curGraph.value = r.data; loadGraph() }
+  if (r.code === 0) { graphOpen.value = false; loadGraphs(); loadSpaces(); curGraph.value = r.data; loadGraph() }
   else alert(r.detail || '失败（Neo4j 连接失败请检查地址/凭据）')
 }
 async function delGraph(g) {
   if (!confirm(`删除图谱「${g.name}」及其全部数据${g.db_type === 'neo4j' ? '（含 Neo4j 节点）' : ''}？`)) return
   await api(withBase('/api/graphs/' + g.id), { method: 'DELETE' })
   if (curGraph.value?.id === g.id) curGraph.value = null
-  loadGraphs()
+  loadGraphs(); loadSpaces()
 }
 function editEntity(e) { entityForm.value = { id: e.id, name: e.name, props_schema: e.props_schema || '[]' }; entityOpen.value = true }
 async function saveEntity() {
@@ -365,12 +430,33 @@ async function restoreVersion(v) {
 
 <style>
 .graph-layout { display: flex; gap: 12px; flex: 1; min-height: 0; align-items: flex-start; }
-.graph-side-left { width: 220px; flex-shrink: 0; overflow-y: auto; max-height: 620px; }
-.side-row { display: flex; align-items: center; gap: 8px; padding: 10px 14px; border-bottom: 1px solid var(--border-light); }
-.side-row.active { background: var(--bg-soft); }
+.graph-side-left { width: 280px; flex-shrink: 0; overflow-y: auto; max-height: calc(100vh - 160px); position: sticky; top: 12px; }
+/* 手风琴（对齐知识库 Kb.vue） */
+.acc-group { border: 1px solid #e9ebf0; border-radius: 10px; margin-bottom: 8px; overflow: hidden; background: #fff; transition: border-color .18s, box-shadow .18s; }
+.acc-group:hover { border-color: #c9d3ee; }
+.acc-group.open { box-shadow: 0 1px 6px rgba(77, 107, 254, .07); }
+.acc-head { padding: 9px 12px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 8px; background: #f8f9fb; user-select: none; }
+.acc-group.open .acc-head { background: #f3f5fd; }
+.acc-head.active { background: rgba(77, 107, 254, .12); color: #4d6bfe; font-weight: 600; }
+.acc-arrow { color: #9aa3b5; font-size: 9px; transition: transform .22s ease; width: 12px; text-align: center; }
+.acc-group.open .acc-arrow { transform: rotate(90deg); color: #4d6bfe; }
+.acc-body { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows .24s ease, opacity .18s ease; }
+.acc-group.open .acc-body { grid-template-rows: 1fr; opacity: 1; }
+.acc-body-inner { overflow: hidden; min-height: 0; padding: 0 4px; }
+.acc-group.open .acc-body-inner { padding: 4px; }
+.acc-item { display: flex; align-items: center; gap: 7px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 13px; }
+.acc-item:hover { background: #f5f6fa; }
+.acc-item.active { background: rgba(77, 107, 254, .09); color: #4d6bfe; font-weight: 600; }
+.tree-ico { font-size: 13px; }
+.tree-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.tree-badge { font-size: 11px; color: #6b7280; background: #fff; border: 1px solid #e5e7eb; border-radius: 10px; padding: 1px 8px; white-space: nowrap; }
+.tree-del { color: #c3cad8; font-size: 14px; padding: 0 3px; visibility: hidden; }
+.acc-head:hover .tree-del, .acc-item:hover .tree-del { visibility: visible; }
+.tree-del:hover { color: #ef4444; }
+.tree-empty { padding: 6px 12px 6px 34px; }
 .db-icon { width: 30px; height: 22px; border-radius: 5px; background: #6b7280; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .db-icon.neo { background: #018bff; }
-.dot-mini { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.dot-mini { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot-mini.green { background: #22c55e; }
 .dot-mini.red { background: #ef4444; }
 .graph-svg { width: 100%; height: 560px; background: var(--bg-soft); border-radius: 10px; }

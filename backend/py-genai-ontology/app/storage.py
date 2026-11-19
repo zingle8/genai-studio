@@ -14,6 +14,9 @@ def conn():
 def init_db():
     with conn() as c:
         c.executescript("""
+        CREATE TABLE IF NOT EXISTS tb_onto_space(
+          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
+          description TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
         CREATE TABLE IF NOT EXISTS tb_ontology(
           id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, scope TEXT DEFAULT 'domain',
           namespace TEXT DEFAULT '', authority TEXT DEFAULT 'normal', version TEXT DEFAULT 'v1',
@@ -33,6 +36,20 @@ def init_db():
           id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT DEFAULT 'builtin-demo',
           config TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
         """)
+        # 本体归属空间（对齐知识库 space 模型）
+        try:
+            c.execute("ALTER TABLE tb_ontology ADD COLUMN space_id INTEGER DEFAULT 0")
+            c.commit()
+        except Exception:
+            pass
+
+
+def migrate_ensure_space():
+    """本体必须归属本体空间：保证至少一个空间存在，并把未归属的存量本体归入默认空间"""
+    if not one("SELECT id FROM tb_onto_space LIMIT 1"):
+        run("INSERT INTO tb_onto_space(name, description) VALUES('默认空间','系统自动创建')")
+    d = one("SELECT id FROM tb_onto_space ORDER BY id LIMIT 1")
+    run("UPDATE tb_ontology SET space_id=? WHERE space_id IS NULL OR space_id=0", (d["id"],))
 
 
 def rows(sql, args=()):
@@ -61,3 +78,4 @@ def exec_many(sql_list):
 
 
 init_db()
+migrate_ensure_space()

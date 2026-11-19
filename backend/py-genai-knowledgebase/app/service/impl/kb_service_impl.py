@@ -205,13 +205,18 @@ class KbServiceImpl(KbService):
         kb = storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,))
         if not kb:
             raise HTTPException(404, "知识库不存在")
+        hits, backend = self._search_kw_one(kb, q, top_k)
+        return {"hits": hits, "backend": backend}
+
+    def _search_kw_one(self, kb, q, top_k):
+        """单库关键词检索（分词 OR + 命中词数排序），返回 (hits, backend)"""
+        kid = kb["id"]
         t = kb.get("db_type", "sqlite")
         if t in ("es", "pg"):
             try:
-                hits, backend = storage.search_chunks(kb, kid, q, top_k)
+                return storage.search_chunks(kb, kid, q, top_k)
             except Exception as e:
                 raise HTTPException(400, f"{t} 检索失败：{e}")
-            return {"hits": hits, "backend": backend}
         # 内置：多词关键词打分
         terms = [x for x in q.replace("，", " ").replace("。", " ").split() if x] or [q.strip()]
         chunks = storage.rows("SELECT id, doc_id, idx, content FROM tb_kb_chunk WHERE kb_id=?", (kid,))
@@ -223,17 +228,48 @@ class KbServiceImpl(KbService):
                 scored.append({"chunkId": c["id"], "docId": c["doc_id"], "doc": doc["name"] if doc else "",
                                "idx": c["idx"], "score": score, "content": c["content"][:400]})
         scored.sort(key=lambda x: -x["score"])
-        return {"hits": scored[:top_k], "backend": "sqlite"}
+        return scored[:top_k], "sqlite"
 
-    def semantic_search(self, kid: int, q: str, top_k: int = 5) -> dict:
-        """语义检索：bge-m3 向量化 query + 全部分块，余弦相似度排序"""
-        kb = storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,))
-        if not kb:
-            raise HTTPException(404, "知识库不存在")
-        chunks = storage.all_chunks(kb, kid)
-        if not chunks:
-            return {"hits": [], "backend": "semantic"}
-        texts = [q] + [(c["content"] or "")[:512] for c in chunks]
+    def search_multi(self, space_id: int = 0, kb_id: int = 0, q: str = "", top_k: int = 5, mode: str = "kw") -> dict:
+        """跨空间/跨库聚合检索，结果带空间/知识库字段"""
+        where, args = "", []
+        if kb_id:
+            where, args = "WHERE id=?", [kb_id]
+        elif space_id:
+            where, args = "WHERE space_id=?", [space_id]
+        kbs = storage.rows(f"SELECT * FROM tb_kb {where} ORDER BY id DESC", args)
+        if mode == "sem":
+            return self._search_sem_multi(kbs, q, top_k)
+        scored = []
+        for kb in kbs:
+            try:
+                hits, _ = self._search_kw_one(kb, q, top_k)
+            except HTTPException:
+                continue
+            meta = self._kb_meta(kb)
+            for h in hits:
+                h.update(meta)
+                scored.append(h)
+        scored.sort(key=lambda x: -x["score"])
+        return {"hits": scored[:top_k], "backend": "multi-kw"}
+
+    def _kb_meta(self, kb) -> dict:
+        sp = storage.one("SELECT name FROM tb_kb_space WHERE id=?", (kb.get("space_id", 0),))
+        return {"kbId": kb["id"], "kbName": kb["name"], "spaceId": kb.get("space_id", 0),
+                "spaceName": sp["name"] if sp else ""}
+
+    def _search_sem_multi(self, kbs, q, top_k):
+        """跨库语义检索：合并全部库分块一次向量化，余弦排序"""
+        pairs = []  # (kb, chunk)
+        for kb in kbs:
+            try:
+                for c in storage.all_chunks(kb, kb["id"]):
+                    pairs.append((kb, c))
+            except Exception:
+                continue
+        if not pairs:
+            return {"hits": [], "backend": "semantic:" + settings.embedding_model}
+        texts = [q] + [(c.get("content") or "")[:512] for _, c in pairs]
         import requests as _rq
         try:
             r = _rq.post(settings.embedding_base + "/v1/embeddings",
@@ -247,17 +283,26 @@ class KbServiceImpl(KbService):
             raise HTTPException(503, f"语义检索不可用（embedding 服务）：{e}")
         qv = self._normalize(vecs[0])
         scored = []
-        for c, v in zip(chunks, vecs[1:]):
+        for (kb, c), v in zip(pairs, vecs[1:]):
             cos = sum(a * b for a, b in zip(qv, self._normalize(v)))
             did = c.get("docId", c.get("doc_id"))
             doc = c.get("doc") or ""
             if not doc and did:
                 d = storage.one("SELECT name FROM tb_kb_doc WHERE id=?", (did,))
                 doc = d["name"] if d else ""
-            scored.append({"chunkId": c["chunkId"], "docId": did, "doc": doc,
-                           "idx": c["idx"], "score": round(cos, 4), "content": c["content"][:400]})
+            hit = {"chunkId": c["chunkId"], "docId": did, "doc": doc,
+                   "idx": c["idx"], "score": round(cos, 4), "content": c["content"][:400]}
+            hit.update(self._kb_meta(kb))
+            scored.append(hit)
         scored.sort(key=lambda x: -x["score"])
         return {"hits": scored[:top_k], "backend": "semantic:" + settings.embedding_model}
+
+    def semantic_search(self, kid: int, q: str, top_k: int = 5) -> dict:
+        """语义检索：bge-m3 向量化 query + 全部分块，余弦相似度排序"""
+        kb = storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,))
+        if not kb:
+            raise HTTPException(404, "知识库不存在")
+        return self._search_sem_multi([kb], q, top_k)
 
     @staticmethod
     def _normalize(vec) -> list:

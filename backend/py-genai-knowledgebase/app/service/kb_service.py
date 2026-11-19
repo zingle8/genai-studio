@@ -54,3 +54,6 @@ class KbService(abc.ABC):
 
     @abc.abstractmethod
     def semantic_search(self, kid: int, q: str, top_k: int = 5) -> dict: ...
+
+    @abc.abstractmethod
+    def search_multi(self, space_id: int = 0, kb_id: int = 0, q: str = "", top_k: int = 5, mode: str = "kw") -> dict: ...

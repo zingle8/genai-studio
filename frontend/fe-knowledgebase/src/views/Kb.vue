@@ -122,6 +122,14 @@
         <!-- 关键词检索 -->
         <div v-else-if="subTab === 'kw'" class="panel-body">
           <div class="row-head" style="gap:8px; flex-wrap:nowrap;">
+            <select class="form-input" v-model="filterSpace" style="width:150px; flex-shrink:0;" @change="filterKb = 0">
+              <option :value="0">全部空间</option>
+              <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+            <select class="form-input" v-model="filterKb" style="width:170px; flex-shrink:0;">
+              <option :value="0">全部知识库</option>
+              <option v-for="k in filterKbs" :key="k.id" :value="k.id">{{ k.name }}</option>
+            </select>
             <input class="form-input" v-model="query" placeholder="关键词检索：按字面分词匹配，多个词空格分隔" @keyup.enter="search('kw')" style="flex:1; min-width:180px;" />
             <button class="btn btn-primary" style="flex-shrink:0;" @click="search('kw')" :disabled="!query.trim() || searching">{{ searching ? '检索中…' : '检索' }}</button>
           </div>
@@ -129,8 +137,8 @@
             <div class="text-xs muted" style="margin:10px 0;">
               命中 {{ hits.length }} 条 <template v-if="lastBackend">（{{ backendLabel(lastBackend) }}）</template>
             </div>
-            <div class="hit" v-for="h in hits" :key="h.chunkId + '-' + h.idx">
-              <span class="tag">{{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
+            <div class="hit" v-for="h in hits" :key="h.kbId + '-' + h.chunkId + '-' + h.idx">
+              <span class="tag">{{ h.spaceName }} / {{ h.kbName }} · {{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
               <div class="hit-text">{{ h.content }}</div>
             </div>
             <div v-if="!hits.length" class="text-sm muted">无命中</div>
@@ -140,18 +148,26 @@
         <!-- 语义检索 -->
         <div v-else-if="subTab === 'sem'" class="panel-body">
           <div class="row-head" style="gap:8px; flex-wrap:nowrap;">
+            <select class="form-input" v-model="filterSpace" style="width:150px; flex-shrink:0;" @change="filterKb = 0">
+              <option :value="0">全部空间</option>
+              <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
+            </select>
+            <select class="form-input" v-model="filterKb" style="width:170px; flex-shrink:0;">
+              <option :value="0">全部知识库</option>
+              <option v-for="k in filterKbs" :key="k.id" :value="k.id">{{ k.name }}</option>
+            </select>
             <input class="form-input" v-model="query" placeholder="语义检索：支持同义/近义表述，如「费用怎么算」" @keyup.enter="search('sem')" style="flex:1; min-width:180px;" />
             <button class="btn btn-primary" style="flex-shrink:0;" @click="search('sem')" :disabled="!query.trim() || searching">{{ searching ? '检索中…' : '检索' }}</button>
           </div>
           <div class="text-xs muted" style="margin-top:6px;">
-            语义检索调用向量服务（{{ semModel || 'bge-m3' }}）对查询与全部分块编码后按余弦相似度排序，chunk 较多时首次稍慢。
+            语义检索调用向量服务（{{ semModel || 'bge-m3' }}）对查询与全部已选知识库分块编码后按余弦相似度排序，范围越大首次越慢。
           </div>
           <div v-if="searched" class="search-res">
             <div class="text-xs muted" style="margin:10px 0;">
               命中 {{ hits.length }} 条 <template v-if="lastBackend">（{{ backendLabel(lastBackend) }}）</template>
             </div>
-            <div class="hit" v-for="h in hits" :key="h.chunkId + '-' + h.idx">
-              <span class="tag">{{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
+            <div class="hit" v-for="h in hits" :key="h.kbId + '-' + h.chunkId + '-' + h.idx">
+              <span class="tag">{{ h.spaceName }} / {{ h.kbName }} · {{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
               <div class="hit-text">{{ h.content }}</div>
             </div>
             <div v-if="!hits.length" class="text-sm muted">无命中</div>
@@ -280,6 +296,8 @@ const docOpen = ref(false); const docFile = ref(null); const docText = ref(''); 
 const chunkOpen = ref(false); const chunkDoc = ref(null); const chunks = ref([])
 const query = ref(''); const hits = ref([]); const searched = ref(false); const lastBackend = ref('')
 const searching = ref(false); const semModel = ref('')
+const filterSpace = ref(0); const filterKb = ref(0)
+const filterKbs = computed(() => filterSpace.value ? allKbs.value.filter(k => k.space_id === filterSpace.value) : allKbs.value)
 function resetSearch(t) {
   subTab.value = t; searched.value = false; hits.value = []; lastBackend.value = ''
 }
@@ -332,7 +350,11 @@ function toggleGroup(g) {
   if (s) s.open = !s.open          // 状态落在 reactive 源数据上，computed 树才会响应
   selSpace.value = g.id; selKb.value = null
 }
-async function pickKb(k) { selKb.value = k; subTab.value = 'docs'; searched.value = false; hits.value = []; await loadDocs() }
+async function pickKb(k) {
+  selKb.value = k; subTab.value = 'docs'; searched.value = false; hits.value = []
+  filterSpace.value = k.space_id; filterKb.value = k.id   // 检索过滤默认当前库
+  await loadDocs()
+}
 function backToSpace() { selSpace.value = selKb.value.space_id; selKb.value = null }
 async function loadDocs() { if (!selKb.value) return; const r = await api(`/api/kb/${selKb.value.id}/docs`); if (r.code === 0) docs.value = r.data }
 
@@ -421,11 +443,14 @@ async function viewChunks(d) {
   if (r.code === 0) { chunks.value = r.data; chunkOpen.value = true }
 }
 async function search(mode) {
-  if (!query.value.trim() || !selKb.value) return
+  if (!query.value.trim()) return
   searched.value = true; searching.value = true
   try {
-    const path = mode === 'sem' ? 'semantic_search' : 'search'
-    const r = await api(`/api/kb/${selKb.value.id}/${path}?q=` + encodeURIComponent(query.value))
+    const p = new URLSearchParams({
+      space_id: filterSpace.value, kb_id: filterKb.value,
+      q: query.value, top_k: 8, mode: mode === 'sem' ? 'sem' : 'kw'
+    })
+    const r = await api('/api/kb/search_multi?' + p.toString())
     if (r.code === 0) {
       hits.value = r.data; lastBackend.value = r.backend
       if (mode === 'sem' && (r.backend || '').startsWith('semantic:'))

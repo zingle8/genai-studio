@@ -15,6 +15,16 @@ def create_routers(service):
     async def kb_options():
         return {"code": 0, "data": service.options()}
 
+    @router.get("/api/kb/search_multi")
+    async def kb_search_multi(space_id: int = 0, kb_id: int = 0, q: str = "", top_k: int = 5, mode: str = "kw"):
+        """跨空间/跨库聚合检索（kw=关键词 / sem=语义），结果带 spaceName/kbName"""
+        if not q.strip():
+            raise HTTPException(400, "q 不能为空")
+        if mode not in ("kw", "sem"):
+            raise HTTPException(400, "mode 仅支持 kw / sem")
+        r = service.search_multi(space_id, kb_id, q, top_k, mode)
+        return {"code": 0, "data": r["hits"], "total": len(r["hits"]), "backend": r["backend"]}
+
     @router.post("/api/kb/ping")
     async def kb_ping(b: PingIn):
         r = service.ping(b.db_type, b.db_config)

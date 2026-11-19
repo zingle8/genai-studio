@@ -9,7 +9,7 @@ from config import settings
 from gateway_report import GatewayReport
 from storage import rows, run, one, exec_many
 from checker import check_ontology
-from parser import parse_ttl, to_ttl
+from parser import parse_ttl, parse_yaml, to_ttl, to_yaml
 
 app = FastAPI(title="py-genai-ontology")
 report: Optional[GatewayReport] = None
@@ -85,6 +85,7 @@ class MapIn(BaseModel):
 class ImportIn(BaseModel):
     ontologyId: int
     text: str
+    format: str = "ttl"            # ttl / yaml
 
 
 # ========== 本体空间（对齐知识库空间模型；须先于 /api/onto/{oid} 模板注册） ==========
@@ -174,6 +175,20 @@ async def add_class(body: ClassIn):
     return {"code": 0}
 
 
+@app.put("/api/onto/classes/{cid}")
+async def update_class(cid: int, body: ClassIn):
+    """表单模式下编辑类定义"""
+    if not body.name.strip():
+        raise HTTPException(400, "类名不能为空")
+    dup = one("SELECT id FROM tb_onto_class WHERE ontology_id=? AND name=? AND id<>?",
+              (body.ontologyId, body.name.strip(), cid))
+    if dup:
+        raise HTTPException(400, f"类 {body.name} 已存在（同名类不可重复定义）")
+    run("UPDATE tb_onto_class SET name=?, parent_name=?, comment=? WHERE id=?",
+        (body.name.strip(), body.parentName, body.comment, cid))
+    return {"code": 0}
+
+
 @app.delete("/api/onto/classes/{cid}")
 async def del_class(cid: int):
     run("DELETE FROM tb_onto_class WHERE id=?", (cid,))
@@ -197,6 +212,24 @@ async def add_rel(body: RelIn):
     return {"code": 0}
 
 
+@app.put("/api/onto/rels/{rid}")
+async def update_rel(rid: int, body: RelIn):
+    """表单模式下编辑关系规则"""
+    if not body.name.strip():
+        raise HTTPException(400, "关系名不能为空")
+    if body.cardinality not in ("one", "many"):
+        raise HTTPException(400, "cardinality 只能为 one/many")
+    dup = one("SELECT id FROM tb_onto_rel WHERE ontology_id=? AND name=? AND subj_class=? AND obj_class=? AND id<>?",
+              (body.ontologyId, body.name.strip(), body.subjClass, body.objClass, rid))
+    if dup:
+        raise HTTPException(400, f"关系规则重复：{body.subjClass} --{body.name}--> {body.objClass} 已定义")
+    run("UPDATE tb_onto_rel SET name=?, subj_class=?, obj_class=?, cardinality=?, nullable=?, inherits_from=?, comment=?"
+        " WHERE id=?",
+        (body.name.strip(), body.subjClass, body.objClass, body.cardinality,
+         1 if body.nullable else 0, body.inheritsFrom, body.comment, rid))
+    return {"code": 0}
+
+
 @app.delete("/api/onto/rels/{rid}")
 async def del_rel(rid: int):
     run("DELETE FROM tb_onto_rel WHERE id=?", (rid,))
@@ -216,18 +249,25 @@ async def del_map(mid: int):
     return {"code": 0}
 
 
-# ========== 导入 / 导出 / 一致性检查 ==========
+# ========== 导入 / 导出 / 一致性检查（Turtle 与 YAML 双格式） ==========
 @app.post("/api/onto/import")
-async def import_ttl(body: ImportIn):
+async def import_onto(body: ImportIn):
+    if body.format == "yaml":
+        parsed_fn = parse_yaml
+    elif body.format == "ttl":
+        parsed_fn = parse_ttl
+    else:
+        raise HTTPException(400, "format 仅支持 ttl / yaml")
     try:
-        parsed = parse_ttl(body.text)
+        parsed = parsed_fn(body.text)
     except ValueError as e:
         raise HTTPException(400, str(e))
     oid = body.ontologyId
     sqls, n_class, n_rel = [], 0, 0
     for c in parsed["classes"]:
         if not one("SELECT id FROM tb_onto_class WHERE ontology_id=? AND name=?", (oid, c["name"])):
-            sqls.append(("INSERT INTO tb_onto_class(ontology_id, name, comment) VALUES(?,?,?)", (oid, c["name"], c["comment"])))
+            sqls.append(("INSERT INTO tb_onto_class(ontology_id, name, parent_name, comment) VALUES(?,?,?,?)",
+                         (oid, c["name"], c.get("parent", ""), c["comment"])))
             n_class += 1
     for r in parsed["rels"]:
         if not one("SELECT id FROM tb_onto_rel WHERE ontology_id=? AND name=? AND subj_class=? AND obj_class=?",
@@ -240,10 +280,13 @@ async def import_ttl(body: ImportIn):
 
 
 @app.get("/api/onto/{oid}/export")
-async def export_ttl(oid: int):
+async def export_onto(oid: int, format: str = "ttl"):
+    if format not in ("ttl", "yaml"):
+        raise HTTPException(400, "format 仅支持 ttl / yaml")
     data = {"classes": rows("SELECT * FROM tb_onto_class WHERE ontology_id=?", (oid,)),
             "rels": rows("SELECT * FROM tb_onto_rel WHERE ontology_id=?", (oid,))}
-    return {"code": 0, "data": {"text": to_ttl(data)}}
+    text = to_yaml(data) if format == "yaml" else to_ttl(data)
+    return {"code": 0, "data": {"text": text, "format": format}}
 
 
 @app.get("/api/onto/{oid}/check")

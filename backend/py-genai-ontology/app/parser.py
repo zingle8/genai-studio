@@ -1,10 +1,22 @@
 # -*- coding: utf-8 -*-
-"""Turtle 风格本体 DSL 解析（正则简化版，支持 Class 与 Relation 定义）"""
+"""本体 DSL 解析（正则简化版）：Turtle 风格 与 YAML 双格式，支持 Class 与 Relation 定义"""
 import re
 
-# 文本格式：
+import yaml
+
+# 文本格式一（Turtle）：
 # <Person> a :Class ; comment "人员" .
 # <worksFor> a :Relation ; domain <Person> ; range <Company> ; cardinality "many" ; nullable false .
+# 文本格式二（YAML）：
+# classes:
+#   - name: Person
+#     comment: 人员
+# rels:
+#   - name: worksFor
+#     subj: Person
+#     obj: Company
+#     cardinality: many
+#     nullable: true
 
 
 def parse_ttl(text):
@@ -41,6 +53,78 @@ def parse_ttl(text):
                 "comment": props.get("comment", ""),
             })
     return {"classes": classes, "rels": rels}
+
+
+def parse_yaml(text):
+    """解析 YAML 为与 parse_ttl 相同结构；解析失败抛 ValueError
+
+    格式：
+    classes:
+      - name: Person
+        comment: 人员
+        parent: 组织        # 可选，父类
+    rels:
+      - name: worksFor
+        subj: Person        # 或 domain
+        obj: Company        # 或 range
+        cardinality: many   # one / many（默认 many）
+        nullable: true      # 默认 true
+        inherits: ''        # 可选，继承关系名
+        comment: ''
+    """
+    try:
+        doc = yaml.safe_load(text or "")
+    except yaml.YAMLError as e:
+        raise ValueError(f"YAML 语法错误：{str(e).splitlines()[0][:120]}")
+    if doc is None:
+        return {"classes": [], "rels": []}
+    if not isinstance(doc, dict):
+        raise ValueError("YAML 顶层必须是映射（classes / rels）")
+    classes, rels = [], []
+    for c in doc.get("classes") or []:
+        if not isinstance(c, dict) or not str(c.get("name", "")).strip():
+            raise ValueError("classes 每项需含 name 字段")
+        classes.append({"name": str(c["name"]).strip(), "comment": str(c.get("comment") or ""),
+                        "parent": str(c.get("parent") or c.get("parentName") or "")})
+    for r in doc.get("rels") or []:
+        if not isinstance(r, dict) or not str(r.get("name", "")).strip():
+            raise ValueError("rels 每项需含 name 字段")
+        subj = r.get("subj", r.get("domain"))
+        obj = r.get("obj", r.get("range"))
+        if not subj or not obj:
+            raise ValueError(f"关系 {r['name']} 缺少 subj/obj（或 domain/range）")
+        card = str(r.get("cardinality", "many"))
+        if card not in ("one", "many"):
+            raise ValueError(f"关系 {r['name']} 的 cardinality 只能是 one 或 many，收到 {card}")
+        rels.append({
+            "name": str(r["name"]).strip(), "subj": str(subj).strip(), "obj": str(obj).strip(),
+            "cardinality": card,
+            "nullable": r.get("nullable", True) is not False and str(r.get("nullable", "true")).lower() != "false",
+            "inherits": str(r.get("inherits") or r.get("inheritsFrom") or ""),
+            "comment": str(r.get("comment") or ""),
+        })
+    return {"classes": classes, "rels": rels}
+
+
+def to_yaml(oid_data):
+    """将本体（类+规则）导出为 YAML 文本"""
+    doc = {"classes": [], "rels": []}
+    for c in oid_data["classes"]:
+        item = {"name": c["name"]}
+        if c.get("parent_name"):
+            item["parent"] = c["parent_name"]
+        if c.get("comment"):
+            item["comment"] = c["comment"]
+        doc["classes"].append(item)
+    for r in oid_data["rels"]:
+        item = {"name": r["name"], "subj": r["subj_class"], "obj": r["obj_class"],
+                "cardinality": r.get("cardinality", "many"), "nullable": bool(r.get("nullable", 1))}
+        if r.get("inherits_from"):
+            item["inherits"] = r["inherits_from"]
+        if r.get("comment"):
+            item["comment"] = r["comment"]
+        doc["rels"].append(item)
+    return yaml.safe_dump(doc, allow_unicode=True, sort_keys=False, default_flow_style=False)
 
 
 def to_ttl(oid_data):

@@ -25,7 +25,7 @@
             <span class="tree-del" @click.stop="delSpace(sp)" title="删除空间">×</span>
           </div>
           <div class="acc-body"><div class="acc-body-inner">
-            <div v-for="o in sp.children" :key="o.id" class="onto-item" :class="{on: cur?.id===o.id}" @click="selectOnto(o)">
+            <div v-for="o in sp.children" :key="o.id" class="onto-item" :class="{on: cur?.id===o.id}" @click="tab='graph'; selectOnto(o)">
               <div class="onto-name"><span class="scope-dot" :class="o.scope"></span>{{ o.name }}</div>
               <div class="text-xs muted">{{ o.scope==='domain' ? '领域' : '个人' }} · {{ o.class_count }} 类 / {{ o.rel_count }} 规则</div>
             </div>
@@ -40,7 +40,7 @@
           <div class="onto-cur"><b>{{ cur.name }}</b><span class="text-xs muted" style="margin-left:8px;">ns: {{ cur.namespace || '-' }}</span></div>
           <div class="tab-btns">
             <button :class="{on: tab==='graph'}" @click="tab='graph'">关系节点图</button>
-            <button :class="{on: tab==='text'}" @click="tab='text'">文本定义</button>
+            <button :class="{on: tab==='text'}" @click="tab='text'; onTextTab()">文本定义</button>
             <button :class="{on: tab==='check'}" @click="tab='check'">一致性检查</button>
             <button :class="{on: tab==='data'}" @click="tab='data'">数据映射</button>
           </div>
@@ -97,13 +97,79 @@
         </div>
 
         <div v-show="tab==='text'" class="panel">
-          <div class="text-hint">Turtle 风格 DSL：<code>&lt;类名&gt; a :Class ; comment "…"</code> ／ <code>&lt;关系名&gt; a :Relation ; domain &lt;A&gt; ; range &lt;B&gt; ; cardinality "one|many" ; nullable true|false ; inherits &lt;关系&gt;</code></div>
-          <textarea class="ttl-box" v-model="ttlText" spellcheck="false"></textarea>
-          <div class="text-actions">
-            <button class="btn btn-primary btn-sm" @click="importTtl">导入（解析并入库，自动检查）</button>
-            <button class="btn btn-secondary btn-sm" @click="exportTtl">导出当前本体为文本</button>
-            <span class="text-xs muted">导入时同名类/同规则自动跳过，不覆盖已有定义</span>
+          <div class="text-toolbar">
+            <div class="fmt-switch">
+              <button :class="{on: fmt==='form'}" @click="switchFmt('form')">表单</button>
+              <button :class="{on: fmt==='yaml'}" @click="switchFmt('yaml')">YAML</button>
+              <button :class="{on: fmt==='ttl'}" @click="switchFmt('ttl')">Turtle</button>
+            </div>
+            <span class="text-xs muted">
+              <template v-if="fmt==='form'">表单模式：逐条增删改类与关系规则，保存后立即生效，无需导入</template>
+              <template v-else-if="fmt==='yaml'">YAML 格式：classes/rels 列表，类含 name/comment/parent，关系含 name/subj/obj/cardinality/nullable/inherits</template>
+              <template v-else>Turtle 风格 DSL：<code>&lt;类名&gt; a :Class ; comment "…"</code> ／ <code>&lt;关系名&gt; a :Relation ; domain &lt;A&gt; ; range &lt;B&gt; ; cardinality "one|many" ; nullable true|false ; inherits &lt;关系&gt;</code></template>
+            </span>
           </div>
+
+          <template v-if="fmt==='form'">
+            <div class="sec-t">类定义（{{ classes.length }}）</div>
+            <div class="form-table-wrap"><table class="form-def-table">
+              <thead><tr><th>类名</th><th>父类</th><th>说明</th><th style="width:96px;">操作</th></tr></thead>
+              <tbody>
+                <tr v-for="c in classes" :key="c.id">
+                  <td><input class="form-input" v-model="c.name" /></td>
+                  <td><input class="form-input" v-model="c.parent_name" placeholder="可空" /></td>
+                  <td><input class="form-input" v-model="c.comment" placeholder="可空" /></td>
+                  <td class="text-right" style="white-space:nowrap;">
+                    <button class="link-btn" @click="saveClass(c)">保存</button>
+                    <button class="link-btn danger" @click="delClass(c)">删</button>
+                  </td>
+                </tr>
+                <tr class="add-row">
+                  <td><input class="form-input" v-model="clsForm.name" placeholder="新类名" /></td>
+                  <td><input class="form-input" v-model="clsForm.parentName" placeholder="父类（可空）" /></td>
+                  <td><input class="form-input" v-model="clsForm.comment" placeholder="说明（可空）" /></td>
+                  <td><button class="btn btn-primary btn-sm" @click="createClass">＋ 新增</button></td>
+                </tr>
+              </tbody>
+            </table></div>
+
+            <div class="sec-t">关系规则（{{ (cur._rels || []).length }}）</div>
+            <div class="form-table-wrap"><table class="form-def-table">
+              <thead><tr><th>关系名</th><th>主体类</th><th>客体类</th><th>基数</th><th>可空</th><th>说明</th><th style="width:96px;">操作</th></tr></thead>
+              <tbody>
+                <tr v-for="r in (cur._rels || [])" :key="r.id">
+                  <td><input class="form-input" v-model="r.name" /></td>
+                  <td><input class="form-input" v-model="r.subj_class" /></td>
+                  <td><input class="form-input" v-model="r.obj_class" /></td>
+                  <td><select class="form-select" v-model="r.cardinality"><option value="many">many</option><option value="one">one</option></select></td>
+                  <td><input type="checkbox" v-model="r.nullable" :true-value="1" :false-value="0" /></td>
+                  <td><input class="form-input" v-model="r.comment" placeholder="可空" /></td>
+                  <td style="white-space:nowrap;">
+                    <button class="link-btn" @click="saveRel(r)">保存</button>
+                    <button class="link-btn danger" @click="delRel(r)">删</button>
+                  </td>
+                </tr>
+                <tr class="add-row">
+                  <td><input class="form-input" v-model="relForm.name" placeholder="新关系名" /></td>
+                  <td><select class="form-select" v-model="relForm.subjClass"><option value="">主体类</option><option v-for="n in nodes" :key="n.id" :value="n.name">{{ n.name }}</option></select></td>
+                  <td><select class="form-select" v-model="relForm.objClass"><option value="">客体类</option><option v-for="n in nodes" :key="n.id" :value="n.name">{{ n.name }}</option></select></td>
+                  <td><select class="form-select" v-model="relForm.cardinality"><option value="many">many</option><option value="one">one</option></select></td>
+                  <td><input type="checkbox" v-model="relForm.nullable" /></td>
+                  <td><input class="form-input" v-model="relForm.inheritsFrom" placeholder="继承（可空）" /></td>
+                  <td><button class="btn btn-primary btn-sm" @click="createRel">＋ 新增</button></td>
+                </tr>
+              </tbody>
+            </table></div>
+          </template>
+
+          <template v-else>
+            <textarea class="ttl-box" v-model="ttlText" spellcheck="false"></textarea>
+            <div class="text-actions">
+              <button class="btn btn-primary btn-sm" @click="importText">导入（解析并入库，自动检查）</button>
+              <button class="btn btn-secondary btn-sm" @click="exportText">导出当前本体为{{ fmt==='yaml' ? ' YAML' : ' Turtle' }}文本</button>
+              <span class="text-xs muted">导入时同名类/同规则自动跳过，不覆盖已有定义；也可切换到「表单」逐条编辑</span>
+            </div>
+          </template>
         </div>
 
         <div v-show="tab==='check'" class="panel">
@@ -243,6 +309,16 @@ const newRelOpen = ref(false)
 const selNode = ref(null)
 const selEdge = ref(null)
 const ttlText = ref('')
+const fmt = ref('form')   // 本体定义方式：form=表单 / yaml / ttl
+function switchFmt(f) {
+  fmt.value = f
+  if (f === 'form') return
+  ttlText.value = ''
+  if (cur.value) exportText()
+}
+function onTextTab() {
+  if (cur.value && fmt.value !== 'form' && !ttlText.value.trim()) exportText()
+}
 const issues = ref([])
 const mappings = ref([])
 const graphData = ref({})
@@ -280,7 +356,7 @@ async function loadGraphData() {
 }
 async function selectOnto(o) {
   const r = await api(`/api/onto/${o.id}/full`)
-  if (r.code === 0) { cur.value = { ...r.data.ontology, _classes: r.data.classes, _rels: r.data.rels }; selNode.value = null; selEdge.value = null; tab.value = 'graph'; issues.value = []; await loadMappings() }
+  if (r.code === 0) { cur.value = { ...r.data.ontology, _classes: r.data.classes, _rels: r.data.rels }; selNode.value = null; selEdge.value = null; issues.value = []; await loadMappings() }
 }
 function openNewOnto() {
   // 本体必须归属空间：默认当前空间，否则取第一个空间
@@ -320,14 +396,31 @@ async function createRel() {
   newRelOpen.value = false; await selectOnto(cur.value)
 }
 async function delRel(e) { if (!confirm(`删除规则「${e.name}」？`)) return; await api(`/api/onto/rels/${e.id}`, { method: 'DELETE' }); await selectOnto(cur.value) }
+// ===== 表单模式：逐条保存类 / 关系规则 =====
+async function saveClass(c) {
+  const r = await api(`/api/onto/classes/${c.id}`, { method: 'PUT', body: {
+    ontologyId: cur.value.id, name: c.name, parentName: c.parent_name || '', comment: c.comment || '' } })
+  if (r.code !== 0) return alert(r.message || r.detail || '保存失败')
+  await selectOnto(cur.value)
+}
+async function saveRel(r0) {
+  const r = await api(`/api/onto/rels/${r0.id}`, { method: 'PUT', body: {
+    ontologyId: cur.value.id, name: r0.name, subjClass: r0.subj_class, objClass: r0.obj_class,
+    cardinality: r0.cardinality, nullable: !!r0.nullable, inheritsFrom: r0.inherits_from || '', comment: r0.comment || '' } })
+  if (r.code !== 0) return alert(r.message || r.detail || '保存失败')
+  await selectOnto(cur.value)
+}
 async function runCheck() { const r = await api(`/api/onto/${cur.value.id}/check`); if (r.code === 0) issues.value = r.data }
-async function importTtl() {
-  const r = await api('/api/onto/import', { method: 'POST', body: { ontologyId: cur.value.id, text: ttlText.value } })
+async function importText() {
+  const r = await api('/api/onto/import', { method: 'POST', body: { ontologyId: cur.value.id, text: ttlText.value, format: fmt.value } })
   if (r.code !== 0) return alert('解析失败：' + (r.message || r.detail || ''))
   alert(`导入完成：新增类 ${r.data.classes} 个 / 规则 ${r.data.rels} 条`)
-  issues.value = r.data.issues; await selectOnto(cur.value)
+  issues.value = r.data.issues; await selectOnto(cur.value); await loadSpaces()
 }
-async function exportTtl() { const r = await api(`/api/onto/${cur.value.id}/export`); if (r.code === 0) ttlText.value = r.data.text }
+async function exportText() {
+  const r = await api(`/api/onto/${cur.value.id}/export?format=${fmt.value}`)
+  if (r.code === 0) ttlText.value = r.data.text
+}
 async function loadMappings() { const r = await api(`/api/onto/${cur.value.id}/full`); if (r.code === 0) mappings.value = r.data.mappings }
 async function addMap() {
   if (!mapForm.value.ontoType || !mapForm.value.physicalType) return alert('请选择本体类型与物理类型')
@@ -395,6 +488,17 @@ async function loadView() { const r = await api(`/api/onto/${cur.value.id}/view-
 .sel-card { border: 1px solid var(--border-light, #e5e8ef); border-radius: 8px; padding: 10px; font-size: 13.5px; background: #fff; }
 
 /* 文本 */
+.form-table-wrap { overflow-x: auto; }
+.form-def-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.form-def-table th, .form-def-table td { text-align: left; padding: 5px 6px; border-bottom: 1px solid var(--border-light, #eef0f5); }
+.form-def-table th { color: var(--text-muted, #6b7280); font-weight: 600; }
+.form-def-table .form-input, .form-def-table .form-select { font-size: 12.5px; padding: 5px 7px; min-width: 80px; width: 100%; }
+.form-def-table .add-row { background: var(--bg-soft, #f7f8fa); }
+.link-btn.danger { color: #ef4444; margin-left: 8px; }
+.text-toolbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.fmt-switch { display: flex; gap: 2px; background: var(--bg-soft, #f0f2f7); border-radius: 8px; padding: 3px; flex-shrink: 0; }
+.fmt-switch button { border: none; background: transparent; padding: 4px 14px; border-radius: 6px; font-size: 12.5px; color: var(--text-muted, #6b7280); cursor: pointer; }
+.fmt-switch button.on { background: #fff; color: var(--primary, #4d6bfe); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.08); }
 .text-hint { font-size: 12px; color: var(--text-muted, #6b7280); line-height: 1.6; }
 .text-hint code { background: var(--bg-soft, #f0f2f7); border-radius: 4px; padding: 1px 5px; font-size: 11px; }
 .ttl-box { flex: 1; min-height: 260px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; line-height: 1.6; border: 1px solid var(--border-light, #e5e8ef); border-radius: 10px; padding: 12px; resize: none; background: #fdfdfe; }

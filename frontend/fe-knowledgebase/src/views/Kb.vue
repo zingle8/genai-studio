@@ -75,7 +75,7 @@
         </div>
       </template>
 
-      <!-- 面板 B：知识库详情（文档 | 检索测试 内嵌切换） -->
+      <!-- 面板 B：知识库详情（文档 | 关键词检索 | 语义检索 内嵌切换） -->
       <template v-else>
         <div class="panel-head">
           <div>
@@ -98,7 +98,8 @@
 
         <div class="sub-tabs">
           <button class="sub-tab" :class="{ active: subTab === 'docs' }" @click="subTab = 'docs'">文档（{{ docs.length }}）</button>
-          <button class="sub-tab" :class="{ active: subTab === 'search' }" @click="subTab = 'search'">检索测试</button>
+          <button class="sub-tab" :class="{ active: subTab === 'kw' }" @click="resetSearch('kw')">关键词检索</button>
+          <button class="sub-tab" :class="{ active: subTab === 'sem' }" @click="resetSearch('sem')">语义检索</button>
         </div>
 
         <!-- 文档 -->
@@ -118,17 +119,31 @@
           </tbody>
         </table></div>
 
-        <!-- 检索测试 -->
-        <div v-else class="panel-body">
+        <!-- 关键词检索 -->
+        <div v-else-if="subTab === 'kw'" class="panel-body">
           <div class="row-head" style="gap:8px; flex-wrap:nowrap;">
-            <div class="search-mode-seg">
-              <button class="seg-btn" :class="{ active: searchMode === 'keyword' }" @click="searchMode = 'keyword'">关键词检索</button>
-              <button class="seg-btn" :class="{ active: searchMode === 'semantic' }" @click="searchMode = 'semantic'">语义检索</button>
-            </div>
-            <input class="form-input" v-model="query" :placeholder="searchMode === 'semantic' ? '语义检索：支持同义/近义表述，如「费用怎么算」' : '关键词检索：按字面分词匹配'" @keyup.enter="search" style="flex:1; min-width:180px;" />
-            <button class="btn btn-primary" style="flex-shrink:0;" @click="search" :disabled="!query.trim() || searching">{{ searching ? '检索中…' : '检索' }}</button>
+            <input class="form-input" v-model="query" placeholder="关键词检索：按字面分词匹配，多个词空格分隔" @keyup.enter="search('kw')" style="flex:1; min-width:180px;" />
+            <button class="btn btn-primary" style="flex-shrink:0;" @click="search('kw')" :disabled="!query.trim() || searching">{{ searching ? '检索中…' : '检索' }}</button>
           </div>
-          <div class="text-xs muted" style="margin-top:6px;" v-if="searchMode === 'semantic'">
+          <div v-if="searched" class="search-res">
+            <div class="text-xs muted" style="margin:10px 0;">
+              命中 {{ hits.length }} 条 <template v-if="lastBackend">（{{ backendLabel(lastBackend) }}）</template>
+            </div>
+            <div class="hit" v-for="h in hits" :key="h.chunkId + '-' + h.idx">
+              <span class="tag">{{ h.doc || '文档#' + h.docId }} #{{ h.idx }}</span> <span class="text-xs muted">score {{ h.score }}</span>
+              <div class="hit-text">{{ h.content }}</div>
+            </div>
+            <div v-if="!hits.length" class="text-sm muted">无命中</div>
+          </div>
+        </div>
+
+        <!-- 语义检索 -->
+        <div v-else-if="subTab === 'sem'" class="panel-body">
+          <div class="row-head" style="gap:8px; flex-wrap:nowrap;">
+            <input class="form-input" v-model="query" placeholder="语义检索：支持同义/近义表述，如「费用怎么算」" @keyup.enter="search('sem')" style="flex:1; min-width:180px;" />
+            <button class="btn btn-primary" style="flex-shrink:0;" @click="search('sem')" :disabled="!query.trim() || searching">{{ searching ? '检索中…' : '检索' }}</button>
+          </div>
+          <div class="text-xs muted" style="margin-top:6px;">
             语义检索调用向量服务（{{ semModel || 'bge-m3' }}）对查询与全部分块编码后按余弦相似度排序，chunk 较多时首次稍慢。
           </div>
           <div v-if="searched" class="search-res">
@@ -264,7 +279,10 @@ const kbOpen = ref(false); const kbForm = ref({}); const connCfg = ref({}); cons
 const docOpen = ref(false); const docFile = ref(null); const docText = ref(''); const docName = ref('')
 const chunkOpen = ref(false); const chunkDoc = ref(null); const chunks = ref([])
 const query = ref(''); const hits = ref([]); const searched = ref(false); const lastBackend = ref('')
-const searchMode = ref('keyword'); const searching = ref(false); const semModel = ref('')
+const searching = ref(false); const semModel = ref('')
+function resetSearch(t) {
+  subTab.value = t; searched.value = false; hits.value = []; lastBackend.value = ''
+}
 
 const pub = ref({})
 async function loadPub() {
@@ -402,15 +420,15 @@ async function viewChunks(d) {
   const r = await api(`/api/kb/${selKb.value.id}/docs/${d.id}/chunks`)
   if (r.code === 0) { chunks.value = r.data; chunkOpen.value = true }
 }
-async function search() {
+async function search(mode) {
   if (!query.value.trim() || !selKb.value) return
   searched.value = true; searching.value = true
   try {
-    const path = searchMode.value === 'semantic' ? 'semantic_search' : 'search'
+    const path = mode === 'sem' ? 'semantic_search' : 'search'
     const r = await api(`/api/kb/${selKb.value.id}/${path}?q=` + encodeURIComponent(query.value))
     if (r.code === 0) {
       hits.value = r.data; lastBackend.value = r.backend
-      if (searchMode.value === 'semantic' && (r.backend || '').startsWith('semantic:'))
+      if (mode === 'sem' && (r.backend || '').startsWith('semantic:'))
         semModel.value = r.backend.split(':')[1] || 'bge-m3'
     } else alert(r.detail || '检索失败')
   } finally { searching.value = false }
@@ -488,9 +506,6 @@ function modeLabel(m) { return ({ paragraph: '段落', sentence: '句子', fixed
 .type-dot.faq { background: #f59e0b; }
 .type-dot.qa { background: #10b981; }
 .type-dot.golden_answer { background: #8b5cf6; }
-.search-mode-seg { display: inline-flex; background: var(--bg-soft, #f0f1f5); border: 1px solid var(--border-light, #e5e7eb); border-radius: 9px; padding: 3px; flex-shrink: 0; }
-.seg-btn { border: none; background: transparent; padding: 6px 14px; border-radius: 7px; font-size: 13px; cursor: pointer; color: var(--text-secondary, #6b7280); white-space: nowrap; }
-.seg-btn.active { background: #fff; color: var(--primary, #4d6bfe); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
 .row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .hit { background: var(--bg-soft, #f7f8fa); border: 1px solid var(--border-light, #e5e7eb); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; }
 .hit-text { font-size: 13px; margin-top: 6px; line-height: 1.6; white-space: pre-wrap; }

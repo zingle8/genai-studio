@@ -837,11 +837,12 @@ tbody tr:last-child td { border-bottom: 0; }
 }
 
 /* ========== 弹框 ========== */
+/* 本子应用弹窗均为 v-if 挂载（渲染即显示），默认 flex；.show 保留兼容 */
 .modal-mask {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.45);
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;

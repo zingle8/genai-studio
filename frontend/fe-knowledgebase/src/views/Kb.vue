@@ -110,7 +110,7 @@
               <td><span class="tag tag-success">{{ d.status }}</span></td>
               <td class="text-xs muted">{{ d.created_at }}</td>
               <td class="text-right">
-                <button class="btn btn-ghost btn-sm" @click="viewChunks(d)">分块</button>
+                <button class="btn btn-ghost btn-sm" @click="viewChunks(d)">内容</button>
                 <button class="btn btn-ghost btn-sm" @click="delDoc(d)">删除</button>
               </td>
             </tr>

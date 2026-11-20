@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """本体一致性检查：重复定义 / 引用缺失 / 继承放宽 / 映射基数矛盾"""
-from storage import rows
+from app.mapper.onto_mapper import rows
 
 # 基数严格度：one(非空一对一) > many > many(可空)；nullable 放宽 = 更松
 _STRICT = {("one", 0): 3, ("one", 1): 2, ("many", 0): 1, ("many", 1): 0}

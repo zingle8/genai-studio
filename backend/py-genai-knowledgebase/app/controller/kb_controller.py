@@ -71,8 +71,8 @@ def create_routers(service):
         return {"code": 0, "data": service.doc_add(kid, name, text, raw)}
 
     @router.get("/api/kb/{kid}/docs")
-    async def doc_list(kid: int):
-        return {"code": 0, "data": service.doc_list(kid)}
+    async def doc_list(kid: int, page: int = 1, size: int = 10):
+        return {"code": 0, "data": service.doc_list(kid, page, size)}
 
     @router.get("/api/kb/{kid}/docs/{did}/chunks")
     async def chunk_list(kid: int, did: int):

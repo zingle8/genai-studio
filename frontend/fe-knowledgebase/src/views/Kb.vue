@@ -97,16 +97,20 @@
         </div>
 
         <div class="sub-tabs">
-          <button class="sub-tab" :class="{ active: subTab === 'docs' }" @click="subTab = 'docs'">文档（{{ docs.length }}）</button>
+          <button class="sub-tab" :class="{ active: subTab === 'docs' }" @click="subTab = 'docs'">文档列表（{{ docTotal }}）</button>
           <button class="sub-tab" :class="{ active: subTab === 'kw' }" @click="resetSearch('kw')">关键词检索</button>
           <button class="sub-tab" :class="{ active: subTab === 'sem' }" @click="resetSearch('sem')">语义检索</button>
         </div>
 
-        <!-- 文档 -->
+        <!-- 文档列表 -->
         <div v-if="subTab === 'docs'" class="table-wrap panel-body"><table>
-          <thead><tr><th>文档名</th><th>分块</th><th>大小</th><th>状态</th><th>时间</th><th class="text-right">操作</th></tr></thead>
+          <thead><tr><th>空间ID</th><th>空间名</th><th>知识库ID</th><th>知识库名</th><th>文档名</th><th>分块</th><th>大小</th><th>状态</th><th>时间</th><th class="text-right">操作</th></tr></thead>
           <tbody>
             <tr v-for="d in docs" :key="d.id">
+              <td class="mono text-sm muted">{{ d.spaceId }}</td>
+              <td>{{ d.spaceName }}</td>
+              <td class="mono text-sm muted">{{ d.kbId }}</td>
+              <td>{{ d.kbName }}</td>
               <td><b>{{ d.name }}</b></td><td>{{ d.chunks }}</td><td>{{ fmtSize(d.size) }}</td>
               <td><span class="tag tag-success">{{ d.status }}</span></td>
               <td class="text-xs muted">{{ d.created_at }}</td>
@@ -115,9 +119,21 @@
                 <button class="btn btn-ghost btn-sm" @click="delDoc(d)">删除</button>
               </td>
             </tr>
-            <tr v-if="!docs.length"><td colspan="6" class="text-center muted">该库暂无文档，点右上角上传</td></tr>
+            <tr v-if="!docs.length"><td colspan="10" class="text-center muted">该库暂无文档，点右上角上传</td></tr>
           </tbody>
-        </table></div>
+        </table>
+        <div class="doc-pager">
+          <span class="text-sm muted">共 {{ docTotal }} 条</span>
+          <select class="form-select page-size-select" v-model.number="docSize" @change="docPage = 1; loadDocs()">
+            <option :value="10">10 个/页</option>
+            <option :value="20">20 个/页</option>
+            <option :value="50">50 个/页</option>
+            <option :value="100">100 个/页</option>
+          </select>
+          <span class="text-sm muted">第 {{ docPage }} / {{ docPages }} 页</span>
+          <button class="page-btn" :disabled="docPage <= 1" @click="docPage--; loadDocs()">‹ 上一页</button>
+          <button class="page-btn" :disabled="docPage >= docPages" @click="docPage++; loadDocs()">下一页 ›</button>
+        </div></div>
 
         <!-- 关键词检索 -->
         <div v-else-if="subTab === 'kw'" class="panel-body">
@@ -353,10 +369,22 @@ function toggleGroup(g) {
 async function pickKb(k) {
   selKb.value = k; subTab.value = 'docs'; searched.value = false; hits.value = []
   filterSpace.value = k.space_id; filterKb.value = k.id   // 检索过滤默认当前库
+  docPage.value = 1
   await loadDocs()
 }
 function backToSpace() { selSpace.value = selKb.value.space_id; selKb.value = null }
-async function loadDocs() { if (!selKb.value) return; const r = await api(`/api/kb/${selKb.value.id}/docs`); if (r.code === 0) docs.value = r.data }
+const docPage = ref(1); const docSize = ref(10); const docTotal = ref(0)
+const docPages = computed(() => Math.max(1, Math.ceil(docTotal.value / docSize.value)))
+async function loadDocs() {
+  if (!selKb.value) return
+  const r = await api(`/api/kb/${selKb.value.id}/docs?page=${docPage.value}&size=${docSize.value}`)
+  if (r.code === 0) {
+    const d = r.data
+    docs.value = (Array.isArray(d) ? d : d.list) || []
+    docTotal.value = Array.isArray(d) ? docs.value.length : (d.total || 0)
+    if (!docs.value.length && docPage.value > 1) { docPage.value--; return loadDocs() }
+  }
+}
 
 function blankKb() {
   const p = pub.value
@@ -542,4 +570,14 @@ function modeLabel(m) { return ({ paragraph: '段落', sentence: '句子', fixed
 .modal-lg { min-width: 560px; }
 .crumb-link { color: var(--primary, #4d6bfe); cursor: pointer; font-size: 13px; }
 .crumb-link:hover { text-decoration: underline; }
+/* 文档列表分页 */
+.doc-pager { display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-top: 1px solid var(--border-light, #eef0f5); }
+.page-size-select { width: 96px; }
+.page-btn {
+  height: 30px; padding: 0 12px; border: 1px solid var(--border-light, #e9ebf0); border-radius: 8px;
+  background: #fff; font-size: 12.5px; color: var(--text-muted, #6b7280); cursor: pointer; white-space: nowrap;
+  transition: all .15s;
+}
+.page-btn:hover:not(:disabled) { border-color: var(--primary, #4d6bfe); color: var(--primary, #4d6bfe); }
+.page-btn:disabled { opacity: .4; cursor: not-allowed; }
 </style>

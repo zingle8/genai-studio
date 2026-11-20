@@ -1,8 +1,12 @@
+
 # -*- coding: utf-8 -*-
-"""本体知识服务存储层（SQLite：本体/类/关系规则/映射/数据源）"""
+"""本体知识服务存储层（SQLite：本体空间/本体/类/关系规则/映射/数据源）
+
+迁移自 app/storage.py；目录层级对齐 py-genai-rag-reranker 分层结构。
+"""
 import sqlite3, json, time, os
 
-DB_PATH = os.environ.get("ONTO_DB", os.path.join(os.path.dirname(__file__), "..", "onto.db"))
+DB_PATH = os.environ.get("ONTO_DB", os.path.join(os.path.dirname(__file__), "..", "..", "onto.db"))
 
 
 def conn():

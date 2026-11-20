@@ -35,23 +35,25 @@
 
       <!-- ===== 主区 ===== -->
       <div class="chat-main">
-        <!-- 配置面板触发按钮（右上角，所有模式可见） -->
-        <button class="key-fab" :class="{ open: keyPanelOpen, ok: !!currentKey }" :title="keyPanelOpen ? '收起配置面板' : '打开配置面板'" @click="keyPanelOpen = !keyPanelOpen">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.6-6.4-2.1 2.1m-8.6 8.6-2.1 2.1m0-12.8 2.1 2.1m8.6 8.6 2.1 2.1"/></svg>
-          <span v-if="!keyPanelOpen && currentKeyName" class="key-fab-name">{{ currentKeyName }}</span>
-        </button>
-
         <!-- 特殊模式：请求编辑器 -->
         <template v-if="mode === 'special'">
           <div class="special-wrap">
+            <!-- 编辑器上方工具条：特殊模型 + 流式开关 + 配置面板触发（向上弹出） -->
+            <div class="input-toolbar">
+              <GwSelect v-model="selSpecialModel" class="model-picker" :options="specialModelOptions" searchable placeholder="选择特殊模型" />
+              <label class="stream-toggle" title="请求体注入 stream:true，SSE 帧聚合后展示（仅 chat/completions 类接口支持）">
+                <input type="checkbox" v-model="streamOn"/> 流式返回
+              </label>
+              <button class="key-fab" :class="{ open: keyPanelOpen, ok: !!currentKey }" :title="keyPanelOpen ? '收起配置面板' : '打开配置面板'" @click.stop="togglePanel($event.currentTarget)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.6-6.4-2.1 2.1m-8.6 8.6-2.1 2.1m0-12.8 2.1 2.1m8.6 8.6 2.1 2.1"/></svg>
+                <span v-if="!keyPanelOpen && currentKeyName" class="key-fab-name">{{ currentKeyName }}</span>
+              </button>
+            </div>
             <div class="special-head">
               向 <b>{{ selSpecialModel || '（未选模型）' }}</b> 的 <code>{{ specialPath || '—' }}</code> 发送请求
             </div>
             <textarea class="form-input special-editor" v-model="specialBody" rows="12" spellcheck="false"></textarea>
             <div class="special-actions">
-              <label class="stream-toggle" title="请求体注入 stream:true，SSE 帧聚合后展示（仅 chat/completions 类接口支持）">
-                <input type="checkbox" v-model="streamOn"/> 流式返回
-              </label>
               <button class="btn btn-primary" :disabled="sending || !selSpecialModel || !specialPath" @click="sendSpecial">
                 {{ sending ? '请求中…' : '发送请求' }}
               </button>
@@ -69,20 +71,12 @@
 
         <!-- 聊天 / 调试模式 -->
         <template v-else>
-          <div class="chat-topbar">
-            <GwSelect v-model="selModel" class="model-picker" :options="chatModelOptions" searchable placeholder="选择模型" />
-            <label class="stream-toggle" title="开启后模型逐字返回（SSE 流式）">
-              <input type="checkbox" v-model="streamOn"/> 流式返回
-            </label>
-            <span class="text-xs muted topbar-hint">{{ mode === 'debug' ? '调试模式 · 支持系统提示词' : '单模型对话' }}</span>
-          </div>
-
           <div class="chat-msgs" ref="msgsEl">
             <!-- 空状态：欢迎 + 建议 -->
             <div v-if="!messages.length" class="chat-welcome">
               <div class="welcome-badge">GenAI Studio</div>
               <h3>{{ mode === 'debug' ? '调试模式' : '今天想聊点什么？' }}</h3>
-              <p class="muted">{{ mode === 'debug' ? '配置系统提示词与模型参数后开始调试对话' : '在上方选择一个模型，开始对话' }}</p>
+              <p class="muted">{{ mode === 'debug' ? '配置系统提示词与模型参数后开始调试对话' : '在输入框上方选择一个模型，开始对话' }}</p>
               <div class="suggest-row">
                 <button v-for="s in suggestions" :key="s" class="suggest-card" @click="quickSend(s)">{{ s }}</button>
               </div>
@@ -109,6 +103,18 @@
           </div>
 
           <div class="chat-input">
+            <!-- 输入框上方工具条：模型选择 + 流式开关 + 配置面板触发（向上弹出） -->
+            <div class="input-toolbar">
+              <GwSelect v-model="selModel" class="model-picker" :options="chatModelOptions" searchable placeholder="选择模型" />
+              <label class="stream-toggle" title="开启后模型逐字返回（SSE 流式）">
+                <input type="checkbox" v-model="streamOn"/> 流式返回
+              </label>
+              <span class="text-xs muted toolbar-hint">{{ mode === 'debug' ? '调试模式 · 支持系统提示词' : '单模型对话' }}</span>
+              <button class="key-fab" :class="{ open: keyPanelOpen, ok: !!currentKey }" :title="keyPanelOpen ? '收起配置面板' : '打开配置面板'" @click.stop="togglePanel($event.currentTarget)">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.6-6.4-2.1 2.1m-8.6 8.6-2.1 2.1m0-12.8 2.1 2.1m8.6 8.6 2.1 2.1"/></svg>
+                <span v-if="!keyPanelOpen && currentKeyName" class="key-fab-name">{{ currentKeyName }}</span>
+              </button>
+            </div>
             <!-- 待发送图片预览 -->
             <div v-if="pendingImages.length" class="img-previews">
               <div v-for="(img, j) in pendingImages" :key="j" class="img-chip">
@@ -132,23 +138,18 @@
           </div>
         </template>
 
-        <!-- ===== 配置右侧抽屉（点击齿轮按钮开合；内容随模式变化） ===== -->
-        <transition name="gw-fade">
-          <div v-if="keyPanelOpen" class="key-overlay" @click="keyPanelOpen = false"></div>
-        </transition>
-        <transition name="gw-slide">
-          <aside v-if="keyPanelOpen" class="key-drawer" @click.stop>
+        <!-- ===== 配置面板（单份，fixed 定位锚定触发按钮，向上弹出） ===== -->
+        <transition name="gw-pop">
+          <aside v-if="keyPanelOpen" class="config-pop" :style="popStyle" @click.stop>
             <div class="key-drawer-head">
               <span class="side-title" style="margin:0;">{{ panelTitle }}</span>
               <button class="key-drawer-close" title="收起" @click="keyPanelOpen = false">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>
               </button>
             </div>
-
             <div class="drawer-section">
               <div class="drawer-section-title">API Key</div>
-              <GwSelect v-model="keyValue" :options="keyOptions" creatable searchable
-                        placeholder="选择 Key 或直接粘贴新密钥" style="margin-bottom:8px;" @create="onKeyCreate" />
+              <GwSelect v-model="keyValue" :options="keyOptions" creatable searchable fixed placeholder="选择 Key 或直接粘贴新密钥" style="margin-bottom:8px;" @create="onKeyCreate" />
               <div class="side-note" style="margin-bottom:6px;">可下拉选择已保存的 Key，也可直接粘贴 sk-... 新密钥（自动保存）。</div>
               <div v-if="keyError" class="key-error">⚠ {{ keyError }}</div>
               <div v-if="meInfo" class="key-meta">
@@ -160,11 +161,10 @@
               </div>
               <button v-if="currentKey" class="side-link" @click="delKey">删除当前 Key</button>
             </div>
-
             <template v-if="mode === 'debug'">
               <div class="drawer-section bordered">
                 <div class="drawer-section-title">系统提示词</div>
-                <GwSelect v-model="selPrompt" :options="promptOptions" placeholder="选择模板…" style="margin-bottom:8px;" @update:model-value="applyPrompt" />
+                <GwSelect v-model="selPrompt" :options="promptOptions" fixed placeholder="选择模板…" style="margin-bottom:8px;" @update:model-value="applyPrompt" />
                 <textarea class="form-input" v-model="systemPrompt" rows="5" placeholder="输入 System 提示词…"></textarea>
               </div>
               <div class="drawer-section bordered">
@@ -173,13 +173,10 @@
                 <div class="side-note">知识库服务建设中，当前仅占位。</div>
               </div>
             </template>
-
             <template v-if="mode === 'special'">
               <div class="drawer-section bordered">
-                <div class="drawer-section-title">特殊模型（向量 / 重排 / 判断）</div>
-                <GwSelect v-model="selSpecialModel" :options="specialModelOptions" searchable placeholder="选择特殊模型" style="margin-bottom:8px;" />
-                <div class="drawer-section-title" style="margin-top:6px;">接口路径</div>
-                <GwSelect v-model="specialPath" :options="pathOptions" placeholder="选择接口路径" style="margin-bottom:8px;" />
+                <div class="drawer-section-title">接口路径</div>
+                <GwSelect v-model="specialPath" :options="pathOptions" fixed placeholder="选择接口路径" style="margin-bottom:8px;" />
                 <button class="btn btn-secondary btn-sm btn-block" @click="resetTemplate">重置请求模板</button>
               </div>
             </template>
@@ -191,7 +188,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { api, routerApi, routerStream, getUser } from '../api'
 import GwSelect from '../components/GwSelect.vue'
 
@@ -226,7 +223,6 @@ const specialBody = ref('')
 const specialResp = ref('')
 const specialStatus = ref('')
 const pendingImages = ref([])
-const keyPanelOpen = ref(false)
 
 /* ===== 计算属性 ===== */
 const currentKey = computed(() => keyValue.value)
@@ -272,12 +268,35 @@ const hasMultimodal = computed(() => {
   return m && MULTIMODAL_RE.test(m['jv-category'] || '')
 })
 const inputHint = computed(() => {
-  if (!selModel.value) return '先在上方选择模型…'
+  if (!selModel.value) return '先在输入框上方选择模型…'
   return `发送至 ${selModel.value}${hasMultimodal.value ? '（可附图片）' : ''}`
 })
 const sendTitle = computed(() => sending.value ? '发送中' : (!selModel.value ? '请先选择模型' : '发送 (Enter)'))
 const currentKeyName = computed(() => keyOptions.value.find(o => o.value === keyValue.value)?.label || '')
 const panelTitle = computed(() => mode.value === 'debug' ? '调试参数' : mode.value === 'special' ? '特殊请求配置' : 'API Key')
+
+/* ===== 配置面板：fixed 定位锚定触发按钮，向上弹出，点击外部关闭 ===== */
+const keyPanelOpen = ref(false)
+const popStyle = ref({})
+
+function togglePanel(anchorEl) {
+  if (keyPanelOpen.value) { keyPanelOpen.value = false; return }
+  const r = anchorEl.getBoundingClientRect()
+  popStyle.value = {
+    right: Math.max(8, Math.round(window.innerWidth - r.right)) + 'px',
+    bottom: Math.round(window.innerHeight - r.top + 8) + 'px',
+  }
+  keyPanelOpen.value = true
+  nextTick(() => {})
+}
+
+function onDocClickPanel(e) {
+  if (!keyPanelOpen.value) return
+  if (e.target.closest?.('.config-pop') || e.target.closest?.('.key-fab')) return
+  keyPanelOpen.value = false
+}
+onMounted(() => document.addEventListener('click', onDocClickPanel))
+onBeforeUnmount(() => document.removeEventListener('click', onDocClickPanel))
 
 /* ===== 初始化 ===== */
 onMounted(async () => {
@@ -503,7 +522,7 @@ async function send() {
       return
     }
   }
-  if (!currentKey.value) { alert('请先点击右上角钥匙图标，保存 API Key'); return }
+  if (!currentKey.value) { alert('请先点击输入框上方的钥匙图标，保存 API Key'); return }
   sending.value = true
   const sid0 = currentId.value          // 锁定本轮会话（期间切换会话不影响落库归属）
   const t0 = Date.now()                 // 请求→回复总耗时起点
@@ -605,7 +624,7 @@ function resetTemplate() {
 
 async function sendSpecial() {
   if (!selSpecialModel.value || !specialPath.value) return
-  if (!currentKey.value) { alert('请先点击右上角钥匙图标，保存 API Key'); return }
+  if (!currentKey.value) { alert('请先点击输入框上方的钥匙图标，保存 API Key'); return }
   let body
   try { body = JSON.parse(specialBody.value) } catch (e) { alert('请求体不是合法 JSON：' + e.message); return }
   sending.value = true
@@ -665,11 +684,11 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
   overflow: hidden; position: relative;
 }
 
-/* ===== Key 面板触发按钮（右上角） ===== */
+/* ===== 配置面板触发按钮（输入框上方工具条内） ===== */
 .key-fab {
-  position: absolute; top: 8px; right: 10px; z-index: 40;
+  margin-left: auto; flex-shrink: 0;
   display: flex; align-items: center; gap: 6px; max-width: 180px;
-  height: 30px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px;
+  height: 32px; padding: 0 10px; border: 1px solid var(--border); border-radius: 999px;
   background: #fff; color: var(--text-secondary); font-size: 12px; cursor: pointer;
   transition: all .15s; box-shadow: var(--shadow-xs);
 }
@@ -679,20 +698,20 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
 .key-fab svg { width: 14px; height: 14px; flex-shrink: 0; }
 .key-fab-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ===== Key 抽屉 ===== */
-.key-overlay {
-  position: absolute; inset: 0; z-index: 45;
-  background: rgba(26,26,26,0.24); backdrop-filter: blur(1px);
+/* ===== 配置面板（fixed 锚定触发按钮，向上弹出） ===== */
+.config-pop {
+  position: fixed; z-index: 90;
+  width: 320px; max-height: min(480px, 62vh); overflow-y: auto;
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.16); padding: 14px;
+  transform-origin: bottom right;
 }
-.key-drawer {
-  position: absolute; top: 0; right: 0; bottom: 0; z-index: 50;
-  width: 300px; background: #fff; border-left: 1px solid var(--border);
-  box-shadow: -8px 0 24px rgba(0,0,0,0.08);
-  padding: 14px; overflow-y: auto;
-}
+.gw-pop-enter-active, .gw-pop-leave-active { transition: opacity .18s ease, transform .2s ease; }
+.gw-pop-enter-from, .gw-pop-leave-to { opacity: 0; transform: translateY(10px) scale(.97); }
 .key-drawer-head {
   display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
 }
+.config-pop .key-drawer-head { margin-bottom: 10px; }
 .key-drawer-close {
   width: 26px; height: 26px; border: none; background: none; border-radius: 6px;
   color: var(--text-tertiary); cursor: pointer; display: flex; align-items: center; justify-content: center;
@@ -706,10 +725,6 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
 .drawer-section { padding-bottom: 12px; }
 .drawer-section.bordered { border-top: 1px solid var(--border-light); padding-top: 12px; }
 .drawer-section-title { font-size: 12px; font-weight: 600; color: var(--text-secondary); margin-bottom: 8px; }
-.gw-fade-enter-active, .gw-fade-leave-active { transition: opacity .18s; }
-.gw-fade-enter-from, .gw-fade-leave-to { opacity: 0; }
-.gw-slide-enter-active, .gw-slide-leave-active { transition: transform .22s ease; }
-.gw-slide-enter-from, .gw-slide-leave-to { transform: translateX(100%); }
 
 /* ===== 左侧 ===== */
 .new-chat-btn {
@@ -743,13 +758,14 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
 .key-limits { color: var(--text-tertiary); }
 .key-meta-row.muted { color: var(--text-tertiary); }
 
-/* ===== 顶栏：模型选择器 ===== */
-.chat-topbar {
-  display: flex; align-items: center; gap: 10px; flex-shrink: 0;
-  padding: 10px 52px 10px 14px; border-bottom: 1px solid var(--border-light);
+/* ===== 输入框上方工具条：模型选择 + 流式 + 配置触发 ===== */
+.input-toolbar {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  margin-bottom: 10px;
 }
-.model-picker { width: 320px; }
-.topbar-hint { margin-left: auto; }
+.model-picker { width: 300px; }
+.toolbar-hint { flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chat-input .input-toolbar { margin-bottom: 10px; }
 
 /* ===== 消息区 ===== */
 .chat-msgs { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
@@ -834,7 +850,8 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
 .input-foot { text-align: center; font-size: 11px; color: var(--text-quaternary); margin-top: 6px; }
 
 /* ===== 特殊模式 ===== */
-.special-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 46px 14px 14px; }
+.special-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 14px; }
+.special-wrap .input-toolbar { flex-shrink: 0; }
 .special-head { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
 .special-head b { color: var(--text-primary); }
 .special-head code { background: var(--bg-soft); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
@@ -849,7 +866,7 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
   .chat-layout { flex-direction: column; }
   .chat-side { width: 100%; max-height: 240px; }
   .model-picker { width: 100%; }
-  .topbar-hint { display: none; }
+  .topbar-hint, .toolbar-hint { display: none; }
   .chat-msg.user { max-width: 88%; }
 }
 </style>

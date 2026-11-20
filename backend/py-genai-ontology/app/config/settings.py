@@ -1,4 +1,4 @@
-"""服务配置（后续可接入 jv-genai-config 配置中心）"""
+"""本体知识服务配置（迁移自 app/config.py）"""
 import os
 from dataclasses import dataclass
 

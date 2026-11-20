@@ -4,39 +4,41 @@
       <span class="gw-select-value" :class="{ placeholder: !display }">{{ display || placeholder }}</span>
       <svg class="gw-caret" :class="{ up: open }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
-    <transition name="gw-drop">
-      <div v-if="open" class="gw-panel" @click.stop>
-        <div v-if="searchable" class="gw-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
-          <input ref="searchEl" v-model="kw" placeholder="搜索…" @keydown.esc.stop="close" />
+    <teleport to="body" :disabled="!fixed">
+      <transition name="gw-drop">
+        <div v-if="open" class="gw-panel" :class="{ 'gw-panel-fixed': fixed }" :style="fixed ? panelStyle : null" @click.stop ref="panelEl">
+          <div v-if="searchable" class="gw-search">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
+            <input ref="searchEl" v-model="kw" placeholder="搜索…" @keydown.esc.stop="close" />
+          </div>
+          <div class="gw-options">
+            <button v-for="o in filtered" :key="String(o.value)" type="button" class="gw-option"
+                    :class="{ selected: isChecked(o.value) }" @click="pick(o)">
+              <span v-if="multiple" class="gw-check" :class="{ on: isChecked(o.value) }">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+              </span>
+              <span class="gw-option-body">
+                <span class="gw-option-label">{{ o.label }}</span>
+                <span v-if="o.desc" class="gw-option-desc">{{ o.desc }}</span>
+              </span>
+              <span v-if="o.tag" class="gw-option-tag" :class="o.tagCls">{{ o.tag }}</span>
+            </button>
+            <button v-if="canCreate" type="button" class="gw-option create" @click="pickCreate">
+              <span class="gw-create-plus">+</span>
+              <span class="gw-option-body">
+                <span class="gw-option-label">使用「{{ kw }}」</span>
+                <span class="gw-option-desc">输入的新值（不在列表中）</span>
+              </span>
+            </button>
+            <div v-if="!filtered.length && !canCreate" class="gw-panel-empty">无匹配项</div>
+          </div>
+          <div v-if="multiple" class="gw-panel-foot">
+            <button type="button" class="gw-foot-btn" @click="clearAll">清空</button>
+            <button type="button" class="gw-foot-btn primary" @click="close">完成</button>
+          </div>
         </div>
-        <div class="gw-options">
-          <button v-for="o in filtered" :key="String(o.value)" type="button" class="gw-option"
-                  :class="{ selected: isChecked(o.value) }" @click="pick(o)">
-            <span v-if="multiple" class="gw-check" :class="{ on: isChecked(o.value) }">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-            </span>
-            <span class="gw-option-body">
-              <span class="gw-option-label">{{ o.label }}</span>
-              <span v-if="o.desc" class="gw-option-desc">{{ o.desc }}</span>
-            </span>
-            <span v-if="o.tag" class="gw-option-tag" :class="o.tagCls">{{ o.tag }}</span>
-          </button>
-          <button v-if="canCreate" type="button" class="gw-option create" @click="pickCreate">
-            <span class="gw-create-plus">+</span>
-            <span class="gw-option-body">
-              <span class="gw-option-label">使用「{{ kw }}」</span>
-              <span class="gw-option-desc">输入的新值（不在列表中）</span>
-            </span>
-          </button>
-          <div v-if="!filtered.length && !canCreate" class="gw-panel-empty">无匹配项</div>
-        </div>
-        <div v-if="multiple" class="gw-panel-foot">
-          <button type="button" class="gw-foot-btn" @click="clearAll">清空</button>
-          <button type="button" class="gw-foot-btn primary" @click="close">完成</button>
-        </div>
-      </div>
-    </transition>
+      </transition>
+    </teleport>
   </div>
 </template>
 
@@ -51,14 +53,33 @@ const props = defineProps({
   searchable: { type: Boolean, default: false },
   creatable: { type: Boolean, default: false },          // 可直接输入新值（配 searchable 使用）
   placeholder: { type: String, default: '请选择' },
-  disabled: { type: Boolean, default: false }
+  disabled: { type: Boolean, default: false },
+  fixed: { type: Boolean, default: false }               // 面板 teleport 到 body 用 fixed 定位（弹层容器 overflow 会裁剪时使用）
 })
 const emit = defineEmits(['update:modelValue', 'create'])
 
 const open = ref(false)
 const kw = ref('')
 const rootEl = ref(null)
+const panelEl = ref(null)
 const searchEl = ref(null)
+const panelStyle = ref({})
+
+/** fixed 模式：按触发按钮位置计算面板坐标，屏幕下方放不下时向上弹 */
+function placePanel() {
+  const btn = rootEl.value?.querySelector('.gw-select-trigger')
+  if (!btn) return
+  const r = btn.getBoundingClientRect()
+  const vh = window.innerHeight
+  const est = Math.min(300, props.options.length * 36 + 60)
+  const st = { left: Math.round(r.left) + 'px', width: Math.round(r.width) + 'px' }
+  if (r.bottom + 6 + est < vh - 8) st.top = Math.round(r.bottom + 5) + 'px'
+  else {
+    st.bottom = Math.round(vh - r.top + 5) + 'px'
+    st.maxHeight = Math.max(160, Math.round(r.top - 14)) + 'px'   // 向上弹时不超出视口顶部
+  }
+  panelStyle.value = st
+}
 
 const display = computed(() => {
   if (props.multiple) {
@@ -96,7 +117,10 @@ function toggle() {
 function show() {
   kw.value = ''
   open.value = true
-  nextTick(() => { if (props.searchable) searchEl.value?.focus() })
+  nextTick(() => {
+    if (props.fixed) placePanel()
+    if (props.searchable) searchEl.value?.focus()
+  })
 }
 function close() { open.value = false }
 
@@ -122,7 +146,12 @@ function pickCreate() {
   close()
 }
 
-function onDocClick(e) { if (rootEl.value && !rootEl.value.contains(e.target)) close() }
+function onDocClick(e) {
+  const t = e.target
+  if (rootEl.value?.contains(t)) return
+  if (props.fixed && panelEl.value?.contains(t)) return  // teleport 后面板不在 rootEl 内
+  close()
+}
 onMounted(() => document.addEventListener('click', onDocClick))
 onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 </script>
@@ -151,6 +180,8 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
   background: #fff; border: 1px solid var(--border); border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg); overflow: hidden;
 }
+.gw-panel-fixed { position: fixed; z-index: 9999; min-width: 140px; top: auto; bottom: auto; left: auto; right: auto; display: flex; flex-direction: column; }
+.gw-panel-fixed .gw-options { flex: 1; min-height: 0; max-height: none; }
 .gw-drop-enter-active, .gw-drop-leave-active { transition: opacity .14s, transform .14s; }
 .gw-drop-enter-from, .gw-drop-leave-to { opacity: 0; transform: translateY(-4px); }
 .gw-search {

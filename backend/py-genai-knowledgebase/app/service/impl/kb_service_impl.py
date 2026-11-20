@@ -176,9 +176,23 @@ class KbServiceImpl(KbService):
             raise HTTPException(400, f"分块写入 {kb.get('db_type')} 失败：{e}")
         return {"id": did, "name": name, "chunks": len(chunks), "size": len(text), "backend": kb.get("db_type")}
 
-    def doc_list(self, kid: int) -> list:
-        return storage.rows("SELECT id, name, source, size, chunks, status, created_at FROM tb_kb_doc "
-                            "WHERE kb_id=? ORDER BY id DESC", (kid,))
+    def doc_list(self, kid: int, page: int = 1, size: int = 10) -> dict:
+        """文档列表（分页），并富化 空间ID/空间名、知识库ID/知识库名 字段"""
+        kb = storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,))
+        if not kb:
+            raise HTTPException(404, "知识库不存在")
+        sp = storage.one("SELECT name FROM tb_kb_space WHERE id=?", (kb.get("space_id") or 0,))
+        total = storage.one("SELECT COUNT(*) AS c FROM tb_kb_doc WHERE kb_id=?", (kid,))["c"]
+        rows = storage.rows(
+            "SELECT id, name, source, size, chunks, status, created_at FROM tb_kb_doc "
+            "WHERE kb_id=? ORDER BY id DESC LIMIT ? OFFSET ?", (kid, size, (page - 1) * size))
+        enrich = {
+            "kbId": kid, "kbName": kb.get("name"),
+            "spaceId": kb.get("space_id"), "spaceName": sp.get("name") if sp else "",
+        }
+        for r in rows:
+            r.update(enrich)
+        return {"list": rows, "total": total, "page": page, "size": size}
 
     def chunk_list(self, kid: int, did: int) -> list:
         kb = storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,))

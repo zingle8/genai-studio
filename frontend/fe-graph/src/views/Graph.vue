@@ -52,7 +52,7 @@
         <!-- 图视图 -->
         <div class="card" v-if="tab === 'view'"><div class="card-body">
           <div class="row-head" style="margin-bottom:8px;">
-            <b>{{ curGraph.name }}</b><span class="text-xs muted">{{ nodes.length }} 节点 · {{ edges.length }} 关系 · {{ curGraph.db_type === 'neo4j' ? 'Neo4j' : '内置存储' }}</span>
+            <b>{{ curGraph.name }}</b><span class="text-xs muted">{{ nodes.length }} 节点 · {{ edges.length }} 关系 · {{ curGraph.db_type === 'neo4j' ? 'Neo4j' : '内置存储' }} · 按关系聚簇（力导向布局）</span>
             <span style="flex:1"></span>
             <select class="form-input" v-model="focusId" style="width:170px;" @change="loadGraph">
               <option value="">全图</option>
@@ -61,15 +61,24 @@
             <select class="form-input" v-model="depth" style="width:90px;" @change="focusId && loadGraph()">
               <option :value="1">1 层</option><option :value="2">2 层</option><option :value="3">3 层</option>
             </select>
+            <span class="zoom-ctl">
+              <button class="zoom-btn" title="放大视图" @click="zoomIn">➕</button>
+              <button class="zoom-btn" title="缩小视图" @click="zoomOut">➖</button>
+              <button class="zoom-btn" title="重置视图比例" @click="zoomReset">⌂</button>
+              <span class="text-xs muted zoom-val">{{ Math.round(scale * 100) }}%</span>
+            </span>
           </div>
-          <svg class="graph-svg" viewBox="0 0 900 560">
-            <g v-for="e in edges" :key="'e' + e.id">
-              <line :x1="pos(e.source_id).x + 32" :y1="pos(e.source_id).y + 18" :x2="pos(e.target_id).x + 32" :y2="pos(e.target_id).y + 18" class="edge-line" />
-              <text :x="(pos(e.source_id).x + pos(e.target_id).x) / 2 + 32" :y="(pos(e.source_id).y + pos(e.target_id).y) / 2 + 12" class="edge-label">{{ e.rel_type }}</text>
-            </g>
-            <g v-for="n in nodes" :key="'n' + n.id" style="cursor:pointer;">
-              <rect :x="pos(n.id).x" :y="pos(n.id).y" width="64" height="36" rx="8" class="node-box" />
-              <text :x="pos(n.id).x + 32" :y="pos(n.id).y + 23" class="node-name">{{ n.name.length > 6 ? n.name.slice(0, 6) : n.name }}</text>
+          <svg class="graph-svg" viewBox="0 0 1000 620">
+            <g :transform="viewTransform">
+              <g v-for="e in edges" :key="'e' + e.id">
+                <line :x1="pos(e.source_id).x + 32" :y1="pos(e.source_id).y + 18" :x2="pos(e.target_id).x + 32" :y2="pos(e.target_id).y + 18" class="edge-line" />
+                <text :x="(pos(e.source_id).x + pos(e.target_id).x) / 2 + 32" :y="(pos(e.source_id).y + pos(e.target_id).y) / 2 + 12" class="edge-label">{{ e.rel_type }}</text>
+              </g>
+              <g v-for="n in nodes" :key="'n' + n.id" style="cursor:pointer;">
+                <rect :x="pos(n.id).x" :y="pos(n.id).y" width="64" height="36" rx="8" class="node-box" :style="{ stroke: typeColor(n.entity_id) }" />
+                <circle :cx="pos(n.id).x + 8" :cy="pos(n.id).y + 8" r="4" :fill="typeColor(n.entity_id)" />
+                <text :x="pos(n.id).x + 34" :y="pos(n.id).y + 23" class="node-name">{{ n.name.length > 6 ? n.name.slice(0, 6) : n.name }}</text>
+              </g>
             </g>
           </svg>
         </div></div>
@@ -254,7 +263,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { api, withBase } from '../api'
 const graphs = ref([]); const curGraph = ref(null); const tab = ref('view')
 const entities = ref([]); const nodes = ref([]); const edges = ref([]); const versions = ref([])
@@ -338,15 +347,99 @@ async function loadVersions() {
   if (r.code === 0) versions.value = r.data
 }
 
-function pos(id) {
-  const list = nodes.value
-  const i = list.findIndex(n => n.id === id)
-  if (i < 0) return { x: 20, y: 20 }
-  if (list.length === 1) return { x: 400, y: 250 }
-  const cx = 440, cy = 268, r = Math.min(210, 90 + list.length * 14)
-  const a = (i / list.length) * Math.PI * 2 - Math.PI / 2
-  return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) }
+/* ===== 图视图：力导向簇群布局 + 缩放 ===== */
+const positions = ref({})        // nodeId -> {x,y}
+const scale = ref(1)
+const TYPE_COLORS = ['#4d6bfe', '#e5484d', '#12b76a', '#f79009', '#7a5af8', '#06aed4', '#d444f1', '#6b7280']
+function typeColor(eid) {
+  const i = entities.value.findIndex(x => x.id === eid)
+  return TYPE_COLORS[(i < 0 ? 0 : i) % TYPE_COLORS.length]
 }
+function pos(id) { return positions.value[id] || { x: 20, y: 20 } }
+
+/** 力导向模拟：同类节点初始按扇区聚集（簇群），斥力 + 边弹簧 + 中心引力 */
+function layout() {
+  const list = nodes.value
+  const P = {}
+  if (!list.length) { positions.value = P; return }
+  const W = 1000, H = 620, PAD = 50
+  const cx = W / 2, cy = H / 2
+  // 初始位置：按实体类型分簇放到圆环扇区
+  const buckets = {}
+  for (const n of list) (buckets[n.entity_id] = buckets[n.entity_id] || []).push(n)
+  const keys = Object.keys(buckets)
+  let bi = 0
+  for (const k of keys) {
+    const a = (bi / keys.length) * Math.PI * 2
+    const br = 150 + 30 * keys.length
+    const bx = cx + br * Math.cos(a), by = cy + br * 0.8 * Math.sin(a)
+    buckets[k].forEach((n, j) => {
+      const ja = j / buckets[k].length * Math.PI * 2
+      P[n.id] = { x: bx + 24 * Math.cos(ja) + (Math.random() - 0.5) * 20, y: by + 20 * Math.sin(ja) + (Math.random() - 0.5) * 20 }
+    })
+    bi++
+  }
+  // 邻接表
+  const adj = {}
+  for (const e of edges.value) {
+    if (P[e.source_id] && P[e.target_id]) (adj[e.source_id] = adj[e.source_id] || []).push(e.target_id)
+    if (P[e.source_id] && P[e.target_id]) (adj[e.target_id] = adj[e.target_id] || []).push(e.source_id)
+  }
+  const ids = list.map(n => n.id)
+  const k = Math.sqrt((W * H) / Math.max(1, list.length)) * 3.2   // 斥力系数
+  const spring = 0.012, ideal = Math.max(120, Math.min(180, 1100 / Math.sqrt(list.length)))
+  for (let it = 0; it < 220; it++) {
+    const temp = Math.max(2, 70 * (1 - it / 220))
+    const F = {}
+    for (const id of ids) F[id] = { x: 0, y: 0 }
+    // 节点间斥力
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const a = P[ids[i]], b = P[ids[j]]
+        let dx = a.x - b.x, dy = a.y - b.y
+        let d2 = dx * dx + dy * dy || 1
+        const f = k / d2, d = Math.sqrt(d2)
+        const fx = dx / d * f, fy = dy / d * f
+        F[ids[i]].x += fx; F[ids[i]].y += fy
+        F[ids[j]].x -= fx; F[ids[j]].y -= fy
+        // 矩形碰撞排斥：节点框(64x36)+间距，避免叠在一起
+        if (Math.abs(dx) < 80 && Math.abs(dy) < 52) {
+          const sx = Math.sign(dx) || (Math.random() < 0.5 ? -1 : 1)
+          const sy = Math.sign(dy) || (Math.random() < 0.5 ? -1 : 1)
+          F[ids[i]].x += sx * 12; F[ids[i]].y += sy * 8
+          F[ids[j]].x -= sx * 12; F[ids[j]].y -= sy * 8
+        }
+      }
+    }
+    // 边弹簧 + 中心引力
+    for (const e of edges.value) {
+      const a = P[e.source_id], b = P[e.target_id]
+      if (!a || !b) continue
+      const dx = b.x - a.x, dy = b.y - a.y
+      const d = Math.sqrt(dx * dx + dy * dy) || 1
+      const f = spring * (d - ideal)
+      const fx = dx / d * f, fy = dy / d * f
+      F[e.source_id].x += fx; F[e.source_id].y += fy
+      F[e.target_id].x -= fx; F[e.target_id].y -= fy
+    }
+    for (const id of ids) {
+      const p = P[id]
+      F[id].x += (cx - p.x) * 0.002; F[id].y += (cy - p.y) * 0.002
+      const d = Math.sqrt(F[id].x ** 2 + F[id].y ** 2) || 1
+      const lim = Math.min(d, temp)
+      p.x += F[id].x / d * lim; p.y += F[id].y / d * lim
+      p.x = Math.max(PAD, Math.min(W - PAD, p.x))
+      p.y = Math.max(PAD, Math.min(H - PAD, p.y))
+    }
+  }
+  positions.value = P
+}
+watch([nodes, edges], layout)
+
+function zoomIn() { scale.value = Math.min(2.5, +(scale.value * 1.25).toFixed(3)) }
+function zoomOut() { scale.value = Math.max(0.35, +(scale.value / 1.25).toFixed(3)) }
+function zoomReset() { scale.value = 1 }
+const viewTransform = computed(() => `translate(${500 * (1 - scale.value)} ${310 * (1 - scale.value)}) scale(${scale.value})`)
 function entityName(eid) { const e = entities.value.find(x => x.id === eid); return e ? e.name : '—' }
 function propsSchemaText(s) {
   try { const a = JSON.parse(s || '[]'); return a.length ? a.map(x => x.name + ':' + x.type).join('、') : '（无属性定义）' } catch { return '—' }
@@ -460,6 +553,10 @@ async function restoreVersion(v) {
 .dot-mini.green { background: #22c55e; }
 .dot-mini.red { background: #ef4444; }
 .graph-svg { width: 100%; height: 560px; background: var(--bg-soft); border-radius: 10px; }
+.zoom-ctl { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid var(--border-light, #e9ebf0); border-radius: 8px; padding: 2px 6px 2px 2px; }
+.zoom-btn { width: 28px; height: 26px; border: none; background: none; border-radius: 6px; font-size: 13px; line-height: 1; cursor: pointer; color: var(--text-secondary, #4b5563); transition: background .15s, color .15s; }
+.zoom-btn:hover { background: var(--bg-soft, #f0f2f7); color: var(--primary, #4d6bfe); }
+.zoom-val { min-width: 36px; text-align: center; }
 .node-box { fill: #fff; stroke: #4d6bfe; stroke-width: 1.5; }
 .node-name { text-anchor: middle; font-size: 13px; fill: #1f2430; font-weight: 600; pointer-events: none; }
 .edge-line { stroke: #b9c2d4; stroke-width: 1.5; }

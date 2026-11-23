@@ -242,28 +242,30 @@ class GraphServiceImpl(GraphService):
         storage.run("DELETE FROM tb_graph_edge WHERE id=? AND graph_id=?", (eid, gid))
         storage.save_version(gid, "delete_edge", "删除关系")
 
-    # ===== 邻域 =====
-    def neighborhood(self, gid, nid, depth=1):
+    # ===== 邻域（多起点 + 1~7 级，sqlite/neo4j 统一本地 BFS） =====
+    def neighborhood(self, gid, nids, depth=1):
         g = self._get_graph(gid)
+        depth = max(1, min(7, depth))
         if g["db_type"] == "neo4j":
-            cfg = self._gcfg(g)
-            storage.neo4j_exec(cfg,
-                "MATCH path=(n:Graph_%d)-[*1..%d]-(m:Graph_%d) WHERE id(n)=$id RETURN n, m, relationships(path) AS rels"
-                % (gid, max(1, depth), gid), {"id": int(nid)})
-            return {"nodes": self._neo_nodes(g, gid), "edges": self._neo_edges(g, gid), "backend": "neo4j"}
-        front, seen, edges_all = {nid}, {nid}, storage.rows("SELECT * FROM tb_graph_edge WHERE graph_id=?", (gid,))
-        for _ in range(max(1, depth)):
+            nodes_all, edges_all = self._neo_nodes(g, gid), self._neo_edges(g, gid)
+        else:
+            nodes_all = storage.rows("SELECT * FROM tb_graph_node WHERE graph_id=?", (gid,))
+            edges_all = storage.rows("SELECT * FROM tb_graph_edge WHERE graph_id=?", (gid,))
+        # 统一按字符串比较，规避 sqlite(int) 与 neo4j(str) 主键类型差异
+        front, seen = {str(x) for x in nids}, {str(x) for x in nids}
+        for _ in range(depth):
             nxt = set()
             for e in edges_all:
-                if e["source_id"] in front:
-                    nxt.add(e["target_id"])
-                if e["target_id"] in front:
-                    nxt.add(e["source_id"])
+                s, t = str(e["source_id"]), str(e["target_id"])
+                if s in front:
+                    nxt.add(t)
+                if t in front:
+                    nxt.add(s)
             seen |= nxt
             front = nxt - front
-        nodes = storage.rows("SELECT * FROM tb_graph_node WHERE graph_id=? AND id IN (%s)" % ",".join(map(str, seen)), (gid,))
-        es = [e for e in edges_all if e["source_id"] in seen and e["target_id"] in seen]
-        return {"nodes": nodes, "edges": es, "backend": "sqlite"}
+        nodes = [n for n in nodes_all if str(n["id"]) in seen]
+        es = [e for e in edges_all if str(e["source_id"]) in seen and str(e["target_id"]) in seen]
+        return {"nodes": nodes, "edges": es, "backend": g["db_type"]}
 
     # ===== 版本 =====
     def version_list(self, gid):

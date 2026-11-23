@@ -51,7 +51,10 @@ if __name__ == "__main__":
         if n1 and n2:
             req("POST", f"/api/graphs/{gid}/edges", {"source_id": n1, "target_id": n2, "rel_type": "好友"}, None,
                 "新增关系：张三-好友->李四")
-            req("GET", f"/api/graphs/{gid}/neighborhood?nid={n1}&depth=1", None, 200, "邻域查询(1层)")
+            req("GET", f"/api/graphs/{gid}/neighborhood?nid={n1}&depth=1", None, 200, "邻域查询(单节点1级，兼容旧参数)")
+            req("GET", f"/api/graphs/{gid}/neighborhood?nids={n1},{n2}&depth=7", None, 200, "邻域查询(多节点7级)")
+            req("GET", f"/api/graphs/{gid}/neighborhood?nids={n1}&depth=8", None, 400, "层数超7级 → 400")
+            req("GET", f"/api/graphs/{gid}/neighborhood?depth=1", None, 400, "无起点节点 → 400")
         req("GET", f"/api/graphs/{gid}/nodes", None, 200, "节点列表")
         req("GET", f"/api/graphs/{gid}/edges", None, 200, "关系列表")
         req("GET", f"/api/graphs/{gid}/versions", None, 200, "版本列表")

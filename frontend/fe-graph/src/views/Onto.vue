@@ -46,6 +46,16 @@
           </div>
           <button class="btn btn-secondary btn-sm" @click="delOnto">删除本体</button>
         </div>
+        <!-- 关系节点图：多选起点 + 1~7 级邻域查询 -->
+        <div v-if="tab==='graph'" class="onto-toolbar" style="margin-top:6px;">
+          <MultiNodeSelect v-model="focusClasses" :options="classes.map(c => ({ value: c.name, label: c.name }))" placeholder="全图（可多选类节点）" />
+          <select class="form-select" v-model="ontoDepth" style="width:96px;" title="邻域展开级数">
+            <option v-for="d in 7" :key="d" :value="d">{{ d }} 级</option>
+          </select>
+          <button class="btn btn-primary btn-sm" @click="runNeighborhood">查询邻域</button>
+          <button class="btn btn-secondary btn-sm" @click="resetNeighborhood">全图</button>
+          <span class="text-xs muted" v-if="visibleNames">当前显示 {{ nodes.length }} 个类 · {{ graphEdges.length }} 条规则（{{ focusClasses.length }} 个起点 / {{ ontoDepth }} 级）</span>
+        </div>
 
         <div v-show="tab==='graph'" class="panel">
           <div class="svg-wrap">
@@ -257,6 +267,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { api } from '../api'
+import MultiNodeSelect from '../components/MultiNodeSelect.vue'
 
 const ontos = ref([])
 const datasources = ref([])
@@ -326,7 +337,28 @@ const viewData = ref(null)
 
 const filteredOntos = computed(() => ontos.value)
 const classes = computed(() => cur.value?._classes || [])
-const nodes = computed(() => classes.value.map((c, i) => ({ ...c, x: 130 + (i % 3) * 170, y: 80 + Math.floor(i / 3) * 110 })))
+/* 关系节点图邻域查询：多选起点类 + 1~7 级 BFS（visibleNames=null 表示全图） */
+const focusClasses = ref([])
+const ontoDepth = ref(1)
+const visibleNames = ref(null)
+const visibleClasses = computed(() => visibleNames.value ? classes.value.filter(c => visibleNames.value.has(c.name)) : classes.value)
+function runNeighborhood() {
+  const starts = focusClasses.value || []
+  if (!starts.length) { visibleNames.value = null; return }
+  let front = new Set(starts), seen = new Set(starts)
+  for (let i = 0; i < Math.max(1, Math.min(7, ontoDepth.value)); i++) {
+    const nxt = new Set()
+    for (const r of (cur.value?._rels || [])) {
+      if (front.has(r.subj_class)) nxt.add(r.obj_class)
+      if (front.has(r.obj_class)) nxt.add(r.subj_class)
+    }
+    seen = new Set([...seen, ...nxt])
+    front = new Set([...nxt].filter(x => !front.has(x)))
+  }
+  visibleNames.value = seen
+}
+function resetNeighborhood() { focusClasses.value = []; visibleNames.value = null; ontoDepth.value = 1 }
+const nodes = computed(() => visibleClasses.value.map((c, i) => ({ ...c, x: 130 + (i % 3) * 170, y: 80 + Math.floor(i / 3) * 110 })))
 const graphEdges = computed(() => (cur.value?._rels || []).map(r => {
   const s = nodes.value.find(n => n.name === r.subj_class), o = nodes.value.find(n => n.name === r.obj_class)
   if (!s || !o) return null
@@ -356,7 +388,12 @@ async function loadGraphData() {
 }
 async function selectOnto(o) {
   const r = await api(`/api/onto/${o.id}/full`)
-  if (r.code === 0) { cur.value = { ...r.data.ontology, _classes: r.data.classes, _rels: r.data.rels }; selNode.value = null; selEdge.value = null; issues.value = []; await loadMappings() }
+  if (r.code === 0) {
+    cur.value = { ...r.data.ontology, _classes: r.data.classes, _rels: r.data.rels }
+    selNode.value = null; selEdge.value = null; issues.value = []
+    resetNeighborhood()
+    await loadMappings()
+  }
 }
 function openNewOnto() {
   // 本体必须归属空间：默认当前空间，否则取第一个空间

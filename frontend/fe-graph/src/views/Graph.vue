@@ -54,13 +54,11 @@
           <div class="row-head" style="margin-bottom:8px;">
             <b>{{ curGraph.name }}</b><span class="text-xs muted">{{ nodes.length }} 节点 · {{ edges.length }} 关系 · {{ curGraph.db_type === 'neo4j' ? 'Neo4j' : '内置存储' }} · 按关系聚簇（力导向布局）</span>
             <span style="flex:1"></span>
-            <select class="form-input" v-model="focusId" style="width:170px;" @change="loadGraph">
-              <option value="">全图</option>
-              <option v-for="n in nodes" :key="n.id" :value="n.id">{{ n.name }} 邻域</option>
+            <MultiNodeSelect v-model="focusIds" :options="allNodes.map(n => ({ value: n.id, label: n.name }))" placeholder="全图（可多选节点）" />
+            <select class="form-input" v-model="depth" style="width:96px;" title="邻域展开级数">
+              <option v-for="d in 7" :key="d" :value="d">{{ d }} 级</option>
             </select>
-            <select class="form-input" v-model="depth" style="width:90px;" @change="focusId && loadGraph()">
-              <option :value="1">1 层</option><option :value="2">2 层</option><option :value="3">3 层</option>
-            </select>
+            <button class="btn btn-primary btn-sm" :disabled="searching" @click="loadGraph">{{ searching ? '查询中…' : '查询邻域' }}</button>
             <span class="zoom-ctl">
               <button class="zoom-btn" title="放大视图" @click="zoomIn">➕</button>
               <button class="zoom-btn" title="缩小视图" @click="zoomOut">➖</button>
@@ -265,9 +263,10 @@
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
 import { api, withBase } from '../api'
+import MultiNodeSelect from '../components/MultiNodeSelect.vue'
 const graphs = ref([]); const curGraph = ref(null); const tab = ref('view')
 const entities = ref([]); const nodes = ref([]); const edges = ref([]); const versions = ref([])
-const focusId = ref(''); const depth = ref(1)
+const focusIds = ref([]); const allNodes = ref([]); const depth = ref(1); const searching = ref(false)
 const graphOpen = ref(false); const graphForm = ref({ name: '', space_id: 0, db_type: 'sqlite', description: '' }); const n4cfg = ref({})
 const entityOpen = ref(false); const entityForm = ref({ id: null, name: '', props_schema: '[]' })
 const nodeOpen = ref(false); const nodeForm = ref({ id: null, entity_id: 0, name: '', props: '{}' })
@@ -323,24 +322,29 @@ async function loadGraphs() {
 }
 function pickGraph(g) {
   curGraph.value = g
-  entities.value = []; nodes.value = []; edges.value = []
+  entities.value = []; nodes.value = []; edges.value = []; allNodes.value = []; focusIds.value = []
   loadGraph()
 }
 async function loadGraph() {
   if (!curGraph.value) return
   const gid = curGraph.value.id
-  const path = focusId.value
-    ? withBase(`/api/graphs/${gid}/neighborhood?nid=${focusId.value}&depth=${depth.value}`)
-    : withBase(`/api/graphs/${gid}/nodes`)
-  const r = await api(path)
-  if (r.code === 0) {
-    nodes.value = r.data.nodes
-    if (r.data.entities) entities.value = r.data.entities
-  }
-  const re = await api(withBase(`/api/graphs/${gid}/edges`))
-  if (re.code === 0) edges.value = re.data
-  const rn = await api(withBase(`/api/graphs/${gid}/entities`))
-  if (rn.code === 0) entities.value = rn.data
+  const ids = focusIds.value || []
+  searching.value = true
+  try {
+    const path = ids.length
+      ? withBase(`/api/graphs/${gid}/neighborhood?nids=${ids.join(',')}&depth=${depth.value}`)
+      : withBase(`/api/graphs/${gid}/nodes`)
+    const r = await api(path)
+    if (r.code === 0) {
+      nodes.value = r.data.nodes
+      if (!ids.length) allNodes.value = r.data.nodes            // 全量节点作为多选选项
+      if (r.data.entities) entities.value = r.data.entities
+    }
+    const re = await api(withBase(`/api/graphs/${gid}/edges`))
+    if (re.code === 0) edges.value = ids.length ? (r.data?.edges || []) : re.data
+    const rn = await api(withBase(`/api/graphs/${gid}/entities`))
+    if (rn.code === 0) entities.value = rn.data
+  } finally { searching.value = false }
 }
 async function loadVersions() {
   const r = await api(withBase(`/api/graphs/${curGraph.value.id}/versions`))

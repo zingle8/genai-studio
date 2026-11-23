@@ -94,10 +94,17 @@ def create_routers(service):
         service.edge_delete(gid, eid)
         return {"code": 0, "data": "deleted"}
 
-    # ===== 邻域 =====
+    # ===== 邻域（支持多起点节点 + 1~7 级） =====
     @router.get("/api/graphs/{gid}/neighborhood")
-    async def neighborhood(gid: int, nid: int, depth: int = 1):
-        return {"code": 0, "data": service.neighborhood(gid, nid, depth)}
+    async def neighborhood(gid: int, nid: int = 0, nids: str = "", depth: int = 1):
+        ids = [int(x) for x in nids.split(",") if x.strip().isdigit()]
+        if nid:
+            ids.append(nid)
+        if not ids:
+            raise HTTPException(400, "请至少选择一个查询节点")
+        if depth < 1 or depth > 7:
+            raise HTTPException(400, "层数仅支持 1~7 级")
+        return {"code": 0, "data": service.neighborhood(gid, ids, depth)}
 
     # ===== 版本 =====
     @router.get("/api/graphs/{gid}/versions")

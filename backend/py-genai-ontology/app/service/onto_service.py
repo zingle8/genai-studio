@@ -5,6 +5,8 @@
 接口与拆分前完全兼容。
 """
 import json
+import os
+import sqlite3
 
 from fastapi import HTTPException
 
@@ -235,6 +237,29 @@ def check(oid: int) -> list:
 
 
 # ========== 数据源与图数据 ==========
+def _graph_ref_data(cfg: dict) -> dict:
+    """type=graph-ref 数据源：从图谱模块 SQLite 读取指定图谱的节点/边，按实体名与关系类型映射"""
+    gid = cfg.get("graphId") or cfg.get("graph_id")
+    if not gid:
+        return {"nodes": [], "edges": []}
+    path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "py-genai-graph", "graph.db")
+    if not os.path.exists(path):
+        return {"nodes": [], "edges": [], "message": "图谱数据文件不存在"}
+    con = sqlite3.connect(path)
+    con.row_factory = sqlite3.Row
+    try:
+        ents = {r["id"]: r["name"] for r in con.execute("SELECT id, name FROM tb_graph_entity WHERE graph_id=?", (gid,))}
+        nodes = []
+        for r in con.execute("SELECT id, entity_id, name, props FROM tb_graph_node WHERE graph_id=?", (gid,)):
+            d = dict(r); d["type"] = ents.get(d.get("entity_id"), "人物"); nodes.append(d)
+        edges = []
+        for r in con.execute("SELECT id, source_id, target_id, rel_type, props FROM tb_graph_edge WHERE graph_id=?", (gid,)):
+            d = dict(r); d["type"] = d.get("rel_type", ""); edges.append(d)
+        return {"nodes": nodes, "edges": edges}
+    finally:
+        con.close()
+
+
 def datasources() -> list:
     data = db.rows("SELECT * FROM tb_data_source ORDER BY id")
     if not any(d["type"] == "builtin-demo" for d in data):
@@ -254,8 +279,10 @@ def graph_data(ds: int = 1) -> dict:
         raise HTTPException(404, "数据源不存在")
     if src["type"] == "builtin-demo":
         return {**DEMO_DATA, "source": src["name"], "readonly": True}
-    # Neo4j 等真实图库：按 config 连接拉取（MVP 阶段返回占位，接入后替换）
     cfg = json.loads(src["config"] or "{}")
+    if src["type"] == "graph-ref":
+        return {**_graph_ref_data(cfg), "source": src["name"], "readonly": True}
+    # Neo4j 等真实图库：按 config 连接拉取（MVP 阶段返回占位，接入后替换）
     return {"nodes": [], "edges": [], "source": src["name"], "readonly": True,
             "message": f"类型 {src['type']} 数据源待接入（config: {cfg.get('uri', '')}）"}
 
@@ -265,7 +292,11 @@ def view_graph(oid: int, ds: int = 1) -> dict:
     maps = db.rows("SELECT * FROM tb_onto_mapping WHERE ontology_id=?", (oid,))
     node_types = {m["physical_type"] for m in maps if m["kind"] == "node"}
     edge_types = {m["physical_type"] for m in maps if m["kind"] == "edge"}
-    data = {**DEMO_DATA, "source": "示例数据"}
+    src = db.one("SELECT * FROM tb_data_source WHERE id=?", (ds,))
+    if src and src["type"] == "graph-ref":
+        data = {**_graph_ref_data(json.loads(src["config"] or "{}")), "source": src["name"]}
+    else:
+        data = {**DEMO_DATA, "source": "示例数据"}
     if node_types:
         data["nodes"] = [n for n in data["nodes"] if n["type"] in node_types]
     if edge_types:

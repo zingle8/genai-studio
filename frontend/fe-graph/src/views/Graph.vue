@@ -62,26 +62,29 @@
               <option v-for="d in 7" :key="d" :value="d">{{ d }} 级</option>
             </select>
             <button class="btn btn-primary btn-sm" :disabled="searching" @click="loadGraph">{{ searching ? '查询中…' : '查询邻域' }}</button>
-            <span class="zoom-ctl">
+          </div>
+          <div class="svg-box">
+            <div class="zoom-ctl graph-zoom">
               <button class="zoom-btn" title="放大视图" @click="zoomIn">➕</button>
               <button class="zoom-btn" title="缩小视图" @click="zoomOut">➖</button>
-              <button class="zoom-btn" title="重置视图比例" @click="zoomReset">⌂</button>
+              <button class="zoom-btn" title="重置视图" @click="zoomReset">⌂</button>
               <span class="text-xs muted zoom-val">{{ Math.round(scale * 100) }}%</span>
-            </span>
-          </div>
-          <svg class="graph-svg" viewBox="0 0 2600 1800">
+            </div>
+            <svg class="graph-svg" :class="{ panning }" :viewBox="`0 0 ${canvas.w} ${canvas.h}`"
+                 @mousedown="panStart" @mousemove="panMove" @mouseup="panEnd" @mouseleave="panEnd" @wheel.prevent="onWheel">
             <g :transform="viewTransform">
               <defs><marker id="garr" markerWidth="7" markerHeight="7" refX="22" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#9aa6bd"/></marker></defs>
               <g v-for="e in edges" :key="'e' + e.id" style="cursor:pointer;" @click="selEdge=e; selNode=null" @mouseenter="showNodeTip($event, 'edge', e)" @mousemove="moveTip" @mouseleave="hoverTip=null">
                 <line :x1="pos(e.source_id).x" :y1="pos(e.source_id).y" :x2="pos(e.target_id).x" :y2="pos(e.target_id).y" class="edge-line" :class="{ sel: selEdge?.id === e.id }" marker-end="url(#garr)" />
               </g>
               <g v-for="n in nodes" :key="'n' + n.id" style="cursor:pointer;" @click="selNode=n; selEdge=null" @mouseenter="showNodeTip($event, 'node', n)" @mousemove="moveTip" @mouseleave="hoverTip=null">
-                <circle :cx="pos(n.id).x" :cy="pos(n.id).y" :r="hubIds.has(n.id) ? 42 : 26" class="node-circle" :class="{ sel: selNode?.id === n.id, hub: hubIds.has(n.id) }" :fill="groupColor(groupKeyOf(n))" />
-                <text :x="pos(n.id).x" :y="pos(n.id).y + 4" text-anchor="middle" class="node-circle-name">{{ n.name.length > (hubIds.has(n.id)?5:4) ? n.name.slice(0, hubIds.has(n.id)?5:4) : n.name }}</text>
-                <text v-if="nodeStatus(n)" :x="pos(n.id).x" :y="pos(n.id).y + (hubIds.has(n.id)?58:40)" text-anchor="middle" class="node-status">{{ nodeStatus(n) }}</text>
+                <circle :cx="pos(n.id).x" :cy="pos(n.id).y" :r="(hubIds.has(n.id) ? 42 : 26) * nodeScale" class="node-circle" :class="{ sel: selNode?.id === n.id, hub: hubIds.has(n.id) }" :fill="groupColor(groupKeyOf(n))" />
+                <text :x="pos(n.id).x" :y="pos(n.id).y + 4" text-anchor="middle" class="node-circle-name" :style="{ fontSize: 12 * nodeScale + 'px' }">{{ n.name.length > (hubIds.has(n.id)?5:4) ? n.name.slice(0, hubIds.has(n.id)?5:4) : n.name }}</text>
+                <text v-if="nodeStatus(n)" :x="pos(n.id).x" :y="pos(n.id).y + (hubIds.has(n.id)?58:40) * nodeScale" text-anchor="middle" class="node-status" :style="{ fontSize: 11 * nodeScale + 'px' }">{{ nodeStatus(n) }}</text>
               </g>
             </g>
-          </svg>
+            </svg>
+          </div>
           <div v-if="hoverTip" class="hover-tip" :style="{ left: hoverTip.x + 'px', top: hoverTip.y + 'px' }">
             <div class="ht-title">{{ hoverTip.title }}</div>
             <div class="ht-sub">{{ hoverTip.sub }}</div>
@@ -471,19 +474,21 @@ async function loadVersions() {
   if (r.code === 0) versions.value = r.data
 }
 async function loadAudit() {
-  const r = await api(withBase(`/api/graphs/audit?gid=${curGraph.value?.id || 0}`))
+  const r = await api(withBase(`/api/graphs/audit?gid=${curGraph.value?.id || 0}&limit=1000`))
   if (r.code === 0) audits.value = r.data
 }
 
 /* ===== 图视图：力导向簇群布局 + 缩放 ===== */
 const positions = ref({})        // nodeId -> {x,y}
+const canvas = ref({ w: 2600, h: 1800 })
+const nodeScale = ref(1)
 const scale = ref(1)
 const TYPE_COLORS = ['#4d6bfe', '#e5484d', '#12b76a', '#f79009', '#7a5af8', '#06aed4', '#d444f1', '#6b7280']
 function typeColor(eid) {
   const i = entities.value.findIndex(x => x.id === eid)
   return TYPE_COLORS[(i < 0 ? 0 : i) % TYPE_COLORS.length]
 }
-function pos(id) { return positions.value[id] || { x: 1300, y: 900 } }
+function pos(id) { return positions.value[id] || { x: canvas.value.w / 2, y: canvas.value.h / 2 } }
 const hubIds = ref(new Set())
 const GROUP_COLORS = ['#4d6bfe', '#12b76a', '#e5484d', '#7a5af8', '#06aed4', '#f79009', '#d444f1', '#0d9488', '#db2777', '#65a30d']
 function groupColor(key) {
@@ -502,7 +507,11 @@ function layout() {
   const P = {}
   if (!list.length) { positions.value = P; hubIds.value = new Set(); return }
   hubIds.value = new Set()
-  const W = 2600, H = 1800, PAD = 140
+  // 画布随节点规模成比例放大，保证大图谱每个族群有足够放射空间
+  const scaleFactor = Math.max(1, Math.min(3.6, Math.sqrt(list.length / 60)))
+  const W = Math.round(2600 * scaleFactor), H = Math.round(1800 * scaleFactor), PAD = Math.round(140 * scaleFactor)
+  canvas.value = { w: W, h: H }
+  nodeScale.value = Math.min(1.5, Math.sqrt(scaleFactor))
   // 1) 按族群分组，族群按节点数降序（大族优先占中间区域）
   const buckets = {}
   for (const n of list) { const k = groupKeyOf(n); (buckets[k] = buckets[k] || []).push(n) }
@@ -512,7 +521,7 @@ function layout() {
   const centers = []
   if (G === 1) centers.push({ x: W / 2, y: H / 2 })
   else {
-    const R = Math.min(W, H) * 0.36
+    const R = Math.min(W, H) * 0.42
     for (let i = 0; i < G; i++) {
       const a = i * 2.399963; // 黄金角
       const r = i === 0 ? 0 : R * Math.sqrt(i / (G - 1)) * 1.15
@@ -532,12 +541,13 @@ function layout() {
     hubIds.value.add(hub.id)
     const rest = members
     if (!rest.length) return
-    // 同心环：每环容量随半径增长，环距 165（卫星圆 r=26，间距充足）
-    const cap = Math.max(6, Math.floor(2 * Math.PI * 165 / 78))
+    // 同心环：环距按画布比例放大，保证大图谱节点不重叠
+    const step = 165 * scaleFactor
+    const cap = Math.max(6, Math.floor(2 * Math.PI * step / 78))
     let idx = 0, ring = 1
     while (idx < rest.length) {
       const ringCount = Math.min(cap * ring, rest.length - idx)
-      const radius = 165 * ring
+      const radius = step * ring
       for (let j = 0; j < ringCount; j++) {
         const ang = (j / ringCount) * Math.PI * 2 + (ring % 2) * 0.3
         const n = rest[idx++]
@@ -554,9 +564,33 @@ watch([nodes, edges], layout)
 
 function zoomIn() { scale.value = Math.min(2.5, +(scale.value * 1.25).toFixed(3)) }
 function zoomOut() { scale.value = Math.max(0.35, +(scale.value / 1.25).toFixed(3)) }
-function zoomReset() { scale.value = 1 }
+function zoomReset() { scale.value = 1; pan.value = { x: 0, y: 0 } }
+
+/* ===== 画布拖拽平移：按住空白处拖动整体移动节点 ===== */
+const pan = ref({ x: 0, y: 0 })
+const panning = ref(false)
+const panState = ref(null)
+function panStart(e) {
+  if (e.button !== 0) return
+  panState.value = { svg: e.currentTarget, sx: e.clientX, sy: e.clientY, ox: pan.value.x, oy: pan.value.y }
+  panning.value = true
+  window.addEventListener('mouseup', panEnd, { once: true })
+}
+function panMove(e) {
+  const st = panState.value
+  if (!st) return
+  const ctm = st.svg.getScreenCTM()
+  if (!ctm) return
+  pan.value = { x: st.ox + (e.clientX - st.sx) / ctm.a, y: st.oy + (e.clientY - st.sy) / ctm.d }
+}
+function panEnd() { panState.value = null; panning.value = false }
+/** 滚轮缩放：向上滚放大、向下滚缩小 */
+function onWheel(e) {
+  const f = e.deltaY < 0 ? 1.12 : 1 / 1.12
+  scale.value = Math.min(2.5, Math.max(0.35, +(scale.value * f).toFixed(3)))
+}
 function closeDetail() { selNode.value = null; selEdge.value = null }
-const viewTransform = computed(() => `translate(${1300 * (1 - scale.value)} ${900 * (1 - scale.value)}) scale(${scale.value})`)
+const viewTransform = computed(() => `translate(${canvas.value.w / 2 * (1 - scale.value) + pan.value.x} ${canvas.value.h / 2 * (1 - scale.value) + pan.value.y}) scale(${scale.value})`)
 function entityName(eid) { const e = entities.value.find(x => x.id === eid); return e ? e.name : '—' }
 function entitySchema(eid) { return entities.value.find(x => x.id === eid)?.props_schema || '[]' }
 function nodeProps(n) {
@@ -677,6 +711,11 @@ async function restoreVersion(v) {
 .graph-layout { display: flex; gap: 12px; flex: 1; min-height: 0; align-items: flex-start; }
 /* 图视图主区：视口内动态铺满，避免整页滚动 */
 .graph-view-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 108px); }
+/* 顶部视图 tab：分段按钮，避免文字粘连 */
+.graph-view-main > .mode-tabs { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; width: fit-content; max-width: 100%; background: var(--bg-soft, #f5f6fa); border: 1px solid var(--border-light, #e5e7eb); border-radius: 10px; padding: 4px; flex-shrink: 0; }
+.graph-view-main > .mode-tabs .mode-tab { border: 1px solid transparent; background: transparent; padding: 7px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; line-height: 1.2; white-space: nowrap; color: var(--text-secondary, #6b7280); transition: background .15s, color .15s, box-shadow .15s; }
+.graph-view-main > .mode-tabs .mode-tab:hover { color: var(--text-primary, #111827); background: rgba(255,255,255,.55); }
+.graph-view-main > .mode-tabs .mode-tab.active { background: #fff; color: var(--text-primary, #111827); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.08); border-color: var(--border-light, #e5e7eb); }
 .graph-view-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .graph-view-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .graph-side-left { width: 280px; flex-shrink: 0; overflow-y: auto; max-height: calc(100vh - 160px); position: sticky; top: 12px; }
@@ -708,7 +747,8 @@ async function restoreVersion(v) {
 .dot-mini { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot-mini.green { background: #22c55e; }
 .dot-mini.red { background: #ef4444; }
-.graph-svg { width: 100%; flex: 1 1 auto; min-height: 160px; height: auto; background: var(--bg-soft); border-radius: 10px; display: block; }
+.graph-svg { width: 100%; flex: 1 1 auto; min-height: 160px; height: auto; background: var(--bg-soft); border-radius: 10px; display: block; cursor: grab; user-select: none; }
+.graph-svg.panning { cursor: grabbing; }
 .graph-view-body .row-head { flex-shrink: 0; }
 /* 选中详情：右侧滑出抽屉 */
 .graph-detail-drawer {
@@ -735,7 +775,9 @@ async function restoreVersion(v) {
 .hover-tip .ht-row { display: flex; gap: 8px; padding: 2px 0; border-top: 1px solid rgba(255,255,255,.08); }
 .hover-tip .ht-key { color: #9fb3d9; min-width: 48px; flex-shrink: 0; }
 .hover-tip .ht-val { word-break: break-all; }
+.svg-box { position: relative; flex: 1 1 auto; min-height: 0; display: flex; }
 .zoom-ctl { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid var(--border-light, #e9ebf0); border-radius: 8px; padding: 2px 6px 2px 2px; }
+.graph-zoom { position: absolute; right: 10px; top: 10px; z-index: 2; box-shadow: 0 2px 8px rgba(0,0,0,.08); }
 .zoom-btn { width: 28px; height: 26px; border: none; background: none; border-radius: 6px; font-size: 13px; line-height: 1; cursor: pointer; color: var(--text-secondary, #4b5563); transition: background .15s, color .15s; }
 .zoom-btn:hover { background: var(--bg-soft, #f0f2f7); color: var(--primary, #4d6bfe); }
 .zoom-val { min-width: 36px; text-align: center; }

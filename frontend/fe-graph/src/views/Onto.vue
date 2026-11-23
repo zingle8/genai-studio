@@ -9,6 +9,7 @@
         <select class="form-select" v-model="dsId" style="width:180px;" @change="loadGraphData">
           <option v-for="d in datasources" :key="d.id" :value="d.id">{{ d.name }}</option>
         </select>
+        <span class="db-icon" :class="curDsDbType === 'neo4j' ? 'neo' : ''" :title="curDsDbType === 'neo4j' ? 'Neo4j 数据源' : 'SQL/内置数据源'">{{ curDsDbType === 'neo4j' ? 'N4' : 'SQL' }}</span>
         <button class="btn btn-secondary" @click="spaceOpen=true">＋ 新建空间</button>
         <button class="btn btn-ghost" @click="openNewGraph">＋ 新建图谱</button>
         <button class="btn btn-primary" @click="openNewOnto">＋ 新建本体</button>
@@ -27,7 +28,10 @@
           </div>
           <div class="acc-body"><div class="acc-body-inner">
             <div v-for="o in sp.children" :key="o.id" class="onto-item" :class="{on: cur?.id===o.id}" @click="tab='graph'; selectOnto(o)">
-              <div class="onto-name"><span class="scope-dot" :class="o.scope"></span>{{ o.name }}</div>
+              <div class="onto-name">
+                <span class="db-icon" :class="ontoDbType(o) === 'neo4j' ? 'neo' : ''" :title="ontoDbType(o) === 'neo4j' ? 'Neo4j 数据源' : 'SQL/内置数据源'">{{ ontoDbType(o) === 'neo4j' ? 'N4' : 'SQL' }}</span>
+                <span class="scope-dot" :class="o.scope"></span>{{ o.name }}
+              </div>
               <div class="text-xs muted">{{ o.scope==='domain' ? '领域' : '个人' }} · {{ o.class_count }} 类 / {{ o.rel_count }} 规则</div>
             </div>
             <div v-if="!sp.children.length" class="tree-empty text-xs muted">（无本体）</div>
@@ -63,7 +67,8 @@
 
         <div v-show="tab==='graph'" class="panel">
           <div class="svg-wrap">
-            <svg viewBox="0 0 1400 900" width="100%" height="100%">
+            <svg class="onto-svg" :class="{ panning }" viewBox="0 0 1400 900" width="100%" height="100%"
+                 @mousedown="panStart($event, 'onto')" @mousemove="panMove" @mouseup="panEnd" @mouseleave="panEnd">
               <defs><marker id="arr" markerWidth="8" markerHeight="8" refX="26" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 z" fill="#94a3b8"/></marker></defs>
               <g :transform="ontoViewTransform">
                 <g v-for="e in graphEdges" :key="'e'+e.id" style="cursor:pointer;" @click="selEdge=e; selNode=null" @mouseenter="showOntoTip($event,'rel',e)" @mousemove="moveTip" @mouseleave="hoverTip=null">
@@ -292,7 +297,8 @@
             <span class="text-xs muted" v-if="dataVisibleKeys">显示 {{ dataNodes.length }} 节点 · {{ dataEdges.length }} 边（{{ dataFocus.length }} 起点 / {{ dataDepth }} 级）</span>
           </div>
           <div class="svg-wrap">
-            <svg viewBox="0 0 3000 2000" width="100%" height="100%">
+            <svg class="onto-svg" :class="{ panning }" viewBox="0 0 3000 2000" width="100%" height="100%"
+                 @mousedown="panStart($event, 'data')" @mousemove="panMove" @mouseup="panEnd" @mouseleave="panEnd">
               <defs><marker id="darr" markerWidth="7" markerHeight="7" refX="22" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#9aa6bd"/></marker></defs>
               <g :transform="dataViewTransform">
                 <g v-for="e in dataEdges" :key="'de'+e.key" style="cursor:pointer;" @click="dataSelEdge=e; dataSelNode=null" @mouseenter="showDataTip($event,'edge',e)" @mousemove="moveTip" @mouseleave="hoverTip=null">
@@ -489,6 +495,29 @@ import MultiNodeSelect from '../components/MultiNodeSelect.vue'
 const ontos = ref([])
 const datasources = ref([])
 const dsId = ref(null)
+const kgGraphs = ref([])   // 知识图谱列表（用于解析 graph-ref 数据源的真实库类型）
+
+async function loadKgGraphs() {
+  const r = await api('/api/graphs')
+  if (r.code === 0) kgGraphs.value = r.data
+}
+/** 数据源真实库类型：neo4j → N4，其余（内置示例/指向图谱的 graph-ref）→ SQL */
+function dsDbType(ds) {
+  if (!ds) return 'sql'
+  if (ds.type === 'neo4j') return 'neo4j'
+  if (ds.type === 'graph-ref') {
+    let cfg = {}
+    try { cfg = typeof ds.config === 'string' ? JSON.parse(ds.config) : (ds.config || {}) } catch {}
+    const g = kgGraphs.value.find(x => x.id === Number(cfg.graphId))
+    return g?.db_type === 'neo4j' ? 'neo4j' : 'sql'
+  }
+  return 'sql'
+}
+const curDsDbType = computed(() => dsDbType(datasources.value.find(d => d.id === dsId.value)))
+function ontoDbType(o) {
+  const ds = matchDatasource(o.name)
+  return ds ? dsDbType(ds) : (kgGraphs.value.find(x => x.name === o.name)?.db_type === 'neo4j' ? 'neo4j' : 'sql')
+}
 const cur = ref(null)
 const tab = ref('graph')
 // 本体空间（对齐知识库 space 模型）
@@ -696,8 +725,8 @@ watch([nodes, graphEdges], ontologyLayout)
 
 function ontoZoomIn() { ontoScale.value = Math.min(2.5, +(ontoScale.value * 1.25).toFixed(3)) }
 function ontoZoomOut() { ontoScale.value = Math.max(0.35, +(ontoScale.value / 1.25).toFixed(3)) }
-function ontoZoomReset() { ontoScale.value = 1 }
-const ontoViewTransform = computed(() => `translate(${500 * (1 - ontoScale.value)} ${310 * (1 - ontoScale.value)}) scale(${ontoScale.value})`)
+function ontoZoomReset() { ontoScale.value = 1; pan.value = { x: 0, y: 0 } }
+const ontoViewTransform = computed(() => `translate(${500 * (1 - ontoScale.value) + pan.value.x} ${310 * (1 - ontoScale.value) + pan.value.y}) scale(${ontoScale.value})`)
 const physNodes = computed(() => graphData.value.nodes || [])
 const physEdges = computed(() => graphData.value.edges || [])
 const physTypes = computed(() => [...new Set([...physNodes.value.map(n => n.type), ...physEdges.value.map(e => e.type)])])
@@ -870,8 +899,27 @@ function dataGroupColor(key) {
 }
 function dataZoomIn() { dataScale.value = Math.min(2.5, +(dataScale.value * 1.25).toFixed(3)) }
 function dataZoomOut() { dataScale.value = Math.max(0.35, +(dataScale.value / 1.25).toFixed(3)) }
-function dataZoomReset() { dataScale.value = 1 }
-const dataViewTransform = computed(() => `translate(${1500 * (1 - dataScale.value)} ${1000 * (1 - dataScale.value)}) scale(${dataScale.value})`)
+function dataZoomReset() { dataScale.value = 1; pan.value = { x: 0, y: 0 } }
+const dataViewTransform = computed(() => `translate(${1500 * (1 - dataScale.value) + pan.value.x} ${1000 * (1 - dataScale.value) + pan.value.y}) scale(${dataScale.value})`)
+
+/* ===== 画布拖拽平移：按住空白处拖动整体移动节点 ===== */
+const pan = ref({ x: 0, y: 0 })
+const panning = ref(false)
+const panState = ref(null)
+function panStart(e, key) {
+  if (e.button !== 0) return
+  panState.value = { svg: e.currentTarget, key, sx: e.clientX, sy: e.clientY, ox: pan.value.x, oy: pan.value.y }
+  panning.value = true
+  window.addEventListener('mouseup', panEnd, { once: true })
+}
+function panMove(e) {
+  const st = panState.value
+  if (!st) return
+  const ctm = st.svg.getScreenCTM()
+  if (!ctm) return
+  pan.value = { x: st.ox + (e.clientX - st.sx) / ctm.a, y: st.oy + (e.clientY - st.sy) / ctm.d }
+}
+function panEnd() { panState.value = null; panning.value = false }
 
 /* 数据源随本体自动匹配：本体名与数据源名互相包含则优先（如 万家家族族谱 ⊂ 万家家族族谱·实例数据），否则取内置示例 */
 function matchDatasource(ontoName) {
@@ -892,7 +940,7 @@ const dsSourceLabel = computed(() => {
 })
 
 onMounted(async () => {
-  loadSpaces(); loadOntos()
+  loadSpaces(); loadOntos(); loadKgGraphs()
   document.addEventListener('mousedown', onDocClick)
   const d = await api('/api/onto/datasources')
   if (d.code === 0) { datasources.value = d.data; dsId.value = d.data[0]?.id }
@@ -1015,7 +1063,7 @@ async function loadOntoVersions() {
   if (r.code === 0) ontoVersions.value = r.data
 }
 async function loadAudit() {
-  const r = await api(`/api/onto/audit?oid=${cur.value?.id || 0}`)
+  const r = await api(`/api/onto/audit?oid=${cur.value?.id || 0}&limit=1000`)
   if (r.code === 0) audits.value = r.data
 }
 async function viewOntoVersion(v) {
@@ -1078,6 +1126,11 @@ async function loadView() { const r = await api(`/api/onto/${cur.value.id}/view-
 .onto-item:hover { background: var(--bg-soft, #f7f8fa); }
 .onto-item.on { background: #eef1fe; border-color: var(--primary, #4d6bfe); }
 .onto-name { font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.db-icon { width: 30px; height: 22px; border-radius: 5px; background: #6b7280; color: #fff; font-size: 10px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.db-icon.neo { background: #018bff; }
+.header-actions .db-icon { margin-left: -6px; }
+.onto-svg { cursor: grab; user-select: none; }
+.onto-svg.panning { cursor: grabbing; }
 .scope-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .scope-dot.domain { background: #4d6bfe; }
 .scope-dot.personal { background: #22c55e; }

@@ -112,6 +112,12 @@
               <input class="form-input" v-model="relForm.inheritsFrom" placeholder="继承关系名（可空）"/>
               <button class="btn btn-primary btn-sm full" @click="createRel">创建规则</button>
             </div>
+            <Transition name="drawer">
+            <aside v-if="selNode || selEdge" class="graph-detail-drawer">
+              <div class="drawer-head">
+                <b>本体详情</b>
+                <button class="drawer-close" title="关闭" @click="closeOntoDetail">×</button>
+              </div>
             <div v-if="selNode" class="sel-card">
               <div class="sel-title"><b>{{ selNode.name }}</b><span class="tag tag-success">类 #{{ selNode.id }}</span></div>
               <div class="sel-meta">本体：{{ cur.name }} · 状态：{{ cur.status || 'active' }} · 版本：{{ cur.version || 'v1' }}</div>
@@ -121,8 +127,8 @@
               <div class="sel-actions">
                 <button class="btn btn-primary btn-sm" @click="editSelClass">更新类</button>
                 <button class="btn btn-secondary btn-sm" @click="delClass(selNode)">删除</button>
-                <button class="btn btn-secondary btn-sm" @click="newClassOpen = true">＋ 类</button>
-                <button class="btn btn-secondary btn-sm" @click="newRelOpen = true">＋ 规则</button>
+                <button class="btn btn-secondary btn-sm" @click="closeOntoDetail(); newClassOpen = true">＋ 类</button>
+                <button class="btn btn-secondary btn-sm" @click="closeOntoDetail(); newRelOpen = true">＋ 规则</button>
               </div>
             </div>
             <div v-if="selEdge" class="sel-card">
@@ -136,10 +142,12 @@
               <div class="sel-actions">
                 <button class="btn btn-primary btn-sm" @click="editSelRel">更新规则</button>
                 <button class="btn btn-secondary btn-sm" @click="delRel(selEdge)">删除</button>
-                <button class="btn btn-secondary btn-sm" @click="newClassOpen = true">＋ 类</button>
-                <button class="btn btn-secondary btn-sm" @click="newRelOpen = true">＋ 规则</button>
+                <button class="btn btn-secondary btn-sm" @click="closeOntoDetail(); newClassOpen = true">＋ 类</button>
+                <button class="btn btn-secondary btn-sm" @click="closeOntoDetail(); newRelOpen = true">＋ 规则</button>
               </div>
             </div>
+            </aside>
+            </Transition>
             <div v-if="!selNode && !selEdge" class="text-xs muted" style="padding:6px 2px;">点击图中节点或规则查看属性、状态、版本并操作 · 共 {{ nodes.length }} 类 / {{ graphEdges.length }} 规则</div>
           </div>
         </div>
@@ -308,9 +316,15 @@
               <button class="zoom-btn" title="重置视图比例" @click="dataZoomReset">⌂</button>
               <span class="text-xs muted zoom-val">{{ Math.round(dataScale*100) }}%</span>
             </div>
-            <div class="svg-hint">点击节点/边在下方查看属性详情 · 可多选节点查询 1~7 级邻域</div>
+            <div class="svg-hint">点击节点/边在右侧查看属性详情 · 可多选节点查询 1~7 级邻域</div>
           </div>
-          <div class="data-detail">
+          <Transition name="drawer">
+          <aside v-if="dataSelNode || dataSelEdge" class="graph-detail-drawer">
+            <div class="drawer-head">
+              <b>数据详情</b>
+              <button class="drawer-close" title="关闭" @click="closeDataDetail">×</button>
+            </div>
+            <div class="data-detail">
             <template v-if="dataSelNode">
               <div class="detail-head">
                 <b>{{ dataSelNode.label }}</b><span class="tag tag-success">节点 · {{ dataSelNode.type }}</span>
@@ -334,7 +348,9 @@
               </tbody></table>
             </template>
             <div v-else class="text-xs muted">点击图中的节点或关系边，查看物理数据的属性详情</div>
-          </div>
+            </div>
+          </aside>
+          </Transition>
         </div>
 
         <!-- 版本快照 -->
@@ -466,7 +482,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { api } from '../api'
 import MultiNodeSelect from '../components/MultiNodeSelect.vue'
 
@@ -782,6 +798,8 @@ function runDataNeighborhood() {
   dataSelNode.value = null; dataSelEdge.value = null
 }
 function resetDataNeighborhood() { dataFocus.value = []; dataVisibleKeys.value = null; dataDepth.value = 1; dataSelNode.value = null; dataSelEdge.value = null }
+function closeDataDetail() { dataSelNode.value = null; dataSelEdge.value = null }
+function closeOntoDetail() { selNode.value = null; selEdge.value = null }
 function switchDataMode(m) {
   dataMode.value = m
   dataFocus.value = []; dataVisibleKeys.value = null
@@ -875,9 +893,18 @@ const dsSourceLabel = computed(() => {
 
 onMounted(async () => {
   loadSpaces(); loadOntos()
+  document.addEventListener('mousedown', onDocClick)
   const d = await api('/api/onto/datasources')
   if (d.code === 0) { datasources.value = d.data; dsId.value = d.data[0]?.id }
 })
+onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick))
+
+// 点击抽屉外部关闭详情；点击图中节点/边交给其自身处理，用于切换选中
+function onDocClick(e) {
+  if (e.target.closest?.('.graph-detail-drawer')) return
+  if (selNode.value || selEdge.value) closeOntoDetail()
+  if (dataSelNode.value || dataSelEdge.value) closeDataDetail()
+}
 
 // 数据源切换（自动匹配或手动选择）时联动刷新图数据与本体投影
 watch(dsId, async () => {
@@ -1161,4 +1188,20 @@ async function loadView() { const r = await api(`/api/onto/${cur.value.id}/view-
 .detail-table td { padding: 4px 6px; border-bottom: 1px solid #f4f5f8; text-align: left; word-break: break-all; }
 .detail-table td:first-child { width: 30%; color: #6b7280; }
 .clickable { cursor: pointer; color: #4d6bfe; }
+
+/* 数据详情：右侧滑出抽屉（与知识图谱一致） */
+.graph-detail-drawer {
+  position: fixed; top: 0; right: 0; height: 100vh; width: 480px; max-width: 92vw;
+  z-index: 900; background: #fff; border-left: 1px solid var(--border-light, #e9ebf0);
+  box-shadow: -10px 0 32px rgba(0,0,0,.14); overflow-y: auto; padding: 16px 20px 28px;
+}
+.drawer-head { position: sticky; top: -16px; background: #fff; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 4px 0 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border-light, #e9ebf0); }
+.drawer-head b { font-size: 15px; }
+.drawer-close { width: 30px; height: 30px; border-radius: 6px; font-size: 20px; line-height: 1; color: var(--text-secondary, #6b7280); background: var(--bg-soft, #f7f8fa); }
+.drawer-close:hover { background: #e9ebf0; color: #111; }
+.graph-detail-drawer .data-detail { max-height: none; border: none; border-radius: 0; padding: 0; background: transparent; overflow: visible; }
+.graph-detail-drawer .sel-card { border: none; padding: 0 !important; background: transparent; }
+.graph-detail-drawer .sel-actions { margin-top: 14px; }
+.drawer-enter-active, .drawer-leave-active { transition: transform .26s ease, opacity .26s ease; }
+.drawer-enter-from, .drawer-leave-to { transform: translateX(100%); opacity: .7; }
 </style>

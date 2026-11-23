@@ -88,14 +88,20 @@
             <div v-for="r in hoverTip.rows" :key="r[0]" class="ht-row"><span class="ht-key">{{ r[0] }}</span><span class="ht-val">{{ r[1] }}</span></div>
           </div>
 
-          <!-- 选中对象详情：属性 / 状态 / 版本 / 操作 -->
-          <div class="graph-detail">
+          <!-- 选中对象详情：右侧滑出抽屉 -->
+          <Transition name="drawer">
+          <aside v-if="selNode || selEdge" class="graph-detail-drawer">
+            <div class="drawer-head">
+              <b>详情与操作</b>
+              <button class="drawer-close" title="关闭" @click="closeDetail">×</button>
+            </div>
+            <div class="graph-detail">
             <template v-if="selNode">
               <div class="detail-head">
                 <b>{{ selNode.name }}</b>
                 <span class="tag tag-success">节点 · {{ entityName(selNode.entity_id) }}</span>
                 <span class="text-xs muted">ID {{ selNode.id }} · 创建 {{ selNode.created_at }}</span>
-                <span style="flex:1"></span>
+                <span class="detail-spacer"></span>
                 <button v-if="!isReadonly" class="btn btn-primary btn-sm" @click="editNode(selNode)">更新节点</button>
                 <button v-if="!isReadonly" class="btn btn-secondary btn-sm" @click="openEdgeFor(selNode)">＋ 关联关系</button>
                 <button v-if="!isReadonly" class="btn btn-secondary btn-sm" @click="nodeOpen = true">＋ 节点</button>
@@ -129,7 +135,7 @@
               <div class="detail-head">
                 <b>{{ selEdge.rel_type }}</b><span class="tag">关系 #{{ selEdge.id }}</span>
                 <span class="text-xs muted">创建 {{ selEdge.created_at }}</span>
-                <span style="flex:1"></span>
+                <span class="detail-spacer"></span>
                 <button v-if="!isReadonly" class="btn btn-primary btn-sm" @click="editEdge(selEdge)">更新关系</button>
                 <button v-if="!isReadonly" class="btn btn-secondary btn-sm" @click="nodeOpen = true">＋ 节点</button>
                 <button v-if="!isReadonly" class="btn btn-danger btn-sm" @click="delEdge(selEdge)">删除</button>
@@ -153,7 +159,9 @@
               </div>
             </template>
             <div v-else class="text-xs muted">点击图中的节点或关系，查看属性、状态、版本并执行增删改操作</div>
-          </div>
+            </div>
+          </aside>
+          </Transition>
         </div></div>
 
         <!-- 实体类型 -->
@@ -361,7 +369,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { api, withBase } from '../api'
 import MultiNodeSelect from '../components/MultiNodeSelect.vue'
 const graphs = ref([]); const curGraph = ref(null); const tab = ref('view')
@@ -417,7 +425,14 @@ async function loadPub() {
     if (r.code === 0) { const m = {}; for (const it of (r.data.list || r.data || [])) m[it.configKey] = it.configValue; pub.value = m }
   } catch {}
 }
-onMounted(() => { loadPub(); loadGraphs(); loadSpaces() })
+onMounted(() => { loadPub(); loadGraphs(); loadSpaces(); document.addEventListener('mousedown', onDocClick) })
+onBeforeUnmount(() => document.removeEventListener('mousedown', onDocClick))
+
+// 点击抽屉外部关闭详情；点击图中节点/边交给其自身处理，用于切换选中
+function onDocClick(e) {
+  if (e.target.closest?.('.graph-detail-drawer')) return
+  if (selNode.value || selEdge.value) closeDetail()
+}
 
 async function loadGraphs() {
   const r = await api(withBase('/api/graphs'))
@@ -540,6 +555,7 @@ watch([nodes, edges], layout)
 function zoomIn() { scale.value = Math.min(2.5, +(scale.value * 1.25).toFixed(3)) }
 function zoomOut() { scale.value = Math.max(0.35, +(scale.value / 1.25).toFixed(3)) }
 function zoomReset() { scale.value = 1 }
+function closeDetail() { selNode.value = null; selEdge.value = null }
 const viewTransform = computed(() => `translate(${1300 * (1 - scale.value)} ${900 * (1 - scale.value)}) scale(${scale.value})`)
 function entityName(eid) { const e = entities.value.find(x => x.id === eid); return e ? e.name : '—' }
 function entitySchema(eid) { return entities.value.find(x => x.id === eid)?.props_schema || '[]' }
@@ -694,7 +710,24 @@ async function restoreVersion(v) {
 .dot-mini.red { background: #ef4444; }
 .graph-svg { width: 100%; flex: 1 1 auto; min-height: 160px; height: auto; background: var(--bg-soft); border-radius: 10px; display: block; }
 .graph-view-body .row-head { flex-shrink: 0; }
-.graph-view-body .graph-detail { flex: 0 1 auto; max-height: 26vh; overflow-y: auto; }
+/* 选中详情：右侧滑出抽屉 */
+.graph-detail-drawer {
+  position: fixed; top: 0; right: 0; height: 100vh; width: 480px; max-width: 92vw;
+  z-index: 900; background: #fff; border-left: 1px solid var(--border-light, #e9ebf0);
+  box-shadow: -10px 0 32px rgba(0,0,0,.14); overflow-y: auto; padding: 16px 20px 28px;
+}
+.drawer-head { position: sticky; top: -16px; background: #fff; z-index: 1; display: flex; align-items: center; justify-content: space-between; padding: 4px 0 10px; margin-bottom: 8px; border-bottom: 1px solid var(--border-light, #e9ebf0); }
+.drawer-head b { font-size: 15px; }
+.drawer-close { width: 30px; height: 30px; border-radius: 6px; font-size: 20px; line-height: 1; color: var(--text-secondary, #6b7280); background: var(--bg-soft, #f7f8fa); }
+.drawer-close:hover { background: #e9ebf0; color: #111; }
+.graph-detail-drawer .graph-detail { margin-top: 0; padding: 0; border: none; border-radius: 0; background: transparent; }
+.detail-spacer { flex: 1; }
+.graph-detail-drawer .detail-spacer { display: none; }
+.graph-detail-drawer .detail-head > .text-xs.muted { flex: 0 0 100%; order: 3; }
+.graph-detail-drawer .detail-head .btn { order: 2; flex: 0 0 auto; }
+.graph-detail-drawer .detail-grid { grid-template-columns: 1fr; gap: 14px; }
+.drawer-enter-active, .drawer-leave-active { transition: transform .26s ease, opacity .26s ease; }
+.drawer-enter-from, .drawer-leave-to { transform: translateX(100%); opacity: .7; }
 .node-status { font-size: 11px; fill: #e07b39; pointer-events: none; }
 .hover-tip { position: fixed; z-index: 9999; pointer-events: none; min-width: 150px; max-width: 280px; background: #1f2430; color: #fff; border-radius: 8px; padding: 8px 10px; box-shadow: 0 6px 20px rgba(0,0,0,.25); font-size: 12px; }
 .hover-tip .ht-title { font-weight: 700; font-size: 13px; }
@@ -716,7 +749,6 @@ async function restoreVersion(v) {
 .row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ver-pre { background: var(--bg-soft); border: 1px solid var(--border-light); border-radius: 8px; padding: 12px; font-size: 12px; max-height: 50vh; overflow: auto; line-height: 1.5; }
 .modal { min-width: 440px; }
-</style>
 
 /* ===== 图视图选中详情：属性 / 关系 / 版本 / 操作 ===== */
 .graph-detail { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border-light, #e9ebf0); border-radius: 10px; background: #fff; }
@@ -735,3 +767,4 @@ async function restoreVersion(v) {
 .node-circle.sel { stroke: #e5484d !important; stroke-width: 4; filter: drop-shadow(0 0 6px rgba(229,72,77,.5)); }
 .edge-line.sel { stroke: #e5484d; stroke-width: 3; }
 .edge-label.sel { fill: #e5484d; font-weight: 700; }
+</style>

@@ -35,36 +35,44 @@
 
       <!-- ===== 主区 ===== -->
       <div class="chat-main">
-        <!-- 特殊模式：请求编辑器 -->
+        <!-- 特殊模式：与聊天/调试一致——上方响应区，下方输入区 -->
         <template v-if="mode === 'special'">
           <div class="special-wrap">
-            <!-- 编辑器上方工具条：特殊模型 + 流式开关 + 配置面板触发（向上弹出） -->
-            <div class="input-toolbar">
-              <GwSelect v-model="selSpecialModel" class="model-select" :options="specialModelOptions" searchable fixed drop-up placeholder="选择特殊模型" />
-              <label class="stream-toggle" title="请求体注入 stream:true，SSE 帧聚合后展示（仅 chat/completions 类接口支持）">
-                <input type="checkbox" v-model="streamOn"/> 流式返回
-              </label>
-              <button class="key-fab" :class="{ open: keyPanelOpen, ok: !!currentKey }" :title="keyPanelOpen ? '收起配置面板' : '打开配置面板'" @click.stop="togglePanel($event.currentTarget)">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.6-6.4-2.1 2.1m-8.6 8.6-2.1 2.1m0-12.8 2.1 2.1m8.6 8.6 2.1 2.1"/></svg>
-                <span v-if="!keyPanelOpen && currentKeyName" class="key-fab-name">{{ currentKeyName }}</span>
-              </button>
-            </div>
-            <div class="special-head">
-              向 <b>{{ selSpecialModel || '（未选模型）' }}</b> 的 <code>{{ specialPath || '—' }}</code> 发送请求
-            </div>
-            <textarea class="form-input special-editor" v-model="specialBody" rows="12" spellcheck="false"></textarea>
-            <div class="special-actions">
-              <button class="btn btn-primary" :disabled="sending || !selSpecialModel || !specialPath" @click="sendSpecial">
-                {{ sending ? '请求中…' : '发送请求' }}
-              </button>
-            </div>
             <div class="special-resp">
               <div v-if="specialResp" class="special-resp-head">
                 <span class="tag" :class="specialStatus === 'OK' ? 'tag-success' : 'tag-danger'">{{ specialStatus }}</span>
                 <span class="text-xs muted">响应</span>
               </div>
               <pre v-if="specialResp" class="special-json">{{ specialResp }}</pre>
-              <div v-else class="side-empty" style="padding:48px 0;">编辑左侧请求体后发送</div>
+              <div v-else class="chat-welcome special-empty">
+                <div class="welcome-badge">GenAI Studio</div>
+                <h3>特殊模型请求</h3>
+                <p class="muted">选择模型与接口路径，编辑请求体后发送</p>
+              </div>
+            </div>
+            <div class="special-input">
+              <div class="input-toolbar">
+                <GwSelect v-model="selSpecialModel" class="model-select" :options="specialModelOptions" searchable fixed drop-up placeholder="选择特殊模型" />
+                <label class="stream-toggle" title="请求体注入 stream:true，SSE 帧聚合后展示（仅 chat/completions 类接口支持）">
+                  <input type="checkbox" v-model="streamOn"/> 流式返回
+                </label>
+                <span class="text-xs muted toolbar-hint">特殊接口 · 自定义请求体</span>
+                <button class="key-fab" :class="{ open: keyPanelOpen, ok: !!currentKey }" :title="keyPanelOpen ? '收起配置面板' : '打开配置面板'" @click.stop="togglePanel($event.currentTarget)">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3m0 14v3M2 12h3m14 0h3m-3.6-6.4-2.1 2.1m-8.6 8.6-2.1 2.1m0-12.8 2.1 2.1m8.6 8.6 2.1 2.1"/></svg>
+                  <span v-if="!keyPanelOpen && currentKeyName" class="key-fab-name">{{ currentKeyName }}</span>
+                </button>
+              </div>
+              <div class="special-head">
+                向 <b>{{ selSpecialModel || '（未选模型）' }}</b> 的 <code>{{ specialPath || '—' }}</code> 发送请求
+              </div>
+              <div class="input-row">
+                <textarea class="special-editor" v-model="specialBody" rows="3" spellcheck="false" placeholder="编辑请求体 JSON…"></textarea>
+                <button class="send-btn" :disabled="sending || !selSpecialModel || !specialPath" @click="sendSpecial" title="发送请求">
+                  <svg v-if="!sending" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  <span v-else class="spinner"></span>
+                </button>
+              </div>
+              <div class="input-foot">{{ sending ? '请求中…' : '编辑请求体后发送 · 响应展示在上方' }}</div>
             </div>
           </div>
         </template>
@@ -850,17 +858,23 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
 @keyframes gw-spin { to { transform: rotate(360deg); } }
 .input-foot { text-align: center; font-size: 11px; color: var(--text-quaternary); margin-top: 6px; }
 
-/* ===== 特殊模式 ===== */
-.special-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; padding: 14px; }
-.special-wrap .input-toolbar { flex-shrink: 0; }
-.special-head { font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+/* ===== 特殊模式：复用聊天模式的上下分区（响应在上、输入在下） ===== */
+.special-wrap { display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.special-resp { flex: 1; min-height: 0; overflow-y: auto; padding: 20px 24px; display: flex; flex-direction: column; gap: 16px; }
+.special-empty { padding-top: 24px; }
+.special-resp-head { display: flex; align-items: center; gap: 8px; }
+.special-json { margin: 0; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; color: var(--text-primary); }
+.special-input { flex-shrink: 0; padding: 12px 16px 10px; border-top: 1px solid var(--border-light); background: #fff; }
+.special-wrap .input-toolbar { margin-bottom: 10px; }
+.special-head { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
 .special-head b { color: var(--text-primary); }
 .special-head code { background: var(--bg-soft); padding: 1px 6px; border-radius: 4px; font-size: 12px; }
-.special-editor { font-family: ui-monospace, Menlo, monospace; font-size: 12.5px; flex-shrink: 0; }
-.special-actions { display: flex; justify-content: flex-end; margin-top: 10px; }
-.special-resp { flex: 1; overflow-y: auto; margin-top: 10px; background: var(--bg-soft); border-radius: var(--radius-md); padding: 12px; }
-.special-resp-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.special-json { margin: 0; font-family: ui-monospace, Menlo, monospace; font-size: 12px; white-space: pre-wrap; word-break: break-all; color: var(--text-primary); }
+.special-editor {
+  flex: 1; border: none; outline: none; background: none; resize: none;
+  font-size: 12.5px; line-height: 1.6; color: var(--text-primary);
+  min-height: 60px; max-height: 200px; padding: 5px 0; font-family: ui-monospace, Menlo, monospace;
+}
+.special-editor::placeholder { color: var(--text-quaternary); }
 
 /* ===== 响应式 ===== */
 @media (max-width: 960px) {

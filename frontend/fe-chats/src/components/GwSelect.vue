@@ -81,7 +81,7 @@ function placePanel() {
   const r = btn.getBoundingClientRect()
   const vh = window.innerHeight
   const est = Math.min(300, props.options.length * 36 + 60)
-  const spaceAbove = r.top - 8, spaceBelow = vh - r.bottom - 8
+  const spaceAbove = r.top - 56, spaceBelow = vh - r.bottom - 8   // 上方预留 48px 给页面头部
   const up = props.dropUp ? spaceAbove >= 160 : (r.bottom + 6 + est >= vh - 8)
   forceDown.value = props.dropUp && !up
   const avail = up ? spaceAbove : spaceBelow
@@ -100,7 +100,7 @@ function measureUp() {
   if (!btn) return
   const r = btn.getBoundingClientRect()
   const vh = window.innerHeight
-  const spaceAbove = r.top - 14, spaceBelow = vh - r.bottom - 14
+  const spaceAbove = r.top - 56, spaceBelow = vh - r.bottom - 14   // 上方预留页面头部
   forceDown.value = spaceAbove < 160
   upStyle.value = forceDown.value
     ? { top: 'calc(100% + 5px)', bottom: 'auto', maxHeight: Math.min(320, Math.max(120, Math.round(spaceBelow))) + 'px' }

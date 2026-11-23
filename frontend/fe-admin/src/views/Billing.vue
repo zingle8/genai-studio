@@ -67,7 +67,7 @@
       </div>
     </div>
 
-    <div class="modal-mask" :class="{ show: topupOpen }" @click.self="topupOpen = false">
+    <div v-if="topupOpen" class="modal-mask show" style="display:flex" @click.self="topupOpen = false">
       <div class="modal">
         <div class="modal-header">
           <div class="modal-title">账户充值</div>

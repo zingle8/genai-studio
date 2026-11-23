@@ -11,6 +11,11 @@ from app.dto.onto_dto import ClassIn, ImportIn, MapIn, OntoIn, RelIn, SpaceIn
 def create_routers(service) -> APIRouter:
     router = APIRouter()
 
+    # ========== 审计日志（先于 /api/onto/{oid} 模板注册） ==========
+    @router.get("/api/onto/audit")
+    async def audit_list(oid: int = 0, limit: int = 200):
+        return {"code": 0, "data": service.audit_list(oid or None, limit)}
+
     # ========== 本体空间（先于 /api/onto/{oid} 模板注册） ==========
     @router.get("/api/onto/spaces")
     async def list_space():
@@ -114,6 +119,15 @@ def create_routers(service) -> APIRouter:
     @router.post("/api/onto/{oid}/versions/{no}/restore")
     async def version_restore(oid: int, no: int):
         return {"code": 0, "data": service.version_restore(oid, no)}
+
+    # ========== 跨模块图谱（本体创建，来源 ontology；知识图谱侧只读展示） ==========
+    @router.get("/api/onto/graph-spaces")
+    async def graph_spaces():
+        return {"code": 0, "data": service.graph_spaces()}
+
+    @router.post("/api/onto/graphs")
+    async def graph_create(body: dict):
+        return {"code": 0, "data": service.graph_create(body)}
 
     # ========== 数据源与图数据 ==========
     @router.get("/api/onto/datasources")

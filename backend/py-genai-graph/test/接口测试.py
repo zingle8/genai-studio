@@ -12,16 +12,22 @@ BASE = os.environ.get("BASE_URL", "http://localhost:38107")
 PASS, FAIL = [], []
 
 
-def req(method, path, payload=None, expect=None, name="", pick=None):
+def req(method, path, payload=None, expect=None, name="", pick=None, base=None, detail=None):
     data = json.dumps(payload).encode() if payload is not None else None
-    r = urllib.request.Request(BASE + path, data=data, method=method,
+    r = urllib.request.Request((base or BASE) + path, data=data, method=method,
                                headers={"Content-Type": "application/json"})
     try:
         with urllib.request.urlopen(r, timeout=10) as resp:
             code, body = resp.status, json.loads(resp.read())
     except urllib.error.HTTPError as e:
         code, body = e.code, {}
+        try:
+            body = json.loads(e.read())
+        except Exception:
+            pass
     ok = expect is None or code == expect
+    if detail is not None:
+        ok = ok and body.get("detail") == detail
     (PASS if ok else FAIL).append((name or path, ok))
     print(("✓" if ok else "✗"), name or path, f"HTTP {code}",
           json.dumps(body, ensure_ascii=False)[:100])
@@ -62,5 +68,29 @@ if __name__ == "__main__":
         req("DELETE", f"/api/graphs/{gid}", None, None, "删除测试图谱")
     if sid:
         req("DELETE", f"/api/graphs/spaces/{sid}", None, None, "删除测试空间")
+
+    # ========== 跨模块图谱来源与编辑权限 ==========
+    ONTO = os.environ.get("ONTO_BASE_URL", "http://localhost:38105")
+    ONTO_NAME = "权限测试-本体创建图谱"
+    gl = req("GET", "/api/graphs", None, 200, "图谱列表(含来源标识)", pick=lambda b: b["data"])
+    if gl:
+        fam = next((g for g in gl if g["name"] == "万家家族族谱"), None)
+        if fam:
+            req("POST", f"/api/graphs/{fam['id']}/nodes",
+                {"name": "非法写入", "entity_id": 0, "props": "{}"}, 403,
+                "本体族谱图谱在知识图谱侧禁止写入", detail="无编辑权限")
+        og = next((g for g in gl if g["name"] == ONTO_NAME), None)
+        ogid = og["id"] if og else req(
+            "POST", "/api/onto/graphs", {"name": ONTO_NAME, "space_id": 3}, None,
+            "本体模块创建图谱", base=ONTO, pick=lambda b: b["data"]["id"])
+        if ogid:
+            req("GET", f"/api/graphs/{ogid}/nodes", None, 200, "本体创建图谱在知识图谱侧可读")
+            req("PUT", f"/api/graphs/{ogid}",
+                {"name": "x", "space_id": 3, "db_type": "sqlite", "db_config": "", "description": ""},
+                403, "跨模块图谱禁止改图谱", detail="无编辑权限")
+            req("POST", f"/api/graphs/{ogid}/nodes",
+                {"name": "x", "entity_id": 0, "props": "{}"}, 403,
+                "跨模块图谱禁止加节点", detail="无编辑权限")
+
     print(f"\n接口测试：通过 {len(PASS)}，失败 {len(FAIL)}")
     raise SystemExit(1 if FAIL else 0)

@@ -60,48 +60,101 @@
     </div>
 
     <div class="modal-mask" :class="{ show: open }" @click.self="open = false">
-      <div class="modal">
+      <div class="modal modal-reg">
         <div class="modal-header"><div class="modal-title">{{ editId ? '编辑模型' : '注册模型' }}</div><button class="modal-close" @click="open = false">×</button></div>
-        <div class="modal-body">
-          <div class="form-row"><label class="form-label">模型名称 <span class="required">*</span><span class="text-xs muted">（平台对外名称，即 /v1/models 暴露的 ID）</span></label><input class="form-input" v-model="form.name" placeholder="如 GLM-4.7" /></div>
-          <div class="form-row" v-if="editId"><label class="form-label">当前编辑</label><div class="editing-name"><b>{{ form.name }}</b></div></div>
-          <div class="form-row"><label class="form-label">真实模型名称 <span class="text-xs muted">（上游厂商的真实模型 ID，转发请求时使用；如 gpt-5.2-2026-08-07。留空则与模型名称相同）</span></label><input class="form-input" v-model="form.realName" placeholder="如 gpt-5.2-2026-08-07" /></div>
-          <div class="form-row"><label class="form-label">提供方 <span class="text-xs muted">（可下拉选择或直接输入）</span></label>
-            <ComboInput v-model="form.provider" :options="providerOptions" placeholder="如 智谱 AI / DeepSeek / 本地" />
-          </div>
-          <div class="form-row"><label class="form-label">模型厂商 <span class="text-xs muted">（可下拉选择或直接输入新增）</span></label>
-            <ComboInput v-model="form.vendor" :options="vendorOptions" placeholder="如 智谱 AI / xAI" />
-          </div>
-          <div class="form-row"><label class="form-label">模型格式 <span class="text-xs muted">（外接转发的接口协议，可下拉选择或输入新增）</span></label>
-            <ComboInput v-model="form.apiFormat" :options="formatOptions" placeholder="如 openai / ollama" />
-          </div>
-          <div class="form-row"><label class="form-label">Base URL</label><input class="form-input" v-model="form.baseUrl" placeholder="如 https://open.bigmodel.cn/api/paas/v4" /></div>
-          <div class="form-row">
-            <label class="form-label">API Key <span class="text-xs muted">（外接模型转发用{{ editId ? '；留空保持原值' : '' }}）</span></label>
-            <input class="form-input" type="password" v-model="form.apiKey" :placeholder="editId ? '留空则不修改' : 'sk-...'" autocomplete="new-password" />
-          </div>
-          <div class="form-row" style="align-items:flex-start;">
-            <label class="form-label" style="padding-top:8px;">URL Paths<br /><span class="text-xs muted">支持的接口路径及各自的请求格式</span></label>
-            <div class="url-paths">
-              <div v-for="(p, i) in urlPaths" :key="i" class="url-path-row">
-                <input class="form-input" v-model="p.path" placeholder="如 /v1/chat/completions" />
-                <input class="form-input" v-model="p.format" list="format-options" placeholder="格式" style="width:140px;" autocomplete="off" />
-                <button type="button" class="btn btn-secondary btn-sm" @click="urlPaths.splice(i, 1)" :disabled="urlPaths.length <= 1">删除</button>
-              </div>
-              <button type="button" class="btn btn-secondary btn-sm" @click="urlPaths.push({ path: '', format: form.apiFormat })">＋ 添加路径</button>
-              <div class="text-xs muted" style="margin-top:4px;">如：GPT-6（openai 模型）配 /chat/completions、/v1/responses；Claude 模型可同时配 /v1/messages（claude 格式）与 /chat/completions（openai 格式）。已上架模型默认出现在 /v1/models 与 /v1/model 模型列表。</div>
+        <div class="modal-body reg-form">
+          <div class="form-field">
+            <div class="field-desc">平台对外名称，即 /v1/models 暴露的 ID。调用方在请求体中填写的 model 就是这个名字。</div>
+            <div class="field-line">
+              <label class="form-label" title="平台对外名称，即 /v1/models 暴露的 ID">模型名称 <span class="required">*</span></label>
+              <input class="form-input" v-model="form.name" placeholder="如 GLM-4.7" />
             </div>
           </div>
-          <div class="form-row"><label class="form-label">模型类型 <span class="text-xs muted">（可下拉选择或输入新增）</span></label>
-            <ComboInput v-model="form.category" :options="categoryOptions" placeholder="如 文本生成 / 多模态 / 向量 Embedding" />
+          <div class="form-field" v-if="editId">
+            <div class="field-line"><label class="form-label">当前编辑</label><div class="editing-name"><b>{{ form.name }}</b></div></div>
           </div>
-          <div class="form-row"><label class="form-label">模型等级 <span class="text-xs muted">（关联计费单价：旗舰 / 标准 / 免费，转发按 token 用量实时扣费）</span></label>
-            <select class="form-input" v-model="form.tier"><option>旗舰</option><option>标准</option><option>免费</option></select>
+          <div class="form-field">
+            <div class="field-desc">上游厂商的真实模型 ID，转发请求时由网关自动替换。留空则与模型名称相同。</div>
+            <div class="field-line">
+              <label class="form-label" title="上游厂商的真实模型 ID，留空则与模型名称相同">真实模型名称</label>
+              <input class="form-input" v-model="form.realName" placeholder="如 gpt-5.2-2026-08-07" />
+            </div>
           </div>
-          <div class="form-row"><label class="form-label">上下文长度</label><input class="form-input" type="number" v-model="form.contextLen" placeholder="如 128000" /></div>
-          <div class="form-row"><label class="form-label">模型描述 <span class="text-xs muted">（模型广场列表/卡片摘要，一句话介绍）</span></label><input class="form-input" v-model="form.description" placeholder="如 旗舰文本生成模型，兼具多模态视觉理解" /></div>
-          <div class="form-row" style="margin-bottom:0;"><label class="form-label">模型详情 <span class="text-xs muted">（模型广场「查看详情」展示的完整介绍）</span></label>
-            <textarea class="form-input" v-model="form.detail" rows="5" placeholder="详细能力说明、适用场景、限制与计费说明等"></textarea>
+          <div class="form-field">
+            <div class="field-desc">可下拉选择已有值，或直接输入新值。</div>
+            <div class="field-line">
+              <label class="form-label" title="可下拉选择或直接输入">提供方</label>
+              <ComboInput v-model="form.provider" :options="providerOptions" placeholder="如 智谱 AI / DeepSeek / 本地" />
+            </div>
+          </div>
+          <div class="form-field">
+            <div class="field-desc">可下拉选择已有值，或直接输入新值。</div>
+            <div class="field-line">
+              <label class="form-label" title="可下拉选择或直接输入新增">模型厂商</label>
+              <ComboInput v-model="form.vendor" :options="vendorOptions" placeholder="如 智谱 AI / xAI" />
+            </div>
+          </div>
+          <div class="form-field">
+            <div class="field-desc">外接转发使用的接口协议，可下拉选择或输入新增（openai / claude / gemini）。</div>
+            <div class="field-line">
+              <label class="form-label" title="外接转发的接口协议">模型格式</label>
+              <ComboInput v-model="form.apiFormat" :options="formatOptions" placeholder="如 openai / ollama" />
+            </div>
+          </div>
+          <div class="form-field">
+            <div class="field-line"><label class="form-label">Base URL</label><input class="form-input" v-model="form.baseUrl" placeholder="如 https://open.bigmodel.cn/api/paas/v4" /></div>
+          </div>
+          <div class="form-field">
+            <div class="field-desc">外接模型转发用的上游密钥{{ editId ? '；留空保持原值' : '' }}。调用方无需填写此项。</div>
+            <div class="field-line">
+              <label class="form-label" title="外接模型转发用，调用方无需填写">API Key</label>
+              <input class="form-input" type="password" v-model="form.apiKey" :placeholder="editId ? '留空则不修改' : 'sk-...'" autocomplete="new-password" />
+            </div>
+          </div>
+          <div class="form-field">
+            <div class="field-desc">支持的接口路径及各自的请求格式。如 GPT 配 /chat/completions、/v1/responses；Claude 可同时配 /v1/messages（claude 格式）与 /chat/completions（openai 格式）。已上架模型默认出现在 /v1/models 列表。</div>
+            <div class="field-line field-line-top">
+              <label class="form-label" title="支持的接口路径及各自的请求格式">URL Paths</label>
+              <div class="url-paths">
+                <div v-for="(p, i) in urlPaths" :key="i" class="url-path-row">
+                  <input class="form-input" v-model="p.path" placeholder="如 /v1/chat/completions" />
+                  <input class="form-input" v-model="p.format" list="format-options" placeholder="格式" style="width:140px;" autocomplete="off" />
+                  <button type="button" class="btn btn-secondary btn-sm" @click="urlPaths.splice(i, 1)" :disabled="urlPaths.length <= 1">删除</button>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" @click="urlPaths.push({ path: '', format: form.apiFormat })">＋ 添加路径</button>
+              </div>
+            </div>
+          </div>
+          <div class="form-field">
+            <div class="field-desc">可下拉选择已有值，或直接输入新值。</div>
+            <div class="field-line">
+              <label class="form-label" title="可下拉选择或输入新增">模型类型</label>
+              <ComboInput v-model="form.category" :options="categoryOptions" placeholder="如 文本生成 / 多模态 / 向量 Embedding" />
+            </div>
+          </div>
+          <div class="form-field">
+            <div class="field-desc">关联计费单价：旗舰 / 标准 / 免费，转发按 token 用量实时扣费。</div>
+            <div class="field-line">
+              <label class="form-label" title="关联计费单价">模型等级</label>
+              <select class="form-input" v-model="form.tier"><option>旗舰</option><option>标准</option><option>免费</option></select>
+            </div>
+          </div>
+          <div class="form-field">
+            <div class="field-line"><label class="form-label">上下文长度</label><input class="form-input" type="number" v-model="form.contextLen" placeholder="如 128000" /></div>
+          </div>
+          <div class="form-field">
+            <div class="field-desc">模型广场列表 / 卡片摘要，一句话介绍。</div>
+            <div class="field-line">
+              <label class="form-label" title="模型广场列表摘要">模型描述</label>
+              <input class="form-input" v-model="form.description" placeholder="如 旗舰文本生成模型，兼具多模态视觉理解" />
+            </div>
+          </div>
+          <div class="form-field">
+            <div class="field-desc">模型广场「查看详情」展示的完整介绍：能力、适用场景、限制与计费说明。</div>
+            <div class="field-line field-line-top">
+              <label class="form-label" title="模型广场查看详情的完整介绍">模型详情</label>
+              <textarea class="form-input" v-model="form.detail" rows="5" placeholder="详细能力说明、适用场景、限制与计费说明等"></textarea>
+            </div>
           </div>
         </div>
         <div class="modal-footer">
@@ -255,4 +308,35 @@ function pathsSummary(json) {
 .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .page-info { font-size: 13px; color: var(--text-secondary); }
 .page-info b { color: var(--accent); }
+</style>
+
+<style scoped>
+/* 注册 / 编辑模型弹窗：说明独占上行，名称 + 输入框在下行 */
+.modal-reg { max-width: 680px; }
+.reg-form .form-field { margin-bottom: 16px; }
+.reg-form .form-field:last-child { margin-bottom: 0; }
+.reg-form .field-desc {
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-tertiary);
+  margin-bottom: 7px;
+  padding-left: 2px;
+}
+.reg-form .field-line { display: flex; align-items: center; gap: 14px; }
+.reg-form .field-line-top { align-items: flex-start; }
+.reg-form .field-line .form-label {
+  width: 104px;
+  flex-shrink: 0;
+  margin-bottom: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: help;
+}
+.reg-form .field-line > .form-input,
+.reg-form .field-line > .url-paths,
+.reg-form .field-line > .combo { flex: 1; min-width: 0; }
+.reg-form .field-line-top .form-label { padding-top: 9px; }
+.reg-form .url-paths { flex: 1; }
+.reg-form textarea.form-input { min-height: 108px; }
 </style>

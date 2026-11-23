@@ -33,7 +33,7 @@
       </table>
     </div></div></div>
 
-    <div class="modal-mask" :class="{ show: open }" @click.self="open = false">
+    <div v-if="open" class="modal-mask show" style="display:flex" @click.self="open = false">
       <div class="modal">
         <div class="modal-header"><div class="modal-title">{{ editId ? '编辑' : '注册 Skill / Agent' }}</div><button class="modal-close" @click="open = false">×</button></div>
         <div class="modal-body">

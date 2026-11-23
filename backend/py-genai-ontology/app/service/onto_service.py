@@ -53,13 +53,16 @@ def space_create(body) -> dict:
     if not body.name.strip():
         raise HTTPException(400, "空间名不能为空")
     sid = db.run("INSERT INTO tb_onto_space(name, description) VALUES(?,?)", (body.name.strip(), body.comment))
+    db.audit("space", sid, body.name.strip(), "create_space", body.comment or "")
     return db.one("SELECT * FROM tb_onto_space WHERE id=?", (sid,))
 
 
 def space_delete(sid: int) -> None:
     if db.one("SELECT id FROM tb_ontology WHERE space_id=?", (sid,)):
         raise HTTPException(400, "空间下还有本体，请先删除")
+    sp = db.one("SELECT name FROM tb_onto_space WHERE id=?", (sid,))
     db.run("DELETE FROM tb_onto_space WHERE id=?", (sid,))
+    db.audit("space", sid, (sp or {}).get("name", ""), "delete_space")
 
 
 # ========== 本体 CRUD ==========
@@ -237,12 +240,59 @@ def check(oid: int) -> list:
 
 
 # ========== 数据源与图数据 ==========
+def _graph_db_path():
+    return os.path.join(os.path.dirname(__file__), "..", "..", "..", "py-genai-graph", "graph.db")
+
+
+def graph_spaces() -> list:
+    """图谱模块的空间列表：本体模块创建图谱时选择归属空间用"""
+    path = _graph_db_path()
+    if not os.path.exists(path):
+        return []
+    con = sqlite3.connect(path); con.row_factory = sqlite3.Row
+    try:
+        return [dict(r) for r in con.execute("SELECT id, name, description FROM tb_graph_space ORDER BY id")]
+    finally:
+        con.close()
+
+
+def graph_create(body: dict) -> dict:
+    """本体图谱模块创建图谱：图谱数据落在图谱模块 SQLite，来源标记 ontology。
+    知识图谱模块可展示该图谱，但写操作会被 _require_editable 以『无编辑权限』拒绝。"""
+    name = (body.get("name") or "").strip()
+    if not name:
+        raise HTTPException(400, "图谱名不能为空")
+    path = _graph_db_path()
+    con = sqlite3.connect(path); con.row_factory = sqlite3.Row
+    try:
+        if con.execute("SELECT id FROM tb_graph WHERE name=?", (name,)).fetchone():
+            raise HTTPException(400, "图谱名已存在")
+        sid = body.get("space_id") or 0
+        if not con.execute("SELECT id FROM tb_graph_space WHERE id=?", (sid,)).fetchone():
+            row = con.execute("SELECT id FROM tb_graph_space ORDER BY id LIMIT 1").fetchone()
+            sid = row["id"] if row else 0
+        cur = con.execute(
+            "INSERT INTO tb_graph(name, space_id, db_type, db_config, description, source_module) VALUES(?,?,?,?,?,?)",
+            (name, sid, body.get("db_type") or "sqlite", body.get("db_config") or "",
+             body.get("description") or "", "ontology"))
+        gid = cur.lastrowid
+        last = con.execute("SELECT MAX(version_no) m FROM tb_graph_version WHERE graph_id=?", (gid,)).fetchone()["m"] or 0
+        con.execute("INSERT INTO tb_graph_version(graph_id, version_no, op, note, snapshot) VALUES(?,?,?,?,?)",
+                    (gid, last + 1, "create_graph", "本体图谱模块创建",
+                     json.dumps({"entities": [], "nodes": [], "edges": []}, ensure_ascii=False)))
+        con.commit()
+        db.audit("graph", gid, name, "create_graph", "本体模块创建图谱（图谱模块 graph.db，来源 ontology）")
+        return {"id": gid, "name": name, "space_id": sid, "source_module": "ontology"}
+    finally:
+        con.close()
+
+
 def _graph_ref_data(cfg: dict) -> dict:
     """type=graph-ref 数据源：从图谱模块 SQLite 读取指定图谱的节点/边，按实体名与关系类型映射"""
     gid = cfg.get("graphId") or cfg.get("graph_id")
     if not gid:
         return {"nodes": [], "edges": []}
-    path = os.path.join(os.path.dirname(__file__), "..", "..", "..", "py-genai-graph", "graph.db")
+    path = _graph_db_path()
     if not os.path.exists(path):
         return {"nodes": [], "edges": [], "message": "图谱数据文件不存在"}
     con = sqlite3.connect(path)
@@ -269,8 +319,15 @@ def datasources() -> list:
 
 
 def datasource_add(body: dict) -> None:
-    db.run("INSERT INTO tb_data_source(name, type, config) VALUES(?,?,?)",
-           (body.get("name", ""), body.get("type", "neo4j"), json.dumps(body.get("config", {}), ensure_ascii=False)))
+    name = body.get("name", "")
+    cfg = json.dumps(body.get("config", {}), ensure_ascii=False)
+    did = db.run("INSERT INTO tb_data_source(name, type, config) VALUES(?,?,?)",
+                 (name, body.get("type", "neo4j"), cfg))
+    db.audit("datasource", did, name, "create_datasource", cfg)
+
+
+def audit_list(target_id=None, limit=200):
+    return db.audit_list(target_id, limit)
 
 
 def graph_data(ds: int = 1) -> dict:

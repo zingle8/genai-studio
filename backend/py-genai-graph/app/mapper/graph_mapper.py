@@ -4,11 +4,50 @@
 - 图数据（节点/关系）：按图谱配置存 Neo4j（HTTP API）或内置 SQLite
 - 版本：每次写操作自动快照（自动递增），可查看/恢复指定版本
 """
+import base64
 import sqlite3, os, json, requests
+from contextvars import ContextVar
 
 from app.config.settings import settings
 
 DB_PATH = settings.db_path
+
+# ===== 审计上下文：从请求头 Authorization(JWT) 解析操作人，供写操作埋点记录 =====
+_operator_ctx = ContextVar("graph_operator", default="system")
+
+
+def current_operator():
+    return _operator_ctx.get()
+
+
+def _jwt_sub(auth: str) -> str:
+    try:
+        token = auth.split()[-1]
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        sub = json.loads(base64.urlsafe_b64decode(payload)).get("sub")
+        return sub or "system"
+    except Exception:
+        return "system"
+
+
+class AuditContextMiddleware:
+    """纯 ASGI 中间件：在同一 task 内设置/清理操作人上下文，避免 BaseHTTPMiddleware 的 contextvar 丢失"""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = dict(scope.get("headers", []))
+            auth = headers.get(b"authorization", b"").decode("utf-8", "ignore")
+            token = _operator_ctx.set(_jwt_sub(auth))
+            try:
+                await self.app(scope, receive, send)
+            finally:
+                _operator_ctx.reset(token)
+        else:
+            await self.app(scope, receive, send)
 
 
 def conn():
@@ -49,6 +88,17 @@ def init_db():
           version_no INTEGER NOT NULL, op TEXT DEFAULT '', note TEXT DEFAULT '',
           snapshot TEXT DEFAULT '{}',
           created_at TEXT DEFAULT (datetime('now','localtime')));
+        CREATE TABLE IF NOT EXISTS tb_audit_log(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          module TEXT NOT NULL DEFAULT 'graph',        -- graph | ontology
+          target_type TEXT NOT NULL,                   -- graph/space/entity/node/edge/version
+          target_id INTEGER DEFAULT 0,
+          target_name TEXT DEFAULT '',
+          op TEXT NOT NULL,                            -- create/update/delete/restore
+          detail TEXT DEFAULT '',
+          operator TEXT DEFAULT 'system',
+          created_at TEXT DEFAULT (datetime('now','localtime')));
+        CREATE INDEX IF NOT EXISTS idx_audit_target ON tb_audit_log(module, target_id, id DESC);
         """)
         # 图谱归属空间（对齐知识库 space 模型）
         try:
@@ -56,6 +106,24 @@ def init_db():
             c.commit()
         except Exception:
             pass
+        # 图谱来源模块：graph=知识图谱模块创建（可编辑）；ontology=本体图谱模块创建（知识图谱侧只读）
+        try:
+            c.execute("ALTER TABLE tb_graph ADD COLUMN source_module TEXT DEFAULT 'graph'")
+            c.commit()
+        except Exception:
+            pass
+        # 图谱版本号（写操作递增 v1/v2/...）
+        try:
+            c.execute("ALTER TABLE tb_graph ADD COLUMN version TEXT DEFAULT 'v1'")
+            c.commit()
+        except Exception:
+            pass
+
+
+def migrate_source_module():
+    """把本体族谱图谱标记为 ontology 来源（一次性数据修正，幂等）"""
+    run("UPDATE tb_graph SET source_module='ontology' WHERE name=? AND (source_module IS NULL OR source_module='graph')",
+        ("万家家族族谱",))
 
 
 def migrate_ensure_space():
@@ -116,12 +184,42 @@ def snapshot(gid):
 
 
 def save_version(gid, op, note=""):
-    """写操作后自动快照（version_no 自增）"""
+    """写操作后自动快照（version_no 自增），并同步递增图谱版本号、记录审计日志"""
     last = one("SELECT MAX(version_no) m FROM tb_graph_version WHERE graph_id=?", (gid,))
     no = (last["m"] or 0) + 1
     run("INSERT INTO tb_graph_version(graph_id, version_no, op, note, snapshot) VALUES(?,?,?,?,?)",
         (gid, no, op, note, json.dumps(snapshot(gid), ensure_ascii=False)))
+    bump_version(gid)
+    tmap = {"graph": "graph", "entity": "entity", "node": "node", "edge": "edge"}
+    target = next((v for k, v in tmap.items() if k in op), "graph")
+    g = one("SELECT name FROM tb_graph WHERE id=?", (gid,))
+    audit(target, gid, (g or {}).get("name", ""), op, f"v{no} {note}" if note else f"v{no}")
     return no
+
+
+def bump_version(gid):
+    """写操作后递增图谱版本号 v1->v2...，返回新版本号"""
+    g = one("SELECT version FROM tb_graph WHERE id=?", (gid,))
+    cur = g["version"] if g and g["version"] else "v1"
+    try:
+        n = int(str(cur).lstrip("v")) + 1
+    except Exception:
+        n = 2
+    new = f"v{n}"
+    run("UPDATE tb_graph SET version=? WHERE id=?", (new, gid))
+    return new
+
+
+# ===== 审计日志 =====
+def audit(target_type, target_id, target_name, op, detail="", module="graph"):
+    run("INSERT INTO tb_audit_log(module, target_type, target_id, target_name, op, detail, operator) VALUES(?,?,?,?,?,?,?)",
+        (module, target_type, target_id or 0, target_name or "", op, detail or "", current_operator()))
+
+
+def audit_list(target_id=None, limit=200):
+    if target_id:
+        return rows("SELECT * FROM tb_audit_log WHERE target_id=? ORDER BY id DESC LIMIT ?", (target_id, limit))
+    return rows("SELECT * FROM tb_audit_log ORDER BY id DESC LIMIT ?", (limit,))
 
 
 def seed_demo():
@@ -146,5 +244,6 @@ def seed_demo():
 
 
 init_db()
+migrate_source_module()
 migrate_ensure_space()
 seed_demo()

@@ -24,6 +24,14 @@ class GraphServiceImpl(GraphService):
             raise HTTPException(404, "图谱不存在")
         return g
 
+    def _require_editable(self, gid):
+        """写操作统一守卫：非知识图谱模块（本模块）创建的图谱只允许查看，不允许编辑。
+        来源以 source_module 标识：graph=本模块创建；ontology=本体图谱模块创建。"""
+        g = self._get_graph(gid)
+        if (g.get("source_module") or "graph") != "graph":
+            raise HTTPException(403, "无编辑权限")
+        return g
+
     def _neo_nodes(self, g, gid):
         cfg = self._gcfg(g)
         j = storage.neo4j_exec(cfg,
@@ -60,12 +68,15 @@ class GraphServiceImpl(GraphService):
             raise HTTPException(400, "空间名不能为空")
         sid = storage.run("INSERT INTO tb_graph_space(name, description) VALUES(?,?)",
                           (b.name.strip(), b.description))
+        storage.audit("space", sid, b.name.strip(), "create_space", b.description)
         return storage.one("SELECT * FROM tb_graph_space WHERE id=?", (sid,))
 
     def space_delete(self, sid):
         if storage.one("SELECT id FROM tb_graph WHERE space_id=?", (sid,)):
             raise HTTPException(400, "空间下还有图谱，请先删除")
+        sp = storage.one("SELECT name FROM tb_graph_space WHERE id=?", (sid,))
         storage.run("DELETE FROM tb_graph_space WHERE id=?", (sid,))
+        storage.audit("space", sid, (sp or {}).get("name", ""), "delete_space")
 
     # ===== 图谱（数据库概念） =====
     def graph_list(self):
@@ -74,6 +85,8 @@ class GraphServiceImpl(GraphService):
             g["nodeCount"] = storage.one("SELECT COUNT(*) c FROM tb_graph_node WHERE graph_id=?", (g["id"],))["c"]
             g["versionCount"] = storage.one("SELECT COUNT(*) c FROM tb_graph_version WHERE graph_id=?", (g["id"],))["c"]
             g["spaceName"] = (storage.one("SELECT name FROM tb_graph_space WHERE id=?", (g.get("space_id", 0),)) or {}).get("name", "")
+            g["sourceModule"] = g.get("source_module") or "graph"
+            g["editable"] = g["sourceModule"] == "graph"
             if g["db_type"] == "neo4j":
                 g["dbOk"] = storage.neo4j_ping(self._gcfg(g))
         return gs
@@ -96,19 +109,22 @@ class GraphServiceImpl(GraphService):
         return storage.one("SELECT * FROM tb_graph WHERE id=?", (gid,))
 
     def graph_update(self, gid, b):
-        self._get_graph(gid)
+        self._require_editable(gid)
         self._require_space(b.space_id)
         storage.run("UPDATE tb_graph SET name=?, space_id=?, db_type=?, db_config=?, description=? WHERE id=?",
                     (b.name.strip(), b.space_id, b.db_type, b.db_config, b.description, gid))
+        storage.bump_version(gid)
+        storage.audit("graph", gid, b.name.strip(), "update_graph", b.description)
         return storage.one("SELECT * FROM tb_graph WHERE id=?", (gid,))
 
     def graph_delete(self, gid):
-        g = self._get_graph(gid)
+        g = self._require_editable(gid)
         if g["db_type"] == "neo4j":
             try:
                 storage.neo4j_exec(self._gcfg(g), "MATCH (n:Graph_%d) DETACH DELETE n" % gid)
             except Exception as e:
                 raise HTTPException(400, f"Neo4j 清理失败：{e}")
+        storage.audit("graph", gid, g["name"], "delete_graph", f"db_type={g['db_type']}")
         for t in ("tb_graph_version", "tb_graph_edge", "tb_graph_node", "tb_graph_entity", "tb_graph"):
             storage.run(f"DELETE FROM {t} WHERE graph_id=?" if t != "tb_graph" else "DELETE FROM tb_graph WHERE id=?",
                         (gid,) if t != "tb_graph" else (gid,))
@@ -119,7 +135,7 @@ class GraphServiceImpl(GraphService):
         return storage.rows("SELECT * FROM tb_graph_entity WHERE graph_id=? ORDER BY id", (gid,))
 
     def entity_create(self, gid, b):
-        self._get_graph(gid)
+        self._require_editable(gid)
         if not b.name.strip():
             raise HTTPException(400, "实体类型名不能为空")
         eid = storage.run("INSERT INTO tb_graph_entity(graph_id, name, props_schema) VALUES(?,?,?)",
@@ -128,14 +144,14 @@ class GraphServiceImpl(GraphService):
         return storage.one("SELECT * FROM tb_graph_entity WHERE id=?", (eid,))
 
     def entity_update(self, gid, eid, b):
-        self._get_graph(gid)
+        self._require_editable(gid)
         storage.run("UPDATE tb_graph_entity SET name=?, props_schema=? WHERE id=? AND graph_id=?",
                     (b.name.strip(), b.props_schema or "[]", eid, gid))
         storage.save_version(gid, "update_entity", f"更新实体类型 {b.name}")
         return storage.one("SELECT * FROM tb_graph_entity WHERE id=?", (eid,))
 
     def entity_delete(self, gid, eid):
-        self._get_graph(gid)
+        self._require_editable(gid)
         storage.run("DELETE FROM tb_graph_entity WHERE id=? AND graph_id=?", (eid, gid))
         storage.save_version(gid, "delete_entity", "删除实体类型")
 
@@ -149,7 +165,7 @@ class GraphServiceImpl(GraphService):
         return {"nodes": nodes, "entities": entities, "backend": backend}
 
     def node_create(self, gid, b):
-        g = self._get_graph(gid)
+        g = self._require_editable(gid)
         if not b.name.strip():
             raise HTTPException(400, "节点名称不能为空")
         try:
@@ -170,7 +186,7 @@ class GraphServiceImpl(GraphService):
         return {"id": nid, "name": b.name}
 
     def node_update(self, gid, nid, b):
-        g = self._get_graph(gid)
+        g = self._require_editable(gid)
         if g["db_type"] == "neo4j":
             cfg = self._gcfg(g)
             storage.neo4j_exec(cfg,
@@ -184,7 +200,7 @@ class GraphServiceImpl(GraphService):
         return {"id": nid}
 
     def node_delete(self, gid, nid):
-        g = self._get_graph(gid)
+        g = self._require_editable(gid)
         self._node_by_key(g, gid, nid)
         storage.save_version(gid, "delete_node", "删除节点")
 
@@ -203,7 +219,7 @@ class GraphServiceImpl(GraphService):
         return es
 
     def edge_create(self, gid, b):
-        g = self._get_graph(gid)
+        g = self._require_editable(gid)
         if not b.rel_type.strip():
             raise HTTPException(400, "关系类型不能为空")
         if g["db_type"] == "neo4j":
@@ -227,7 +243,7 @@ class GraphServiceImpl(GraphService):
         return e
 
     def edge_update(self, gid, eid, b):
-        g = self._get_graph(gid)
+        g = self._require_editable(gid)
         if g["db_type"] == "neo4j":
             raise HTTPException(400, "Neo4j 后端关系类型修改请删除后重建")
         storage.run("UPDATE tb_graph_edge SET source_id=?, target_id=?, rel_type=? WHERE id=? AND graph_id=?",
@@ -236,7 +252,7 @@ class GraphServiceImpl(GraphService):
         return storage.one("SELECT * FROM tb_graph_edge WHERE id=?", (eid,))
 
     def edge_delete(self, gid, eid):
-        g = self._get_graph(gid)
+        g = self._require_editable(gid)
         if g["db_type"] == "neo4j":
             raise HTTPException(400, "Neo4j 后端关系删除请按节点重建或使用版本恢复")
         storage.run("DELETE FROM tb_graph_edge WHERE id=? AND graph_id=?", (eid, gid))
@@ -283,7 +299,7 @@ class GraphServiceImpl(GraphService):
 
     def version_restore(self, gid, no):
         """恢复：将指定版本快照写回当前数据（当前态先自动存一版再覆盖）"""
-        self._get_graph(gid)
+        self._require_editable(gid)
         v = storage.one("SELECT * FROM tb_graph_version WHERE graph_id=? AND version_no=?", (gid, no))
         if not v:
             raise HTTPException(404, "版本不存在")
@@ -301,3 +317,9 @@ class GraphServiceImpl(GraphService):
             storage.run("INSERT INTO tb_graph_edge(id, graph_id, source_id, target_id, rel_type, props, created_at) VALUES(?,?,?,?,?,?,?)",
                         (e["id"], gid, e["source_id"], e["target_id"], e["rel_type"], e.get("props", "{}"), e.get("created_at")))
         storage.save_version(gid, "restore", f"恢复到 v{no}")
+
+    # ===== 审计日志 =====
+    def audit_list(self, gid: int = None, limit: int = 200):
+        if gid:
+            self._get_graph(gid)
+        return storage.audit_list(gid, limit)

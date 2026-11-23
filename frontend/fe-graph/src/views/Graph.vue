@@ -4,7 +4,7 @@
     <div class="page-actions">
       <button class="btn btn-ghost" @click="spaceOpen = true">＋ 新建空间</button>
       <button class="btn btn-ghost" @click="openNewGraph">＋ 新建图谱</button>
-      <template v-if="curGraph">
+      <template v-if="curGraph && !isReadonly">
         <button class="btn btn-ghost" @click="entityOpen = true">＋ 实体类型</button>
         <button class="btn btn-ghost" @click="nodeOpen = true">＋ 节点</button>
         <button class="btn btn-primary" @click="edgeOpen = true">＋ 关系</button>
@@ -28,9 +28,10 @@
                :class="{ active: curGraph?.id === g.id }" @click="pickGraph(g)" :title="g.description || ''">
             <span class="db-icon" :class="g.db_type === 'neo4j' ? 'neo' : ''">{{ g.db_type === 'neo4j' ? 'N4' : 'SQL' }}</span>
             <span class="tree-name">{{ g.name }}</span>
+            <span v-if="g.editable === false" class="tag" style="font-size:10px;background:#fff7ed;color:#c2410c;" title="本体图谱模块创建的图谱，知识图谱模块只读">只读</span>
             <span class="tree-badge">{{ g.nodeCount }} 节点</span>
             <span v-if="g.db_type === 'neo4j'" class="dot-mini" :class="g.dbOk ? 'green' : 'red'" :title="g.dbOk ? 'Neo4j 已连接' : 'Neo4j 连接失败'"></span>
-            <span class="tree-del" @click.stop="delGraph(g)" title="删除图谱">×</span>
+            <span v-if="g.editable !== false" class="tree-del" @click.stop="delGraph(g)" title="删除图谱">×</span>
           </div>
           <div v-if="!sp.children.length" class="tree-empty text-xs muted">（无图谱）</div>
         </div></div>
@@ -40,19 +41,21 @@
 
     <template v-if="curGraph">
       <!-- 主区：tab -->
-      <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:12px;">
+      <div class="graph-view-main">
         <div class="mode-tabs">
           <button class="mode-tab" :class="{ active: tab === 'view' }" @click="tab = 'view'">图视图</button>
           <button class="mode-tab" :class="{ active: tab === 'entities' }" @click="tab = 'entities'">实体类型</button>
           <button class="mode-tab" :class="{ active: tab === 'nodes' }" @click="tab = 'nodes'">节点与属性</button>
           <button class="mode-tab" :class="{ active: tab === 'edges' }" @click="tab = 'edges'">关系</button>
           <button class="mode-tab" :class="{ active: tab === 'versions' }" @click="tab = 'versions'; loadVersions()">版本</button>
+          <button class="mode-tab" :class="{ active: tab === 'audit' }" @click="tab = 'audit'; loadAudit()">审计日志</button>
         </div>
 
         <!-- 图视图 -->
-        <div class="card" v-if="tab === 'view'"><div class="card-body">
+        <div class="card graph-view-card" v-if="tab === 'view'"><div class="card-body graph-view-body">
           <div class="row-head" style="margin-bottom:8px;">
-            <b>{{ curGraph.name }}</b><span class="text-xs muted">{{ nodes.length }} 节点 · {{ edges.length }} 关系 · {{ curGraph.db_type === 'neo4j' ? 'Neo4j' : '内置存储' }} · 按关系聚簇（力导向布局）</span>
+            <b>{{ curGraph.name }}</b><span class="tag" style="font-size:11px;">{{ curGraph.version || 'v1' }}</span><span class="text-xs muted">{{ nodes.length }} 节点 · {{ edges.length }} 关系 · {{ curGraph.db_type === 'neo4j' ? 'Neo4j' : '内置存储' }} · 按关系聚簇（力导向布局）</span>
+            <span v-if="isReadonly" class="tag" style="background:#fff7ed;color:#c2410c;" title="该图谱由本体图谱模块创建，知识图谱模块仅可查看">只读图谱 · 无编辑权限</span>
             <span style="flex:1"></span>
             <MultiNodeSelect v-model="focusIds" :options="allNodes.map(n => ({ value: n.id, label: n.name }))" placeholder="全图（可多选节点）" />
             <select class="form-input" v-model="depth" style="width:96px;" title="邻域展开级数">
@@ -66,19 +69,24 @@
               <span class="text-xs muted zoom-val">{{ Math.round(scale * 100) }}%</span>
             </span>
           </div>
-          <svg class="graph-svg" viewBox="0 0 1000 620">
+          <svg class="graph-svg" viewBox="0 0 2600 1800">
             <g :transform="viewTransform">
-              <g v-for="e in edges" :key="'e' + e.id" style="cursor:pointer;" @click="selEdge=e; selNode=null">
-                <line :x1="pos(e.source_id).x + 32" :y1="pos(e.source_id).y + 18" :x2="pos(e.target_id).x + 32" :y2="pos(e.target_id).y + 18" class="edge-line" :class="{ sel: selEdge?.id === e.id }" />
-                <text :x="(pos(e.source_id).x + pos(e.target_id).x) / 2 + 32" :y="(pos(e.source_id).y + pos(e.target_id).y) / 2 + 12" class="edge-label" :class="{ sel: selEdge?.id === e.id }">{{ e.rel_type }}</text>
+              <defs><marker id="garr" markerWidth="7" markerHeight="7" refX="22" refY="3.5" orient="auto"><path d="M0,0 L7,3.5 L0,7 z" fill="#9aa6bd"/></marker></defs>
+              <g v-for="e in edges" :key="'e' + e.id" style="cursor:pointer;" @click="selEdge=e; selNode=null" @mouseenter="showNodeTip($event, 'edge', e)" @mousemove="moveTip" @mouseleave="hoverTip=null">
+                <line :x1="pos(e.source_id).x" :y1="pos(e.source_id).y" :x2="pos(e.target_id).x" :y2="pos(e.target_id).y" class="edge-line" :class="{ sel: selEdge?.id === e.id }" marker-end="url(#garr)" />
               </g>
-              <g v-for="n in nodes" :key="'n' + n.id" style="cursor:pointer;" @click="selNode=n; selEdge=null">
-                <rect :x="pos(n.id).x" :y="pos(n.id).y" width="64" height="36" rx="8" class="node-box" :class="{ sel: selNode?.id === n.id }" :style="{ stroke: typeColor(n.entity_id) }" />
-                <circle :cx="pos(n.id).x + 8" :cy="pos(n.id).y + 8" r="4" :fill="typeColor(n.entity_id)" />
-                <text :x="pos(n.id).x + 34" :y="pos(n.id).y + 23" class="node-name">{{ n.name.length > 6 ? n.name.slice(0, 6) : n.name }}</text>
+              <g v-for="n in nodes" :key="'n' + n.id" style="cursor:pointer;" @click="selNode=n; selEdge=null" @mouseenter="showNodeTip($event, 'node', n)" @mousemove="moveTip" @mouseleave="hoverTip=null">
+                <circle :cx="pos(n.id).x" :cy="pos(n.id).y" :r="hubIds.has(n.id) ? 42 : 26" class="node-circle" :class="{ sel: selNode?.id === n.id, hub: hubIds.has(n.id) }" :fill="groupColor(groupKeyOf(n))" />
+                <text :x="pos(n.id).x" :y="pos(n.id).y + 4" text-anchor="middle" class="node-circle-name">{{ n.name.length > (hubIds.has(n.id)?5:4) ? n.name.slice(0, hubIds.has(n.id)?5:4) : n.name }}</text>
+                <text v-if="nodeStatus(n)" :x="pos(n.id).x" :y="pos(n.id).y + (hubIds.has(n.id)?58:40)" text-anchor="middle" class="node-status">{{ nodeStatus(n) }}</text>
               </g>
             </g>
           </svg>
+          <div v-if="hoverTip" class="hover-tip" :style="{ left: hoverTip.x + 'px', top: hoverTip.y + 'px' }">
+            <div class="ht-title">{{ hoverTip.title }}</div>
+            <div class="ht-sub">{{ hoverTip.sub }}</div>
+            <div v-for="r in hoverTip.rows" :key="r[0]" class="ht-row"><span class="ht-key">{{ r[0] }}</span><span class="ht-val">{{ r[1] }}</span></div>
+          </div>
 
           <!-- 选中对象详情：属性 / 状态 / 版本 / 操作 -->
           <div class="graph-detail">
@@ -88,10 +96,11 @@
                 <span class="tag tag-success">节点 · {{ entityName(selNode.entity_id) }}</span>
                 <span class="text-xs muted">ID {{ selNode.id }} · 创建 {{ selNode.created_at }}</span>
                 <span style="flex:1"></span>
-                <button class="btn btn-primary btn-sm" @click="editNode(selNode)">更新节点</button>
-                <button class="btn btn-secondary btn-sm" @click="openEdgeFor(selNode)">＋ 关联关系</button>
-                <button class="btn btn-secondary btn-sm" @click="nodeOpen = true">＋ 节点</button>
-                <button class="btn btn-danger btn-sm" @click="delNode(selNode)">删除</button>
+                <button v-if="!isReadonly" class="btn btn-primary btn-sm" @click="editNode(selNode)">更新节点</button>
+                <button v-if="!isReadonly" class="btn btn-secondary btn-sm" @click="openEdgeFor(selNode)">＋ 关联关系</button>
+                <button v-if="!isReadonly" class="btn btn-secondary btn-sm" @click="nodeOpen = true">＋ 节点</button>
+                <button v-if="!isReadonly" class="btn btn-danger btn-sm" @click="delNode(selNode)">删除</button>
+                <span v-if="isReadonly" class="text-xs muted">该图谱由本体模块创建，仅可查看</span>
               </div>
               <div class="detail-grid">
                 <div><div class="sec-t">属性（{{ nodeProps(selNode).length }}）</div>
@@ -121,9 +130,10 @@
                 <b>{{ selEdge.rel_type }}</b><span class="tag">关系 #{{ selEdge.id }}</span>
                 <span class="text-xs muted">创建 {{ selEdge.created_at }}</span>
                 <span style="flex:1"></span>
-                <button class="btn btn-primary btn-sm" @click="editEdge(selEdge)">更新关系</button>
-                <button class="btn btn-secondary btn-sm" @click="nodeOpen = true">＋ 节点</button>
-                <button class="btn btn-danger btn-sm" @click="delEdge(selEdge)">删除</button>
+                <button v-if="!isReadonly" class="btn btn-primary btn-sm" @click="editEdge(selEdge)">更新关系</button>
+                <button v-if="!isReadonly" class="btn btn-secondary btn-sm" @click="nodeOpen = true">＋ 节点</button>
+                <button v-if="!isReadonly" class="btn btn-danger btn-sm" @click="delEdge(selEdge)">删除</button>
+                <span v-if="isReadonly" class="text-xs muted">该图谱由本体模块创建，仅可查看</span>
               </div>
               <div class="detail-grid">
                 <div><div class="sec-t">关系信息</div>
@@ -155,8 +165,9 @@
                 <td><b>{{ e.name }}</b></td>
                 <td class="text-xs muted">{{ propsSchemaText(e.props_schema) }}</td>
                 <td class="text-right">
-                  <button class="btn btn-ghost btn-sm" @click="editEntity(e)">改</button>
-                  <button class="btn btn-ghost btn-sm" @click="delEntity(e)">删</button>
+                  <button v-if="!isReadonly" class="btn btn-ghost btn-sm" @click="editEntity(e)">改</button>
+                  <button v-if="!isReadonly" class="btn btn-ghost btn-sm" @click="delEntity(e)">删</button>
+                  <span v-if="isReadonly" class="text-xs muted">只读</span>
                 </td>
               </tr>
               <tr v-if="!entities.length"><td colspan="3" class="text-center muted">暂无实体类型（如：部门/员工/项目）</td></tr>
@@ -174,8 +185,9 @@
                 <td class="text-xs">{{ entityName(n.entity_id) }}</td>
                 <td class="text-xs muted" style="max-width:320px;">{{ n.props && n.props !== '{}' ? n.props : '—' }}</td>
                 <td class="text-right">
-                  <button class="btn btn-ghost btn-sm" @click="editNode(n)">改</button>
-                  <button class="btn btn-ghost btn-sm" @click="delNode(n)">删</button>
+                  <button v-if="!isReadonly" class="btn btn-ghost btn-sm" @click="editNode(n)">改</button>
+                  <button v-if="!isReadonly" class="btn btn-ghost btn-sm" @click="delNode(n)">删</button>
+                  <span v-if="isReadonly" class="text-xs muted">只读</span>
                 </td>
               </tr>
               <tr v-if="!nodes.length"><td colspan="4" class="text-center muted">暂无节点</td></tr>
@@ -193,8 +205,9 @@
                 <td><span class="tag" style="font-size:11px;">{{ e.rel_type }}</span></td>
                 <td>{{ e.targetName }}</td>
                 <td class="text-right">
-                  <button class="btn btn-ghost btn-sm" @click="editEdge(e)" v-if="curGraph.db_type !== 'neo4j'">改</button>
-                  <button class="btn btn-ghost btn-sm" @click="delEdge(e)">删</button>
+                  <button class="btn btn-ghost btn-sm" @click="editEdge(e)" v-if="!isReadonly && curGraph.db_type !== 'neo4j'">改</button>
+                  <button v-if="!isReadonly" class="btn btn-ghost btn-sm" @click="delEdge(e)">删</button>
+                  <span v-if="isReadonly" class="text-xs muted">只读</span>
                 </td>
               </tr>
               <tr v-if="!edges.length"><td colspan="4" class="text-center muted">暂无关系</td></tr>
@@ -215,10 +228,32 @@
                 <td class="text-xs muted">{{ v.created_at }}</td>
                 <td class="text-right">
                   <button class="btn btn-ghost btn-sm" @click="viewVersion(v)">内容</button>
-                  <button class="btn btn-ghost btn-sm" @click="restoreVersion(v)">恢复此版本</button>
+                  <button v-if="!isReadonly" class="btn btn-ghost btn-sm" @click="restoreVersion(v)">恢复此版本</button>
                 </td>
               </tr>
               <tr v-if="!versions.length"><td colspan="5" class="text-center muted">暂无版本</td></tr>
+            </tbody>
+          </table></div>
+        </div></div>
+
+        <!-- 审计日志 -->
+        <div class="card" v-if="tab === 'audit'"><div class="card-body">
+          <div class="row-head" style="margin-bottom:8px;">
+            <div class="text-xs muted">当前图谱及本模块所有写操作记录（操作人取自登录令牌）；每次增删改自动记录</div>
+            <span style="flex:1"></span>
+            <button class="btn btn-ghost btn-sm" @click="loadAudit">刷新</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>时间</th><th>操作人</th><th>操作</th><th>对象</th><th>详情</th></tr></thead>
+            <tbody>
+              <tr v-for="a in audits" :key="a.id">
+                <td class="text-xs muted">{{ a.created_at }}</td>
+                <td class="text-xs">{{ a.operator }}</td>
+                <td><span class="tag" style="font-size:11px;">{{ a.op }}</span></td>
+                <td class="text-xs">{{ a.target_type }} #{{ a.target_id }} {{ a.target_name }}</td>
+                <td class="text-xs muted">{{ a.detail || '—' }}</td>
+              </tr>
+              <tr v-if="!audits.length"><td colspan="5" class="text-center muted">暂无操作记录</td></tr>
             </tbody>
           </table></div>
         </div></div>
@@ -330,9 +365,11 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { api, withBase } from '../api'
 import MultiNodeSelect from '../components/MultiNodeSelect.vue'
 const graphs = ref([]); const curGraph = ref(null); const tab = ref('view')
-const entities = ref([]); const nodes = ref([]); const edges = ref([]); const versions = ref([])
+const entities = ref([]); const nodes = ref([]); const edges = ref([]); const versions = ref([]); const audits = ref([])
 const focusIds = ref([]); const allNodes = ref([]); const depth = ref(1); const searching = ref(false)
 const selNode = ref(null); const selEdge = ref(null)
+// 来源非知识图谱模块（如本体图谱模块创建）的图谱只读：前端隐藏写入口，后端强制校验
+const isReadonly = computed(() => !!curGraph.value && curGraph.value.editable === false)
 const graphOpen = ref(false); const graphForm = ref({ name: '', space_id: 0, db_type: 'sqlite', description: '' }); const n4cfg = ref({})
 const entityOpen = ref(false); const entityForm = ref({ id: null, name: '', props_schema: '[]' })
 const nodeOpen = ref(false); const nodeForm = ref({ id: null, entity_id: 0, name: '', props: '{}' })
@@ -418,6 +455,10 @@ async function loadVersions() {
   const r = await api(withBase(`/api/graphs/${curGraph.value.id}/versions`))
   if (r.code === 0) versions.value = r.data
 }
+async function loadAudit() {
+  const r = await api(withBase(`/api/graphs/audit?gid=${curGraph.value?.id || 0}`))
+  if (r.code === 0) audits.value = r.data
+}
 
 /* ===== 图视图：力导向簇群布局 + 缩放 ===== */
 const positions = ref({})        // nodeId -> {x,y}
@@ -427,83 +468,71 @@ function typeColor(eid) {
   const i = entities.value.findIndex(x => x.id === eid)
   return TYPE_COLORS[(i < 0 ? 0 : i) % TYPE_COLORS.length]
 }
-function pos(id) { return positions.value[id] || { x: 20, y: 20 } }
+function pos(id) { return positions.value[id] || { x: 1300, y: 900 } }
+const hubIds = ref(new Set())
+const GROUP_COLORS = ['#4d6bfe', '#12b76a', '#e5484d', '#7a5af8', '#06aed4', '#f79009', '#d444f1', '#0d9488', '#db2777', '#65a30d']
+function groupColor(key) {
+  const keys = [...new Set(nodes.value.map(groupKeyOf))]
+  const i = keys.indexOf(key)
+  return GROUP_COLORS[(i < 0 ? 0 : i) % GROUP_COLORS.length]
+}
 
-/** 力导向模拟：同类节点初始按扇区聚集（簇群），斥力 + 边弹簧 + 中心引力 */
+/** 族群放射布局：按辈分/实体类型分群，族群中心 hub + 卫星节点同心环放射，族群在画布上网格分区 */
+function groupKeyOf(n) {
+  const p = Object.fromEntries(nodeProps(n))
+  return p['辈分'] || p['实体类型'] || entityName(n.entity_id) || '其他'
+}
 function layout() {
   const list = nodes.value
   const P = {}
-  if (!list.length) { positions.value = P; return }
-  const W = 1000, H = 620, PAD = 50
-  const cx = W / 2, cy = H / 2
-  // 初始位置：按实体类型分簇放到圆环扇区
+  if (!list.length) { positions.value = P; hubIds.value = new Set(); return }
+  hubIds.value = new Set()
+  const W = 2600, H = 1800, PAD = 140
+  // 1) 按族群分组，族群按节点数降序（大族优先占中间区域）
   const buckets = {}
-  for (const n of list) (buckets[n.entity_id] = buckets[n.entity_id] || []).push(n)
-  const keys = Object.keys(buckets)
-  let bi = 0
-  for (const k of keys) {
-    const a = (bi / keys.length) * Math.PI * 2
-    const br = 150 + 30 * keys.length
-    const bx = cx + br * Math.cos(a), by = cy + br * 0.8 * Math.sin(a)
-    buckets[k].forEach((n, j) => {
-      const ja = j / buckets[k].length * Math.PI * 2
-      P[n.id] = { x: bx + 24 * Math.cos(ja) + (Math.random() - 0.5) * 20, y: by + 20 * Math.sin(ja) + (Math.random() - 0.5) * 20 }
-    })
-    bi++
+  for (const n of list) { const k = groupKeyOf(n); (buckets[k] = buckets[k] || []).push(n) }
+  const keys = Object.keys(buckets).sort((a, b) => buckets[b].length - buckets[a].length)
+  // 2) 族群中心：围绕画布中心按黄金角螺旋散布，避免规则网格的僵硬感
+  const G = keys.length
+  const centers = []
+  if (G === 1) centers.push({ x: W / 2, y: H / 2 })
+  else {
+    const R = Math.min(W, H) * 0.36
+    for (let i = 0; i < G; i++) {
+      const a = i * 2.399963; // 黄金角
+      const r = i === 0 ? 0 : R * Math.sqrt(i / (G - 1)) * 1.15
+      centers.push({ x: W / 2 + r * Math.cos(a), y: H / 2 + r * Math.sin(a) * 0.82 })
+    }
   }
-  // 邻接表
-  const adj = {}
-  for (const e of edges.value) {
-    if (P[e.source_id] && P[e.target_id]) (adj[e.source_id] = adj[e.source_id] || []).push(e.target_id)
-    if (P[e.source_id] && P[e.target_id]) (adj[e.target_id] = adj[e.target_id] || []).push(e.source_id)
-  }
-  const ids = list.map(n => n.id)
-  const k = Math.sqrt((W * H) / Math.max(1, list.length)) * 3.2   // 斥力系数
-  const spring = 0.012, ideal = Math.max(120, Math.min(180, 1100 / Math.sqrt(list.length)))
-  for (let it = 0; it < 220; it++) {
-    const temp = Math.max(2, 70 * (1 - it / 220))
-    const F = {}
-    for (const id of ids) F[id] = { x: 0, y: 0 }
-    // 节点间斥力
-    for (let i = 0; i < ids.length; i++) {
-      for (let j = i + 1; j < ids.length; j++) {
-        const a = P[ids[i]], b = P[ids[j]]
-        let dx = a.x - b.x, dy = a.y - b.y
-        let d2 = dx * dx + dy * dy || 1
-        const f = k / d2, d = Math.sqrt(d2)
-        const fx = dx / d * f, fy = dy / d * f
-        F[ids[i]].x += fx; F[ids[i]].y += fy
-        F[ids[j]].x -= fx; F[ids[j]].y -= fy
-        // 矩形碰撞排斥：节点框(64x36)+间距，避免叠在一起
-        if (Math.abs(dx) < 80 && Math.abs(dy) < 52) {
-          const sx = Math.sign(dx) || (Math.random() < 0.5 ? -1 : 1)
-          const sy = Math.sign(dy) || (Math.random() < 0.5 ? -1 : 1)
-          F[ids[i]].x += sx * 12; F[ids[i]].y += sy * 8
-          F[ids[j]].x -= sx * 12; F[ids[j]].y -= sy * 8
-        }
+  // 度数（用于选 hub）
+  const deg = {}
+  for (const e of edges.value) { deg[e.source_id] = (deg[e.source_id] || 0) + 1; deg[e.target_id] = (deg[e.target_id] || 0) + 1 }
+  // 3) 每族：选度数最高为 hub 置中心，其余按同心环放射排布
+  keys.forEach((k, gi) => {
+    const members = buckets[k].slice()
+    const c = centers[gi]
+    members.sort((a, b) => (deg[b.id] || 0) - (deg[a.id] || 0))
+    const hub = members.shift()
+    P[hub.id] = { x: c.x, y: c.y }
+    hubIds.value.add(hub.id)
+    const rest = members
+    if (!rest.length) return
+    // 同心环：每环容量随半径增长，环距 165（卫星圆 r=26，间距充足）
+    const cap = Math.max(6, Math.floor(2 * Math.PI * 165 / 78))
+    let idx = 0, ring = 1
+    while (idx < rest.length) {
+      const ringCount = Math.min(cap * ring, rest.length - idx)
+      const radius = 165 * ring
+      for (let j = 0; j < ringCount; j++) {
+        const ang = (j / ringCount) * Math.PI * 2 + (ring % 2) * 0.3
+        const n = rest[idx++]
+        P[n.id] = { x: c.x + radius * Math.cos(ang), y: c.y + radius * Math.sin(ang) * 0.82 }
       }
+      ring++
     }
-    // 边弹簧 + 中心引力
-    for (const e of edges.value) {
-      const a = P[e.source_id], b = P[e.target_id]
-      if (!a || !b) continue
-      const dx = b.x - a.x, dy = b.y - a.y
-      const d = Math.sqrt(dx * dx + dy * dy) || 1
-      const f = spring * (d - ideal)
-      const fx = dx / d * f, fy = dy / d * f
-      F[e.source_id].x += fx; F[e.source_id].y += fy
-      F[e.target_id].x -= fx; F[e.target_id].y -= fy
-    }
-    for (const id of ids) {
-      const p = P[id]
-      F[id].x += (cx - p.x) * 0.002; F[id].y += (cy - p.y) * 0.002
-      const d = Math.sqrt(F[id].x ** 2 + F[id].y ** 2) || 1
-      const lim = Math.min(d, temp)
-      p.x += F[id].x / d * lim; p.y += F[id].y / d * lim
-      p.x = Math.max(PAD, Math.min(W - PAD, p.x))
-      p.y = Math.max(PAD, Math.min(H - PAD, p.y))
-    }
-  }
+  })
+  // 4) 全局边界钳制
+  for (const id in P) { P[id].x = Math.max(PAD, Math.min(W - PAD, P[id].x)); P[id].y = Math.max(PAD, Math.min(H - PAD, P[id].y)) }
   positions.value = P
 }
 watch([nodes, edges], layout)
@@ -511,7 +540,7 @@ watch([nodes, edges], layout)
 function zoomIn() { scale.value = Math.min(2.5, +(scale.value * 1.25).toFixed(3)) }
 function zoomOut() { scale.value = Math.max(0.35, +(scale.value / 1.25).toFixed(3)) }
 function zoomReset() { scale.value = 1 }
-const viewTransform = computed(() => `translate(${500 * (1 - scale.value)} ${310 * (1 - scale.value)}) scale(${scale.value})`)
+const viewTransform = computed(() => `translate(${1300 * (1 - scale.value)} ${900 * (1 - scale.value)}) scale(${scale.value})`)
 function entityName(eid) { const e = entities.value.find(x => x.id === eid); return e ? e.name : '—' }
 function entitySchema(eid) { return entities.value.find(x => x.id === eid)?.props_schema || '[]' }
 function nodeProps(n) {
@@ -522,6 +551,30 @@ function nodeProps(n) {
 }
 function relatedEdges(n) { return edges.value.filter(e => e.source_id === n.id || e.target_id === n.id) }
 function nodeName(id) { return nodes.value.find(n => n.id === id)?.name || '#' + id }
+function nodeStatus(n) {
+  const p = Object.fromEntries(nodeProps(n))
+  return p['状态'] || p['status'] || ''
+}
+/* 鼠标悬浮提示：展示属性/状态/关系详情 */
+const hoverTip = ref(null)
+function showNodeTip(ev, kind, item) {
+  if (kind === 'node') {
+    hoverTip.value = {
+      x: ev.clientX + 14, y: ev.clientY + 14,
+      title: item.name, sub: `节点 · ${entityName(item.entity_id)} · ID ${item.id}`,
+      rows: nodeProps(item).slice(0, 8)
+    }
+  } else {
+    let ep = []
+    try { const o = JSON.parse(item.props || '{}'); ep = o && typeof o === 'object' ? Object.entries(o) : [] } catch {}
+    hoverTip.value = {
+      x: ev.clientX + 14, y: ev.clientY + 14,
+      title: item.rel_type, sub: `关系 · ${nodeName(item.source_id)} → ${nodeName(item.target_id)}`,
+      rows: [['起点', nodeName(item.source_id)], ['终点', nodeName(item.target_id)], ...ep].slice(0, 8)
+    }
+  }
+}
+function moveTip(ev) { if (hoverTip.value) { hoverTip.value.x = ev.clientX + 14; hoverTip.value.y = ev.clientY + 14 } }
 function selectNodeById(id) { const n = nodes.value.find(x => x.id === id); if (n) { selEdge.value = null; selNode.value = n } }
 function openEdgeFor(n) { edgeForm.value = { id: null, source_id: n.id, rel_type: '', target_id: '' }; edgeOpen.value = true }
 function propsSchemaText(s) {
@@ -606,6 +659,10 @@ async function restoreVersion(v) {
 
 <style>
 .graph-layout { display: flex; gap: 12px; flex: 1; min-height: 0; align-items: flex-start; }
+/* 图视图主区：视口内动态铺满，避免整页滚动 */
+.graph-view-main { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; gap: 12px; height: calc(100vh - 108px); }
+.graph-view-card { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.graph-view-body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .graph-side-left { width: 280px; flex-shrink: 0; overflow-y: auto; max-height: calc(100vh - 160px); position: sticky; top: 12px; }
 /* 手风琴（对齐知识库 Kb.vue） */
 .acc-group { border: 1px solid #e9ebf0; border-radius: 10px; margin-bottom: 8px; overflow: hidden; background: #fff; transition: border-color .18s, box-shadow .18s; }
@@ -635,14 +692,26 @@ async function restoreVersion(v) {
 .dot-mini { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .dot-mini.green { background: #22c55e; }
 .dot-mini.red { background: #ef4444; }
-.graph-svg { width: 100%; height: 560px; background: var(--bg-soft); border-radius: 10px; }
+.graph-svg { width: 100%; flex: 1 1 auto; min-height: 160px; height: auto; background: var(--bg-soft); border-radius: 10px; display: block; }
+.graph-view-body .row-head { flex-shrink: 0; }
+.graph-view-body .graph-detail { flex: 0 1 auto; max-height: 26vh; overflow-y: auto; }
+.node-status { font-size: 11px; fill: #e07b39; pointer-events: none; }
+.hover-tip { position: fixed; z-index: 9999; pointer-events: none; min-width: 150px; max-width: 280px; background: #1f2430; color: #fff; border-radius: 8px; padding: 8px 10px; box-shadow: 0 6px 20px rgba(0,0,0,.25); font-size: 12px; }
+.hover-tip .ht-title { font-weight: 700; font-size: 13px; }
+.hover-tip .ht-sub { color: #aab4c8; font-size: 11px; margin: 2px 0 6px; }
+.hover-tip .ht-row { display: flex; gap: 8px; padding: 2px 0; border-top: 1px solid rgba(255,255,255,.08); }
+.hover-tip .ht-key { color: #9fb3d9; min-width: 48px; flex-shrink: 0; }
+.hover-tip .ht-val { word-break: break-all; }
 .zoom-ctl { display: inline-flex; align-items: center; gap: 4px; background: #fff; border: 1px solid var(--border-light, #e9ebf0); border-radius: 8px; padding: 2px 6px 2px 2px; }
 .zoom-btn { width: 28px; height: 26px; border: none; background: none; border-radius: 6px; font-size: 13px; line-height: 1; cursor: pointer; color: var(--text-secondary, #4b5563); transition: background .15s, color .15s; }
 .zoom-btn:hover { background: var(--bg-soft, #f0f2f7); color: var(--primary, #4d6bfe); }
 .zoom-val { min-width: 36px; text-align: center; }
-.node-box { fill: #fff; stroke: #4d6bfe; stroke-width: 1.5; }
+.node-circle { stroke: #fff; stroke-width: 2; opacity: .92; transition: opacity .15s; }
+.node-circle:hover { opacity: 1; }
+.node-circle.hub { stroke-width: 3; stroke: rgba(255,255,255,.9); }
+.node-circle-name { font-size: 12px; fill: #fff; font-weight: 600; pointer-events: none; }
 .node-name { text-anchor: middle; font-size: 13px; fill: #1f2430; font-weight: 600; pointer-events: none; }
-.edge-line { stroke: #b9c2d4; stroke-width: 1.5; }
+.edge-line { stroke: #b9c2d4; stroke-width: 1.4; }
 .edge-label { text-anchor: middle; font-size: 11px; fill: #6b7280; }
 .row-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .ver-pre { background: var(--bg-soft); border: 1px solid var(--border-light); border-radius: 8px; padding: 12px; font-size: 12px; max-height: 50vh; overflow: auto; line-height: 1.5; }
@@ -663,6 +732,6 @@ async function restoreVersion(v) {
 .detail-item:hover { background: #f4f6fb; }
 .detail-item .link-btn { margin-left: 6px; }
 .clickable { cursor: pointer; color: #4d6bfe; }
-.node-box.sel { stroke: #e5484d !important; stroke-width: 3; filter: drop-shadow(0 0 5px rgba(229,72,77,.4)); }
+.node-circle.sel { stroke: #e5484d !important; stroke-width: 4; filter: drop-shadow(0 0 6px rgba(229,72,77,.5)); }
 .edge-line.sel { stroke: #e5484d; stroke-width: 3; }
 .edge-label.sel { fill: #e5484d; font-weight: 700; }

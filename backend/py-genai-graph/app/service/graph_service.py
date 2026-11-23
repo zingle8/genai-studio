@@ -74,3 +74,6 @@ class GraphService(abc.ABC):
 
     @abc.abstractmethod
     def version_restore(self, gid: int, no: int) -> None: ...
+
+    @abc.abstractmethod
+    def audit_list(self, gid: int = None, limit: int = 200) -> list: ...

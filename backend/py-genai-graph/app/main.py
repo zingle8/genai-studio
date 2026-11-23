@@ -12,6 +12,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.common.gateway_report import gateway_report
+from app.mapper import graph_mapper
 from app.config.settings import settings
 from app.controller.graph_controller import create_routers
 from app.service.impl.graph_service_impl import GraphServiceImpl
@@ -27,6 +28,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="GenAI Studio - 知识图谱服务", version="0.3.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(graph_mapper.AuditContextMiddleware)
     gateway_report.init(settings)
     gateway_report.install(app)
     app.include_router(create_routers(service))

@@ -4,9 +4,48 @@
 
 迁移自 app/storage.py；目录层级对齐 py-genai-rag-reranker 分层结构。
 """
+import base64
 import sqlite3, json, time, os
+from contextvars import ContextVar
 
 DB_PATH = os.environ.get("ONTO_DB", os.path.join(os.path.dirname(__file__), "..", "..", "onto.db"))
+
+# ===== 审计上下文：从请求头 Authorization(JWT) 解析操作人 =====
+_operator_ctx = ContextVar("onto_operator", default="system")
+
+
+def current_operator():
+    return _operator_ctx.get()
+
+
+def _jwt_sub(auth: str) -> str:
+    try:
+        token = auth.split()[-1]
+        payload = token.split(".")[1]
+        payload += "=" * (-len(payload) % 4)
+        sub = json.loads(base64.urlsafe_b64decode(payload)).get("sub")
+        return sub or "system"
+    except Exception:
+        return "system"
+
+
+class AuditContextMiddleware:
+    """纯 ASGI 中间件：在同一 task 内设置/清理操作人上下文"""
+
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] == "http":
+            headers = dict(scope.get("headers", []))
+            auth = headers.get(b"authorization", b"").decode("utf-8", "ignore")
+            token = _operator_ctx.set(_jwt_sub(auth))
+            try:
+                await self.app(scope, receive, send)
+            finally:
+                _operator_ctx.reset(token)
+        else:
+            await self.app(scope, receive, send)
 
 
 def conn():
@@ -43,6 +82,17 @@ def init_db():
           id INTEGER PRIMARY KEY AUTOINCREMENT, ontology_id INTEGER NOT NULL, version_no INTEGER NOT NULL,
           op TEXT NOT NULL, note TEXT DEFAULT '', snapshot TEXT DEFAULT '{}',
           created_at TEXT DEFAULT (datetime('now','localtime')));
+        CREATE TABLE IF NOT EXISTS tb_audit_log(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          module TEXT NOT NULL DEFAULT 'ontology',       -- graph | ontology
+          target_type TEXT NOT NULL,                     -- ontology/space/class/rel/mapping/version/datasource/graph
+          target_id INTEGER DEFAULT 0,
+          target_name TEXT DEFAULT '',
+          op TEXT NOT NULL,
+          detail TEXT DEFAULT '',
+          operator TEXT DEFAULT 'system',
+          created_at TEXT DEFAULT (datetime('now','localtime')));
+        CREATE INDEX IF NOT EXISTS idx_audit_target ON tb_audit_log(module, target_id, id DESC);
         """)
         # 本体归属空间（对齐知识库 space 模型）
         try:
@@ -96,12 +146,41 @@ def snapshot(oid):
     }
 
 
+def bump_version(oid):
+    """本体写操作后递增版本号 v1->v2..."""
+    o = one("SELECT version FROM tb_ontology WHERE id=?", (oid,))
+    cur = o["version"] if o and o["version"] else "v1"
+    try:
+        n = int(str(cur).lstrip("v")) + 1
+    except Exception:
+        n = 2
+    new = f"v{n}"
+    run("UPDATE tb_ontology SET version=? WHERE id=?", (new, oid))
+    return new
+
+
+def audit(target_type, target_id, target_name, op, detail="", module="ontology"):
+    run("INSERT INTO tb_audit_log(module, target_type, target_id, target_name, op, detail, operator) VALUES(?,?,?,?,?,?,?)",
+        (module, target_type, target_id or 0, target_name or "", op, detail or "", current_operator()))
+
+
+def audit_list(target_id=None, limit=200):
+    if target_id:
+        return rows("SELECT * FROM tb_audit_log WHERE target_id=? ORDER BY id DESC LIMIT ?", (target_id, limit))
+    return rows("SELECT * FROM tb_audit_log ORDER BY id DESC LIMIT ?", (limit,))
+
+
 def save_version(oid, op, note=""):
-    """写操作后自动快照（version_no 自增）"""
+    """写操作后自动快照（version_no 自增），并同步递增本体版本号、记录审计日志"""
     last = one("SELECT MAX(version_no) m FROM tb_onto_version WHERE ontology_id=?", (oid,))
     no = (last["m"] or 0) + 1
     run("INSERT INTO tb_onto_version(ontology_id, version_no, op, note, snapshot) VALUES(?,?,?,?,?)",
         (oid, no, op, note, json.dumps(snapshot(oid), ensure_ascii=False)))
+    bump_version(oid)
+    tmap = {"ontology": "ontology", "class": "class", "rel": "rel", "mapping": "mapping"}
+    target = next((v for k, v in tmap.items() if k in op), "ontology")
+    o = one("SELECT name FROM tb_ontology WHERE id=?", (oid,))
+    audit(target, oid, (o or {}).get("name", ""), op, f"v{no} {note}" if note else f"v{no}")
     return no
 
 

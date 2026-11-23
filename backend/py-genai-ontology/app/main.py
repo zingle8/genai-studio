@@ -26,6 +26,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title="GenAI Studio - 本体知识服务", version="0.3.0", lifespan=lifespan)
     app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(onto_mapper.AuditContextMiddleware)
     gateway_report.init(settings)
     gateway_report.install(app)
     app.include_router(create_routers(service=onto_service))

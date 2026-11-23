@@ -102,7 +102,7 @@
     </div>
 
     <!-- 创建/更新弹框 -->
-    <div class="modal-mask" :class="{ show: modalOpen }" @click.self="modalOpen = false">
+    <div v-if="modalOpen" class="modal-mask show" style="display:flex" @click.self="modalOpen = false">
       <div class="modal modal-lg">
         <div class="modal-header">
           <div>

@@ -27,6 +27,10 @@ def create_routers(service):
     async def graph_list():
         return {"code": 0, "data": service.graph_list()}
 
+    @router.get("/api/graphs/audit")
+    async def audit_list(gid: int = 0, limit: int = 200):
+        return {"code": 0, "data": service.audit_list(gid or None, limit)}
+
     @router.post("/api/graphs")
     async def graph_create(b: GraphIn):
         return {"code": 0, "data": service.graph_create(b)}

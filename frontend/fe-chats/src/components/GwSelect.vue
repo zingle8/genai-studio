@@ -5,8 +5,8 @@
       <svg class="gw-caret" :class="{ up: open }" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
     </button>
     <teleport to="body" :disabled="!fixed">
-      <transition name="gw-drop">
-        <div v-if="open" class="gw-panel" :class="{ 'gw-panel-fixed': fixed }" :style="fixed ? panelStyle : null" @click.stop ref="panelEl">
+      <transition :name="upActive ? 'gw-drop-up' : 'gw-drop'">
+        <div v-if="open" class="gw-panel" :class="{ 'gw-panel-fixed': fixed, 'gw-panel-up': upActive && !fixed }" :style="panelInlineStyle" @click.stop ref="panelEl">
           <div v-if="searchable" class="gw-search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m21 21-4-4"/></svg>
             <input ref="searchEl" v-model="kw" placeholder="搜索…" @keydown.esc.stop="close" />
@@ -54,7 +54,8 @@ const props = defineProps({
   creatable: { type: Boolean, default: false },          // 可直接输入新值（配 searchable 使用）
   placeholder: { type: String, default: '请选择' },
   disabled: { type: Boolean, default: false },
-  fixed: { type: Boolean, default: false }               // 面板 teleport 到 body 用 fixed 定位（弹层容器 overflow 会裁剪时使用）
+  fixed: { type: Boolean, default: false },              // 面板 teleport 到 body 用 fixed 定位（弹层容器 overflow 会裁剪时使用）
+  dropUp: { type: Boolean, default: false }              // 面板向上弹出（用于页面底部的选择器）
 })
 const emit = defineEmits(['update:modelValue', 'create'])
 
@@ -64,21 +65,46 @@ const rootEl = ref(null)
 const panelEl = ref(null)
 const searchEl = ref(null)
 const panelStyle = ref({})
+const upStyle = ref({})
+const forceDown = ref(false)                 // 上方空间不足时改为向下弹
+const upActive = computed(() => props.dropUp && !forceDown.value)
+const panelInlineStyle = computed(() => {
+  if (props.fixed) return panelStyle.value
+  if (props.dropUp) return upStyle.value
+  return null
+})
 
-/** fixed 模式：按触发按钮位置计算面板坐标，屏幕下方放不下时向上弹 */
+/** fixed 模式：优先向上弹（dropUp），上方空间不足则向下；按可用空间限制高度 */
 function placePanel() {
   const btn = rootEl.value?.querySelector('.gw-select-trigger')
   if (!btn) return
   const r = btn.getBoundingClientRect()
   const vh = window.innerHeight
   const est = Math.min(300, props.options.length * 36 + 60)
-  const st = { left: Math.round(r.left) + 'px', width: Math.round(r.width) + 'px' }
-  if (r.bottom + 6 + est < vh - 8) st.top = Math.round(r.bottom + 5) + 'px'
-  else {
-    st.bottom = Math.round(vh - r.top + 5) + 'px'
-    st.maxHeight = Math.max(160, Math.round(r.top - 14)) + 'px'   // 向上弹时不超出视口顶部
+  const spaceAbove = r.top - 8, spaceBelow = vh - r.bottom - 8
+  const up = props.dropUp ? spaceAbove >= 160 : (r.bottom + 6 + est >= vh - 8)
+  forceDown.value = props.dropUp && !up
+  const avail = up ? spaceAbove : spaceBelow
+  const st = {
+    left: Math.round(r.left) + 'px', width: Math.round(r.width) + 'px',
+    maxHeight: Math.min(320, Math.max(120, Math.round(avail))) + 'px'
   }
+  if (up) st.bottom = Math.round(vh - r.top + 5) + 'px'
+  else st.top = Math.round(r.bottom + 5) + 'px'
   panelStyle.value = st
+}
+
+/** 非 fixed 模式：按上方可用空间决定弹出方向与高度，选项区内部滚动 */
+function measureUp() {
+  const btn = rootEl.value?.querySelector('.gw-select-trigger')
+  if (!btn) return
+  const r = btn.getBoundingClientRect()
+  const vh = window.innerHeight
+  const spaceAbove = r.top - 14, spaceBelow = vh - r.bottom - 14
+  forceDown.value = spaceAbove < 160
+  upStyle.value = forceDown.value
+    ? { top: 'calc(100% + 5px)', bottom: 'auto', maxHeight: Math.min(320, Math.max(120, Math.round(spaceBelow))) + 'px' }
+    : { maxHeight: Math.min(320, Math.max(120, Math.round(spaceAbove))) + 'px' }
 }
 
 const display = computed(() => {
@@ -119,6 +145,7 @@ function show() {
   open.value = true
   nextTick(() => {
     if (props.fixed) placePanel()
+    else if (props.dropUp) measureUp()
     if (props.searchable) searchEl.value?.focus()
   })
 }
@@ -182,8 +209,15 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
 }
 .gw-panel-fixed { position: fixed; z-index: 9999; min-width: 140px; top: auto; bottom: auto; left: auto; right: auto; display: flex; flex-direction: column; }
 .gw-panel-fixed .gw-options { flex: 1; min-height: 0; max-height: none; }
+/* 向上弹出：面板锚定在触发按钮上方，选项区内部滚动 */
+.gw-panel-up { top: auto; bottom: calc(100% + 5px); display: flex; flex-direction: column; }
+.gw-panel-up .gw-options { flex: 1; min-height: 0; max-height: none; }
+/* 面板高度受限时搜索框不被压缩 */
+.gw-panel-fixed .gw-search, .gw-panel-up .gw-search { flex-shrink: 0; }
 .gw-drop-enter-active, .gw-drop-leave-active { transition: opacity .14s, transform .14s; }
 .gw-drop-enter-from, .gw-drop-leave-to { opacity: 0; transform: translateY(-4px); }
+.gw-drop-up-enter-active, .gw-drop-up-leave-active { transition: opacity .14s, transform .14s; }
+.gw-drop-up-enter-from, .gw-drop-up-leave-to { opacity: 0; transform: translateY(4px); }
 .gw-search {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 12px; border-bottom: 1px solid var(--border-light);

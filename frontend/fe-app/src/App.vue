@@ -266,19 +266,19 @@ function onLogout() {
 .app { height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
 .app .main-wrap { display: flex; flex: 1; min-height: 0; }
 .app .app-side {
-  width: 236px; flex-shrink: 0; border-right: 1px solid var(--border-light);
-  background: #fff; padding: 12px 14px 14px;
+  width: 200px; flex-shrink: 0; border-right: 1px solid var(--border-light);
+  background: #fff; padding: 12px 10px 14px;
   display: flex; flex-direction: column;
   height: 100%; overflow: hidden;
 }
 .app .app-side nav { display: flex; flex-direction: column; gap: 2px; flex: 1; overflow-y: auto; min-height: 0; }
 .app .app-side .side-group {
   font-size: 11px; color: var(--text-tertiary); letter-spacing: 1px;
-  padding: 14px 12px 6px;
+  padding: 14px 10px 6px;
 }
 .app .app-side .side-item {
-  display: flex; align-items: center; gap: 14px;
-  padding: 9px 14px; border-radius: 8px; cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 8px; cursor: pointer;
   font-size: 13.5px; color: var(--text-secondary); text-decoration: none;
   white-space: nowrap;
   transition: background .15s, color .15s;
@@ -347,7 +347,7 @@ function onLogout() {
 @media (max-width: 960px) {
   .hamburger { display: block; }
   .app .main-wrap { display: block; position: relative; }
-  .app .app-side { position: fixed; left: 0; top: var(--header-h, 48px); bottom: 0; width: 240px; z-index: 70; transform: translateX(-100%); transition: transform 0.2s; box-shadow: none; height: auto; }
+  .app .app-side { position: fixed; left: 0; top: var(--header-h, 48px); bottom: 0; width: 200px; z-index: 70; transform: translateX(-100%); transition: transform 0.2s; box-shadow: none; height: auto; }
   .app .app-side.open { transform: none; box-shadow: var(--shadow-lg); }
   .app .app-side .sidebar-user { display: block; }
   .app .main { height: calc(100vh - var(--header-h, 48px)); }

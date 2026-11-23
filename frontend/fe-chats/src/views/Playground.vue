@@ -40,7 +40,7 @@
           <div class="special-wrap">
             <!-- 编辑器上方工具条：特殊模型 + 流式开关 + 配置面板触发（向上弹出） -->
             <div class="input-toolbar">
-              <GwSelect v-model="selSpecialModel" class="model-picker" :options="specialModelOptions" searchable placeholder="选择特殊模型" />
+              <GwSelect v-model="selSpecialModel" class="model-select" :options="specialModelOptions" searchable fixed drop-up placeholder="选择特殊模型" />
               <label class="stream-toggle" title="请求体注入 stream:true，SSE 帧聚合后展示（仅 chat/completions 类接口支持）">
                 <input type="checkbox" v-model="streamOn"/> 流式返回
               </label>
@@ -105,7 +105,7 @@
           <div class="chat-input">
             <!-- 输入框上方工具条：模型选择 + 流式开关 + 配置面板触发（向上弹出） -->
             <div class="input-toolbar">
-              <GwSelect v-model="selModel" class="model-picker" :options="chatModelOptions" searchable placeholder="选择模型" />
+              <GwSelect v-model="selModel" class="model-select" :options="chatModelOptions" searchable fixed drop-up placeholder="选择模型" />
               <label class="stream-toggle" title="开启后模型逐字返回（SSE 流式）">
                 <input type="checkbox" v-model="streamOn"/> 流式返回
               </label>
@@ -763,7 +763,8 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
   position: relative; display: flex; align-items: center; gap: 10px;
   margin-bottom: 10px;
 }
-.model-picker { width: 300px; }
+/* 独立 class：避开全局 .model-picker 的 max-height / overflow 裁剪 */
+.model-select { width: 300px; overflow: visible; max-height: none; }
 .toolbar-hint { flex-shrink: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-input .input-toolbar { margin-bottom: 10px; }
 
@@ -865,7 +866,7 @@ function scrollBottom() { nextTick(() => { if (msgsEl.value) msgsEl.value.scroll
 @media (max-width: 960px) {
   .chat-layout { flex-direction: column; }
   .chat-side { width: 100%; max-height: 240px; }
-  .model-picker { width: 100%; }
+  .model-select { width: 100%; }
   .topbar-hint, .toolbar-hint { display: none; }
   .chat-msg.user { max-width: 88%; }
 }

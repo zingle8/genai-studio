@@ -9,9 +9,13 @@ export function withBase(path) {
 /** 统一请求封装 */
 export async function api(path, options = {}) {
   const token = localStorage.getItem('genai_token') || ''
+  // 对象 body 自动序列化（字符串 body 保持原样，兼容已手动 JSON.stringify 的调用）
+  const opts = options.body && typeof options.body === 'object' && !(options.body instanceof FormData)
+    ? { ...options, body: JSON.stringify(options.body) }
+    : options
   const res = await fetch(path, {
     headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: token } : {}) },
-    ...options
+    ...opts
   })
   return res.json()
 }

@@ -74,6 +74,7 @@ def onto_create(body) -> dict:
     _require_space(body.space_id)
     new_id = db.run("INSERT INTO tb_ontology(name, space_id, scope, namespace, authority, comment) VALUES(?,?,?,?,?,?)",
                     (body.name.strip(), body.space_id, body.scope, body.namespace or body.name, body.authority, body.comment))
+    db.save_version(new_id, "create_onto", f"创建本体 {body.name.strip()}")
     return db.one("SELECT * FROM tb_ontology WHERE id=?", (new_id,))
 
 
@@ -81,13 +82,16 @@ def onto_update(oid: int, body) -> None:
     _require_space(body.space_id)
     db.run("UPDATE tb_ontology SET name=?, space_id=?, scope=?, namespace=?, authority=?, comment=? WHERE id=?",
            (body.name.strip(), body.space_id, body.scope, body.namespace, body.authority, body.comment, oid))
+    db.save_version(oid, "update_onto", f"更新本体 {body.name.strip()}")
 
 
 def onto_delete(oid: int) -> None:
+    db.save_version(oid, "delete_onto", "删除本体（删除前快照）")
     db.exec_many([("DELETE FROM tb_ontology WHERE id=?", (oid,)),
                   ("DELETE FROM tb_onto_class WHERE ontology_id=?", (oid,)),
                   ("DELETE FROM tb_onto_rel WHERE ontology_id=?", (oid,)),
-                  ("DELETE FROM tb_onto_mapping WHERE ontology_id=?", (oid,))])
+                  ("DELETE FROM tb_onto_mapping WHERE ontology_id=?", (oid,)),
+                  ("DELETE FROM tb_onto_version WHERE ontology_id=?", (oid,))])
 
 
 def onto_full(oid: int) -> dict:
@@ -111,6 +115,7 @@ def class_add(body) -> None:
         raise HTTPException(400, f"类 {body.name} 已存在（同名类不可重复定义）")
     db.run("INSERT INTO tb_onto_class(ontology_id, name, parent_name, comment) VALUES(?,?,?,?)",
            (body.ontologyId, body.name.strip(), body.parentName, body.comment))
+    db.save_version(body.ontologyId, "create_class", f"新增类 {body.name.strip()}")
 
 
 def class_update(cid: int, body) -> None:
@@ -123,9 +128,13 @@ def class_update(cid: int, body) -> None:
         raise HTTPException(400, f"类 {body.name} 已存在（同名类不可重复定义）")
     db.run("UPDATE tb_onto_class SET name=?, parent_name=?, comment=? WHERE id=?",
            (body.name.strip(), body.parentName, body.comment, cid))
+    db.save_version(body.ontologyId, "update_class", f"修改类 {body.name.strip()}")
 
 
 def class_delete(cid: int) -> None:
+    row = db.one("SELECT * FROM tb_onto_class WHERE id=?", (cid,))
+    if row:
+        db.save_version(row["ontology_id"], "delete_class", f"删除类 {row['name']}")
     db.run("DELETE FROM tb_onto_class WHERE id=?", (cid,))
 
 
@@ -142,6 +151,7 @@ def rel_add(body) -> None:
            " VALUES(?,?,?,?,?,?,?,?)",
            (body.ontologyId, body.name.strip(), body.subjClass, body.objClass, body.cardinality,
             1 if body.nullable else 0, body.inheritsFrom, body.comment))
+    db.save_version(body.ontologyId, "create_rel", f"新增关系 {body.name.strip()}")
 
 
 def rel_update(rid: int, body) -> None:
@@ -158,18 +168,26 @@ def rel_update(rid: int, body) -> None:
            " WHERE id=?",
            (body.name.strip(), body.subjClass, body.objClass, body.cardinality,
             1 if body.nullable else 0, body.inheritsFrom, body.comment, rid))
+    db.save_version(body.ontologyId, "update_rel", f"修改关系 {body.name.strip()}")
 
 
 def rel_delete(rid: int) -> None:
+    row = db.one("SELECT * FROM tb_onto_rel WHERE id=?", (rid,))
+    if row:
+        db.save_version(row["ontology_id"], "delete_rel", f"删除关系 {row['name']}")
     db.run("DELETE FROM tb_onto_rel WHERE id=?", (rid,))
 
 
 def map_add(body) -> None:
     db.run("INSERT INTO tb_onto_mapping(ontology_id, onto_type, physical_type, kind) VALUES(?,?,?,?)",
            (body.ontologyId, body.ontoType, body.physicalType, body.kind))
+    db.save_version(body.ontologyId, "create_mapping", f"绑定映射 {body.ontoType} -> {body.physicalType}")
 
 
 def map_delete(mid: int) -> None:
+    row = db.one("SELECT * FROM tb_onto_mapping WHERE id=?", (mid,))
+    if row:
+        db.save_version(row["ontology_id"], "delete_mapping", "删除映射")
     db.run("DELETE FROM tb_onto_mapping WHERE id=?", (mid,))
 
 
@@ -199,6 +217,7 @@ def import_onto(body) -> dict:
                          " VALUES(?,?,?,?,?,?,?,?)", (oid, r["name"], r["subj"], r["obj"], r["cardinality"], 1 if r["nullable"] else 0, r["inherits"], r["comment"])))
             n_rel += 1
     db.exec_many(sqls)
+    db.save_version(oid, "import", f"导入{body.format}：新增 {n_class} 类 / {n_rel} 规则")
     return {"classes": n_class, "rels": n_rel, "issues": check_ontology(oid)}
 
 
@@ -252,3 +271,46 @@ def view_graph(oid: int, ds: int = 1) -> dict:
     if edge_types:
         data["edges"] = [e for e in data["edges"] if e["type"] in edge_types]
     return data
+
+
+# ========== 版本快照（自动快照 + 详情 + 恢复） ==========
+def version_list(oid: int) -> list:
+    if not db.one("SELECT id FROM tb_ontology WHERE id=?", (oid,)):
+        raise HTTPException(404, "本体不存在")
+    return db.rows("SELECT id, ontology_id, version_no, op, note, created_at FROM tb_onto_version "
+                   "WHERE ontology_id=? ORDER BY version_no DESC", (oid,))
+
+
+def version_detail(oid: int, no: int) -> dict:
+    v = db.one("SELECT * FROM tb_onto_version WHERE ontology_id=? AND version_no=?", (oid, no))
+    if not v:
+        raise HTTPException(404, "版本不存在")
+    return {k: (json.loads(v[k]) if k == "snapshot" else v[k]) for k in
+            ("id", "ontology_id", "version_no", "op", "note", "created_at", "snapshot")}
+
+
+def version_restore(oid: int, no: int) -> dict:
+    """恢复到指定版本：当前态先存一版，再按快照原 ID 回填类/关系/映射"""
+    v = db.one("SELECT * FROM tb_onto_version WHERE ontology_id=? AND version_no=?", (oid, no))
+    if not v:
+        raise HTTPException(404, "版本不存在")
+    db.save_version(oid, "pre_restore", f"恢复到 v{no} 前自动保存")
+    snap = json.loads(v["snapshot"])
+    db.exec_many([
+        ("DELETE FROM tb_onto_mapping WHERE ontology_id=?", (oid,)),
+        ("DELETE FROM tb_onto_rel WHERE ontology_id=?", (oid,)),
+        ("DELETE FROM tb_onto_class WHERE ontology_id=?", (oid,)),
+    ])
+    for c in snap.get("classes", []):
+        db.run("INSERT INTO tb_onto_class(id, ontology_id, name, parent_name, comment) VALUES(?,?,?,?,?)",
+               (c["id"], oid, c["name"], c.get("parent_name", ""), c.get("comment", "")))
+    for r in snap.get("rels", []):
+        db.run("INSERT INTO tb_onto_rel(id, ontology_id, name, subj_class, obj_class, cardinality, nullable, inherits_from, comment) "
+               "VALUES(?,?,?,?,?,?,?,?,?)",
+               (r["id"], oid, r["name"], r["subj_class"], r["obj_class"], r.get("cardinality", "many"),
+                r.get("nullable", 1), r.get("inherits_from", ""), r.get("comment", "")))
+    for m in snap.get("mappings", []):
+        db.run("INSERT INTO tb_onto_mapping(id, ontology_id, onto_type, physical_type, kind) VALUES(?,?,?,?,?)",
+               (m["id"], oid, m["onto_type"], m["physical_type"], m.get("kind", "node")))
+    db.save_version(oid, "restore", f"恢复到 v{no}")
+    return {"restored": no}

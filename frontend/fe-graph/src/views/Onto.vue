@@ -43,6 +43,7 @@
             <button :class="{on: tab==='text'}" @click="tab='text'; onTextTab()">文本定义</button>
             <button :class="{on: tab==='check'}" @click="tab='check'">一致性检查</button>
             <button :class="{on: tab==='data'}" @click="tab='data'">数据映射</button>
+            <button :class="{on: tab==='versions'}" @click="tab='versions'; loadOntoVersions()">版本</button>
           </div>
           <button class="btn btn-secondary btn-sm" @click="delOnto">删除本体</button>
         </div>
@@ -94,15 +95,35 @@
               <input class="form-input" v-model="relForm.inheritsFrom" placeholder="继承关系名（可空）"/>
               <button class="btn btn-primary btn-sm full" @click="createRel">创建规则</button>
             </div>
-            <div v-if="selNode" class="sel-card"><b>{{ selNode.name }}</b>
-              <div class="text-xs muted" style="margin:4px 0 8px;">父类：{{ selNode.parent_name || '无' }} · {{ selNode.comment || '无说明' }}</div>
-              <button class="btn btn-danger btn-sm full" @click="delClass(selNode)">删除该类</button></div>
-            <div v-if="selEdge" class="sel-card"><b>{{ selEdge.name }}</b>
-              <div class="text-xs mono muted" style="margin:4px 0;">{{ selEdge.subj_class }} → {{ selEdge.obj_class }}</div>
-              <div class="text-xs" style="margin-bottom:8px;">基数：{{ selEdge.cardinality==='one' ? '一对一' : '多对多' }} · {{ selEdge.nullable ? '允许为空' : '不允许为空' }}
-                <template v-if="selEdge.inherits_from"><br/>继承：{{ selEdge.inherits_from }}</template></div>
-              <button class="btn btn-danger btn-sm full" @click="delRel(selEdge)">删除该规则</button></div>
-            <div v-if="!selNode && !selEdge" class="text-xs muted" style="padding:6px 2px;">图上 {{ nodes.length }} 个类 · {{ graphEdges.length }} 条规则边</div>
+            <div v-if="selNode" class="sel-card">
+              <div class="sel-title"><b>{{ selNode.name }}</b><span class="tag tag-success">类 #{{ selNode.id }}</span></div>
+              <div class="sel-meta">本体：{{ cur.name }} · 状态：{{ cur.status || 'active' }} · 版本：{{ cur.version || 'v1' }}</div>
+              <div class="sel-meta">父类：{{ selNode.parent_name || '无' }} · 说明：{{ selNode.comment || '无' }}</div>
+              <div class="sel-meta">关联规则 {{ relsOfClass(selNode).length }} 条：{{ relsOfClass(selNode).map(r => r.name).join('、') || '无' }}</div>
+              <div class="sel-meta">最近变更：{{ ontoVersions.slice(0, 3).map(v => 'v' + v.version_no + ' ' + v.op).join(' / ') || '暂无' }}</div>
+              <div class="sel-actions">
+                <button class="btn btn-primary btn-sm" @click="editSelClass">更新类</button>
+                <button class="btn btn-secondary btn-sm" @click="delClass(selNode)">删除</button>
+                <button class="btn btn-secondary btn-sm" @click="newClassOpen = true">＋ 类</button>
+                <button class="btn btn-secondary btn-sm" @click="newRelOpen = true">＋ 规则</button>
+              </div>
+            </div>
+            <div v-if="selEdge" class="sel-card">
+              <div class="sel-title"><b>{{ selEdge.name }}</b><span class="tag">规则 #{{ selEdge.id }}</span></div>
+              <div class="sel-meta">本体：{{ cur.name }} · 状态：{{ cur.status || 'active' }} · 版本：{{ cur.version || 'v1' }}</div>
+              <div class="sel-meta mono">{{ selEdge.subj_class }} → {{ selEdge.obj_class }}</div>
+              <div class="sel-meta">基数：{{ selEdge.cardinality==='one' ? '一对一' : '多对多' }} · {{ selEdge.nullable ? '允许为空' : '不允许为空' }}
+                <template v-if="selEdge.inherits_from">· 继承：{{ selEdge.inherits_from }}</template></div>
+              <div class="sel-meta">说明：{{ selEdge.comment || '无' }}</div>
+              <div class="sel-meta">最近变更：{{ ontoVersions.slice(0, 3).map(v => 'v' + v.version_no + ' ' + v.op).join(' / ') || '暂无' }}</div>
+              <div class="sel-actions">
+                <button class="btn btn-primary btn-sm" @click="editSelRel">更新规则</button>
+                <button class="btn btn-secondary btn-sm" @click="delRel(selEdge)">删除</button>
+                <button class="btn btn-secondary btn-sm" @click="newClassOpen = true">＋ 类</button>
+                <button class="btn btn-secondary btn-sm" @click="newRelOpen = true">＋ 规则</button>
+              </div>
+            </div>
+            <div v-if="!selNode && !selEdge" class="text-xs muted" style="padding:6px 2px;">点击图中节点或规则查看属性、状态、版本并操作 · 共 {{ nodes.length }} 类 / {{ graphEdges.length }} 规则</div>
           </div>
         </div>
 
@@ -227,11 +248,64 @@
             </div>
           </div>
         </div>
+
+        <!-- 版本快照 -->
+        <div v-show="tab==='versions'" class="panel">
+          <div class="check-bar">
+            <b>本体版本快照</b><span class="text-xs muted">类 / 关系 / 映射的每次写入自动生成版本</span>
+            <span style="flex:1"></span><button class="btn btn-secondary btn-sm" @click="loadOntoVersions">刷新</button>
+          </div>
+          <div class="table-wrap"><table>
+            <thead><tr><th>版本</th><th>操作</th><th>说明</th><th>时间</th><th class="text-right">操作</th></tr></thead>
+            <tbody>
+              <tr v-for="v in ontoVersions" :key="v.id">
+                <td class="mono">v{{ v.version_no }}</td><td>{{ v.op }}</td><td>{{ v.note || '—' }}</td><td class="text-xs muted">{{ v.created_at }}</td>
+                <td class="text-right">
+                  <button class="btn btn-ghost btn-sm" @click="viewOntoVersion(v)">内容</button>
+                  <button class="btn btn-ghost btn-sm" @click="restoreOntoVersion(v)">恢复此版本</button>
+                </td>
+              </tr>
+              <tr v-if="!ontoVersions.length"><td colspan="5" class="text-center muted">暂无版本快照</td></tr>
+            </tbody>
+          </table></div>
+        </div>
       </section>
 
       <section v-else class="onto-main card empty" style="display:flex;align-items:center;justify-content:center;">
         <div>← 选择或新建一个本体开始定义</div>
       </section>
+    </div>
+
+    <!-- 编辑选中类 / 关系规则 -->
+    <div v-if="editSel" class="modal-mask" @click.self="editSel=null">
+      <div class="modal-card">
+        <div class="modal-header"><div class="modal-title">更新{{ editSel.kind === 'class' ? '类' : '关系规则' }}</div><button class="modal-close" @click="editSel=null">×</button></div>
+        <div class="modal-body">
+          <template v-if="editSel.kind === 'class'">
+            <div class="form-row"><label class="form-label">类名</label><input class="form-input" v-model="editForm.name" /></div>
+            <div class="form-row"><label class="form-label">父类</label><input class="form-input" v-model="editForm.parentName" placeholder="可空" /></div>
+            <div class="form-row"><label class="form-label">说明</label><input class="form-input" v-model="editForm.comment" /></div>
+          </template>
+          <template v-else>
+            <div class="form-row"><label class="form-label">关系名</label><input class="form-input" v-model="editForm.name" /></div>
+            <div class="form-row"><label class="form-label">主体类</label><input class="form-input" v-model="editForm.subjClass" /></div>
+            <div class="form-row"><label class="form-label">客体类</label><input class="form-input" v-model="editForm.objClass" /></div>
+            <div class="form-row"><label class="form-label">基数</label><select class="form-select" v-model="editForm.cardinality"><option value="many">多对多 many</option><option value="one">一对一 one</option></select></div>
+            <div class="form-row"><label class="form-label">可空</label><input type="checkbox" v-model="editForm.nullable" /></div>
+            <div class="form-row"><label class="form-label">继承</label><input class="form-input" v-model="editForm.inheritsFrom" placeholder="可空" /></div>
+            <div class="form-row"><label class="form-label">说明</label><input class="form-input" v-model="editForm.comment" /></div>
+          </template>
+        </div>
+        <div class="modal-footer"><button class="btn btn-secondary" @click="editSel=null">取消</button><button class="btn btn-primary" @click="saveEditSel">保存</button></div>
+      </div>
+    </div>
+    <!-- 版本快照内容 -->
+    <div v-if="ontoVerDetail" class="modal-mask" @click.self="ontoVerDetail=null">
+      <div class="modal-card modal-lg" style="width:640px;">
+        <div class="modal-header"><div class="modal-title">v{{ ontoVerDetail.version_no }} 快照（{{ ontoVerDetail.op }} · {{ ontoVerDetail.created_at }}）</div><button class="modal-close" @click="ontoVerDetail=null">×</button></div>
+        <div class="modal-body"><pre class="ver-pre">{{ JSON.stringify(ontoVerDetail.snapshot, null, 2).slice(0, 3000) }}</pre></div>
+        <div class="modal-footer"><button class="btn btn-secondary" @click="ontoVerDetail=null">关闭</button><button class="btn btn-primary" @click="restoreOntoVersion(ontoVerDetail); ontoVerDetail=null">恢复此版本</button></div>
+      </div>
     </div>
 
     <div v-if="newOpen" class="modal-mask" @click.self="newOpen=false">
@@ -318,6 +392,8 @@ const mapForm = ref({ kind: 'node', ontoType: '', physicalType: '' })
 const newClassOpen = ref(false)
 const newRelOpen = ref(false)
 const selNode = ref(null)
+const ontoVersions = ref([]); const ontoVerDetail = ref(null)
+const editSel = ref(null); const editForm = ref({})
 const selEdge = ref(null)
 const ttlText = ref('')
 const fmt = ref('form')   // 本体定义方式：form=表单 / yaml / ttl
@@ -392,7 +468,7 @@ async function selectOnto(o) {
     cur.value = { ...r.data.ontology, _classes: r.data.classes, _rels: r.data.rels }
     selNode.value = null; selEdge.value = null; issues.value = []
     resetNeighborhood()
-    await loadMappings()
+    await loadMappings(); await loadOntoVersions()
   }
 }
 function openNewOnto() {
@@ -447,6 +523,44 @@ async function saveRel(r0) {
   if (r.code !== 0) return alert(r.message || r.detail || '保存失败')
   await selectOnto(cur.value)
 }
+/* ===== 选中对象：关系列表 / 更新弹窗 / 版本快照 ===== */
+function relsOfClass(n) { return (cur.value?._rels || []).filter(r => r.subj_class === n.name || r.obj_class === n.name) }
+function editSelClass() {
+  editForm.value = { name: selNode.value.name, parentName: selNode.value.parent_name || '', comment: selNode.value.comment || '' }
+  editSel.value = { kind: 'class' }
+}
+function editSelRel() {
+  const r = selEdge.value
+  editForm.value = { name: r.name, subjClass: r.subj_class, objClass: r.obj_class, cardinality: r.cardinality,
+    nullable: !!r.nullable, inheritsFrom: r.inherits_from || '', comment: r.comment || '' }
+  editSel.value = { kind: 'rel' }
+}
+async function saveEditSel() {
+  if (!editForm.value.name?.trim()) return alert('名称不能为空')
+  if (editSel.value.kind === 'class') {
+    await saveClass({ id: selNode.value.id, name: editForm.value.name, parent_name: editForm.value.parentName, comment: editForm.value.comment })
+  } else {
+    await saveRel({ id: selEdge.value.id, name: editForm.value.name, subj_class: editForm.value.subjClass,
+      obj_class: editForm.value.objClass, cardinality: editForm.value.cardinality,
+      nullable: editForm.value.nullable, inherits_from: editForm.value.inheritsFrom, comment: editForm.value.comment })
+  }
+  editSel.value = null
+}
+async function loadOntoVersions() {
+  if (!cur.value) return
+  const r = await api(`/api/onto/${cur.value.id}/versions`)
+  if (r.code === 0) ontoVersions.value = r.data
+}
+async function viewOntoVersion(v) {
+  const r = await api(`/api/onto/${cur.value.id}/versions/${v.version_no}`)
+  if (r.code === 0) ontoVerDetail.value = r.data
+}
+async function restoreOntoVersion(v) {
+  if (!confirm(`恢复到 v${v.version_no}？当前数据会先自动保存为新版本。`)) return
+  const r = await api(`/api/onto/${cur.value.id}/versions/${v.version_no}/restore`, { method: 'POST' })
+  if (r.code === 0) { alert(`已恢复到 v${v.version_no}`); selNode.value = null; selEdge.value = null; await selectOnto(cur.value) }
+  else alert(r.message || r.detail || '恢复失败')
+}
 async function runCheck() { const r = await api(`/api/onto/${cur.value.id}/check`); if (r.code === 0) issues.value = r.data }
 async function importText() {
   const r = await api('/api/onto/import', { method: 'POST', body: { ontologyId: cur.value.id, text: ttlText.value, format: fmt.value } })
@@ -462,9 +576,9 @@ async function loadMappings() { const r = await api(`/api/onto/${cur.value.id}/f
 async function addMap() {
   if (!mapForm.value.ontoType || !mapForm.value.physicalType) return alert('请选择本体类型与物理类型')
   await api('/api/onto/mappings', { method: 'POST', body: { ontologyId: cur.value.id, ...mapForm.value } })
-  mapForm.value = { kind: 'node', ontoType: '', physicalType: '' }; await loadMappings()
+  mapForm.value = { kind: 'node', ontoType: '', physicalType: '' }; await loadMappings(); await loadOntoVersions()
 }
-async function delMap(m) { await api(`/api/onto/mappings/${m.id}`, { method: 'DELETE' }); await loadMappings() }
+async function delMap(m) { await api(`/api/onto/mappings/${m.id}`, { method: 'DELETE' }); await loadMappings(); await loadOntoVersions() }
 async function loadView() { const r = await api(`/api/onto/${cur.value.id}/view-graph?ds=${dsId.value}`); if (r.code === 0) viewData.value = r.data }
 </script>
 
@@ -565,4 +679,12 @@ async function loadView() { const r = await api(`/api/onto/${cur.value.id}/view-
 .form-row { display: flex; align-items: center; gap: 10px; }
 .form-label { width: 70px; flex-shrink: 0; font-size: 13px; color: var(--text-muted, #6b7280); }
 .modal-footer { padding: 12px 18px; border-top: 1px solid var(--border-light, #eef0f5); display: flex; justify-content: flex-end; gap: 8px; }
+</style>
+
+<style>
+/* 本体选中详情卡 */
+.sel-card { padding: 10px !important; }
+.sel-title { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.sel-meta { font-size: 11.5px; color: #6b7280; line-height: 1.6; word-break: break-all; }
+.sel-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
 </style>

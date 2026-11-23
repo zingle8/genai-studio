@@ -102,6 +102,19 @@ def create_routers(service) -> APIRouter:
     async def check(oid: int):
         return {"code": 0, "data": service.check(oid)}
 
+    # ========== 版本快照 ==========
+    @router.get("/api/onto/{oid}/versions")
+    async def version_list(oid: int):
+        return {"code": 0, "data": service.version_list(oid)}
+
+    @router.get("/api/onto/{oid}/versions/{no}")
+    async def version_detail(oid: int, no: int):
+        return {"code": 0, "data": service.version_detail(oid, no)}
+
+    @router.post("/api/onto/{oid}/versions/{no}/restore")
+    async def version_restore(oid: int, no: int):
+        return {"code": 0, "data": service.version_restore(oid, no)}
+
     # ========== 数据源与图数据 ==========
     @router.get("/api/onto/datasources")
     async def datasources():

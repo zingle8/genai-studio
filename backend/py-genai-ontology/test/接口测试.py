@@ -60,6 +60,11 @@ if __name__ == "__main__":
             "YAML 导入（空定义）")
         req("POST", "/api/onto/import", {"ontologyId": oid, "format": "xml", "text": "<x/>"}, 400, "非法导入格式 → 400")
         req("GET", f"/api/onto/{oid}/check", None, 200, "一致性检查")
+        vs = req("GET", f"/api/onto/{oid}/versions", None, 200, "版本列表", pick=lambda b: b["data"])
+        if vs:
+            req("GET", f"/api/onto/{oid}/versions/{vs[-1]['version_no']}", None, 200, "版本详情(含快照)")
+            req("POST", f"/api/onto/{oid}/versions/{vs[-1]['version_no']}/restore", None, 200, "恢复版本")
+            req("GET", f"/api/onto/{oid}/versions/999", None, 404, "不存在的版本 → 404")
         req("DELETE", f"/api/onto/ontologies/{oid}", None, None, "删除测试本体")
     req("GET", "/api/onto/graph-data", None, 200, "内置示例图数据")
     print(f"\n接口测试：通过 {len(PASS)}，失败 {len(FAIL)}")

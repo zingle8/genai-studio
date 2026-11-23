@@ -68,17 +68,82 @@
           </div>
           <svg class="graph-svg" viewBox="0 0 1000 620">
             <g :transform="viewTransform">
-              <g v-for="e in edges" :key="'e' + e.id">
-                <line :x1="pos(e.source_id).x + 32" :y1="pos(e.source_id).y + 18" :x2="pos(e.target_id).x + 32" :y2="pos(e.target_id).y + 18" class="edge-line" />
-                <text :x="(pos(e.source_id).x + pos(e.target_id).x) / 2 + 32" :y="(pos(e.source_id).y + pos(e.target_id).y) / 2 + 12" class="edge-label">{{ e.rel_type }}</text>
+              <g v-for="e in edges" :key="'e' + e.id" style="cursor:pointer;" @click="selEdge=e; selNode=null">
+                <line :x1="pos(e.source_id).x + 32" :y1="pos(e.source_id).y + 18" :x2="pos(e.target_id).x + 32" :y2="pos(e.target_id).y + 18" class="edge-line" :class="{ sel: selEdge?.id === e.id }" />
+                <text :x="(pos(e.source_id).x + pos(e.target_id).x) / 2 + 32" :y="(pos(e.source_id).y + pos(e.target_id).y) / 2 + 12" class="edge-label" :class="{ sel: selEdge?.id === e.id }">{{ e.rel_type }}</text>
               </g>
-              <g v-for="n in nodes" :key="'n' + n.id" style="cursor:pointer;">
-                <rect :x="pos(n.id).x" :y="pos(n.id).y" width="64" height="36" rx="8" class="node-box" :style="{ stroke: typeColor(n.entity_id) }" />
+              <g v-for="n in nodes" :key="'n' + n.id" style="cursor:pointer;" @click="selNode=n; selEdge=null">
+                <rect :x="pos(n.id).x" :y="pos(n.id).y" width="64" height="36" rx="8" class="node-box" :class="{ sel: selNode?.id === n.id }" :style="{ stroke: typeColor(n.entity_id) }" />
                 <circle :cx="pos(n.id).x + 8" :cy="pos(n.id).y + 8" r="4" :fill="typeColor(n.entity_id)" />
                 <text :x="pos(n.id).x + 34" :y="pos(n.id).y + 23" class="node-name">{{ n.name.length > 6 ? n.name.slice(0, 6) : n.name }}</text>
               </g>
             </g>
           </svg>
+
+          <!-- 选中对象详情：属性 / 状态 / 版本 / 操作 -->
+          <div class="graph-detail">
+            <template v-if="selNode">
+              <div class="detail-head">
+                <b>{{ selNode.name }}</b>
+                <span class="tag tag-success">节点 · {{ entityName(selNode.entity_id) }}</span>
+                <span class="text-xs muted">ID {{ selNode.id }} · 创建 {{ selNode.created_at }}</span>
+                <span style="flex:1"></span>
+                <button class="btn btn-primary btn-sm" @click="editNode(selNode)">更新节点</button>
+                <button class="btn btn-secondary btn-sm" @click="openEdgeFor(selNode)">＋ 关联关系</button>
+                <button class="btn btn-secondary btn-sm" @click="nodeOpen = true">＋ 节点</button>
+                <button class="btn btn-danger btn-sm" @click="delNode(selNode)">删除</button>
+              </div>
+              <div class="detail-grid">
+                <div><div class="sec-t">属性（{{ nodeProps(selNode).length }}）</div>
+                  <table class="detail-table"><tbody>
+                    <tr v-for="p in nodeProps(selNode)" :key="p[0]"><td class="mono">{{ p[0] }}</td><td>{{ p[1] }}</td></tr>
+                    <tr v-if="!nodeProps(selNode).length"><td colspan="2" class="muted">（无属性）</td></tr>
+                  </tbody></table>
+                  <div class="text-xs muted" style="margin-top:4px;">类型定义：{{ propsSchemaText(entitySchema(selNode.entity_id)) }}</div>
+                </div>
+                <div><div class="sec-t">关联关系（{{ relatedEdges(selNode).length }}）</div>
+                  <div class="detail-list"><div v-for="e in relatedEdges(selNode)" :key="e.id" class="detail-item" @click="selEdge=e; selNode=null">
+                    <b>{{ e.rel_type }}</b> {{ nodeName(e.source_id) === selNode.name ? '→ ' + nodeName(e.target_id) : '← ' + nodeName(e.source_id) }}
+                  </div><div v-if="!relatedEdges(selNode).length" class="muted text-xs">（无关联）</div></div>
+                </div>
+                <div><div class="sec-t">版本 / 状态</div>
+                  <div class="text-xs muted">当前图谱 {{ versions.length }} 个版本 · 最近操作：</div>
+                  <div class="detail-list"><div v-for="v in versions.slice(0, 5)" :key="v.id" class="detail-item">
+                    <span class="mono">v{{ v.version_no }}</span> {{ v.op }} · {{ v.note || v.created_at }}
+                    <button class="link-btn" @click="viewVersion(v)">内容</button>
+                  </div><div v-if="!versions.length" class="muted text-xs">（暂无版本快照）</div></div>
+                  <button class="btn btn-ghost btn-sm" @click="tab='versions'; loadVersions()">全部版本 ›</button>
+                </div>
+              </div>
+            </template>
+            <template v-else-if="selEdge">
+              <div class="detail-head">
+                <b>{{ selEdge.rel_type }}</b><span class="tag">关系 #{{ selEdge.id }}</span>
+                <span class="text-xs muted">创建 {{ selEdge.created_at }}</span>
+                <span style="flex:1"></span>
+                <button class="btn btn-primary btn-sm" @click="editEdge(selEdge)">更新关系</button>
+                <button class="btn btn-secondary btn-sm" @click="nodeOpen = true">＋ 节点</button>
+                <button class="btn btn-danger btn-sm" @click="delEdge(selEdge)">删除</button>
+              </div>
+              <div class="detail-grid">
+                <div><div class="sec-t">关系信息</div>
+                  <table class="detail-table"><tbody>
+                    <tr><td>起点</td><td class="clickable" @click="selectNodeById(selEdge.source_id)">{{ nodeName(selEdge.source_id) }}</td></tr>
+                    <tr><td>终点</td><td class="clickable" @click="selectNodeById(selEdge.target_id)">{{ nodeName(selEdge.target_id) }}</td></tr>
+                    <tr><td>属性</td><td>{{ selEdge.props || '{}' }}</td></tr>
+                  </tbody></table>
+                </div>
+                <div><div class="sec-t">版本 / 状态</div>
+                  <div class="text-xs muted">当前图谱 {{ versions.length }} 个版本 · 最近操作：</div>
+                  <div class="detail-list"><div v-for="v in versions.slice(0, 5)" :key="v.id" class="detail-item">
+                    <span class="mono">v{{ v.version_no }}</span> {{ v.op }} · {{ v.note || v.created_at }}
+                    <button class="link-btn" @click="viewVersion(v)">内容</button>
+                  </div></div>
+                </div>
+              </div>
+            </template>
+            <div v-else class="text-xs muted">点击图中的节点或关系，查看属性、状态、版本并执行增删改操作</div>
+          </div>
         </div></div>
 
         <!-- 实体类型 -->
@@ -267,6 +332,7 @@ import MultiNodeSelect from '../components/MultiNodeSelect.vue'
 const graphs = ref([]); const curGraph = ref(null); const tab = ref('view')
 const entities = ref([]); const nodes = ref([]); const edges = ref([]); const versions = ref([])
 const focusIds = ref([]); const allNodes = ref([]); const depth = ref(1); const searching = ref(false)
+const selNode = ref(null); const selEdge = ref(null)
 const graphOpen = ref(false); const graphForm = ref({ name: '', space_id: 0, db_type: 'sqlite', description: '' }); const n4cfg = ref({})
 const entityOpen = ref(false); const entityForm = ref({ id: null, name: '', props_schema: '[]' })
 const nodeOpen = ref(false); const nodeForm = ref({ id: null, entity_id: 0, name: '', props: '{}' })
@@ -323,12 +389,14 @@ async function loadGraphs() {
 function pickGraph(g) {
   curGraph.value = g
   entities.value = []; nodes.value = []; edges.value = []; allNodes.value = []; focusIds.value = []
-  loadGraph()
+  selNode.value = null; selEdge.value = null
+  loadGraph(); loadVersions()
 }
 async function loadGraph() {
   if (!curGraph.value) return
   const gid = curGraph.value.id
   const ids = focusIds.value || []
+  selNode.value = null; selEdge.value = null
   searching.value = true
   try {
     const path = ids.length
@@ -445,6 +513,17 @@ function zoomOut() { scale.value = Math.max(0.35, +(scale.value / 1.25).toFixed(
 function zoomReset() { scale.value = 1 }
 const viewTransform = computed(() => `translate(${500 * (1 - scale.value)} ${310 * (1 - scale.value)}) scale(${scale.value})`)
 function entityName(eid) { const e = entities.value.find(x => x.id === eid); return e ? e.name : '—' }
+function entitySchema(eid) { return entities.value.find(x => x.id === eid)?.props_schema || '[]' }
+function nodeProps(n) {
+  try {
+    const o = JSON.parse(n?.props || '{}')
+    return o && typeof o === 'object' && !Array.isArray(o) ? Object.entries(o) : []
+  } catch { return [] }
+}
+function relatedEdges(n) { return edges.value.filter(e => e.source_id === n.id || e.target_id === n.id) }
+function nodeName(id) { return nodes.value.find(n => n.id === id)?.name || '#' + id }
+function selectNodeById(id) { const n = nodes.value.find(x => x.id === id); if (n) { selEdge.value = null; selNode.value = n } }
+function openEdgeFor(n) { edgeForm.value = { id: null, source_id: n.id, rel_type: '', target_id: '' }; edgeOpen.value = true }
 function propsSchemaText(s) {
   try { const a = JSON.parse(s || '[]'); return a.length ? a.map(x => x.name + ':' + x.type).join('、') : '（无属性定义）' } catch { return '—' }
 }
@@ -569,3 +648,21 @@ async function restoreVersion(v) {
 .ver-pre { background: var(--bg-soft); border: 1px solid var(--border-light); border-radius: 8px; padding: 12px; font-size: 12px; max-height: 50vh; overflow: auto; line-height: 1.5; }
 .modal { min-width: 440px; }
 </style>
+
+/* ===== 图视图选中详情：属性 / 关系 / 版本 / 操作 ===== */
+.graph-detail { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border-light, #e9ebf0); border-radius: 10px; background: #fff; }
+.detail-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid #f0f1f5; }
+.detail-head b { font-size: 14px; }
+.detail-grid { display: grid; grid-template-columns: 1.1fr 1fr 1.2fr; gap: 18px; margin-top: 9px; }
+.sec-t { font-size: 12px; font-weight: 600; color: #4b5563; margin-bottom: 6px; }
+.detail-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+.detail-table td { padding: 4px 6px; border-bottom: 1px solid #f4f5f8; text-align: left; word-break: break-all; }
+.detail-table td:first-child { width: 38%; color: #6b7280; }
+.detail-list { max-height: 140px; overflow-y: auto; }
+.detail-item { padding: 4px 6px; border-radius: 5px; font-size: 12px; color: #374151; cursor: pointer; }
+.detail-item:hover { background: #f4f6fb; }
+.detail-item .link-btn { margin-left: 6px; }
+.clickable { cursor: pointer; color: #4d6bfe; }
+.node-box.sel { stroke: #e5484d !important; stroke-width: 3; filter: drop-shadow(0 0 5px rgba(229,72,77,.4)); }
+.edge-line.sel { stroke: #e5484d; stroke-width: 3; }
+.edge-label.sel { fill: #e5484d; font-weight: 700; }

@@ -39,6 +39,10 @@ def init_db():
         CREATE TABLE IF NOT EXISTS tb_data_source(
           id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT DEFAULT 'builtin-demo',
           config TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
+        CREATE TABLE IF NOT EXISTS tb_onto_version(
+          id INTEGER PRIMARY KEY AUTOINCREMENT, ontology_id INTEGER NOT NULL, version_no INTEGER NOT NULL,
+          op TEXT NOT NULL, note TEXT DEFAULT '', snapshot TEXT DEFAULT '{}',
+          created_at TEXT DEFAULT (datetime('now','localtime')));
         """)
         # 本体归属空间（对齐知识库 space 模型）
         try:
@@ -79,6 +83,26 @@ def exec_many(sql_list):
         for s, a in sql_list:
             c.execute(s, a)
         c.commit()
+
+
+# ===== 版本快照（对齐图谱模块 tb_graph_version） =====
+def snapshot(oid):
+    """本体全量快照：本体定义 + 类 + 关系规则 + 映射"""
+    return {
+        "ontology": one("SELECT * FROM tb_ontology WHERE id=?", (oid,)),
+        "classes": rows("SELECT * FROM tb_onto_class WHERE ontology_id=? ORDER BY id", (oid,)),
+        "rels": rows("SELECT * FROM tb_onto_rel WHERE ontology_id=? ORDER BY id", (oid,)),
+        "mappings": rows("SELECT * FROM tb_onto_mapping WHERE ontology_id=? ORDER BY id", (oid,)),
+    }
+
+
+def save_version(oid, op, note=""):
+    """写操作后自动快照（version_no 自增）"""
+    last = one("SELECT MAX(version_no) m FROM tb_onto_version WHERE ontology_id=?", (oid,))
+    no = (last["m"] or 0) + 1
+    run("INSERT INTO tb_onto_version(ontology_id, version_no, op, note, snapshot) VALUES(?,?,?,?,?)",
+        (oid, no, op, note, json.dumps(snapshot(oid), ensure_ascii=False)))
+    return no
 
 
 init_db()

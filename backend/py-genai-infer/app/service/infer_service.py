@@ -11,6 +11,7 @@ from typing import Any, Dict
 
 from app.common.exceptions import ModelNotLoadedError
 from app.engine.engine_manager import EngineManager
+from app.engine.mlx_engine import THINK_CLOSE, THINK_OPEN
 from app.mapper import upstream_mapper
 from app.model_registry import resolve
 
@@ -57,7 +58,8 @@ class InferService:
         messages, images = self._prepare_messages(req)
         out = await loop.run_in_executor(executor, self._generate_sync, engine, spec,
                                          messages, images, req.temperature, req.max_tokens)
-        return upstream_mapper.wrap_response(req.model, out["content"], out["usage"])
+        return upstream_mapper.wrap_response(req.model, out["content"], out["usage"],
+                                             out.get("reasoning_content", ""))
 
     async def chat_stream(self, req):
         """SSE 流：生成器在模型专用线程产出，经 asyncio.Queue 推给响应
@@ -76,17 +78,58 @@ class InferService:
         queue: asyncio.Queue = asyncio.Queue(maxsize=64)
         cid = "chatcmpl-" + uuid.uuid4().hex[:24]
 
+        def emit(delta, kind, prompt_tokens=0, gen_tokens=0):
+            """推一帧 SSE chunk；kind=reasoning 走 reasoning_content，其余走 content"""
+            field = "reasoning_content" if kind == "reasoning" else "content"
+            chunk = {"id": cid, "object": "chat.completion.chunk",
+                     "created": int(time.time()), "model": req.model,
+                     "choices": [{"index": 0, "delta": {"role": "assistant", field: delta},
+                                  "finish_reason": None}],
+                     "_stat": {"prompt_tokens": prompt_tokens,
+                               "completion_tokens": gen_tokens}}
+            queue.put_nowait(chunk)
+
         def produce():
+            # 思考/答案分离：GLM 输出「思考...</think>答案」，</think> 可能跨多个 token。
+            # 用缓冲区吃掉标记：标记前按 reasoning 推，标记后按 content 推。
+            # 仅 thinking 能力模型初始进 think 阶段；普通模型整段直接按 content 透传。
+            phase = "think" if "thinking" in spec.capabilities else "answer"
+            buf = ""
+            prompt_tokens = gen_tokens = 0
             try:
                 with self.manager.inference_gate():
                     for resp in engine.stream_generate(messages, req.temperature, req.max_tokens):
-                        chunk = {"id": cid, "object": "chat.completion.chunk",
-                                 "created": int(time.time()), "model": req.model,
-                                 "choices": [{"index": 0, "delta": {"role": "assistant", "content": resp.text},
-                                              "finish_reason": None}],
-                                 "_stat": {"prompt_tokens": resp.prompt_tokens,
-                                           "completion_tokens": resp.generation_tokens}}
-                        queue.put_nowait(chunk)
+                        prompt_tokens, gen_tokens = resp.prompt_tokens, resp.generation_tokens
+                        buf += resp.text
+                        while True:
+                            if phase == "think":
+                                # 跳过开头的 <think>（若模型显式输出）
+                                if THINK_OPEN in buf:
+                                    buf = buf.split(THINK_OPEN, 1)[1]
+                                    continue
+                                if THINK_CLOSE in buf:
+                                    thought, buf = buf.split(THINK_CLOSE, 1)
+                                    if thought:
+                                        emit(thought, "reasoning", prompt_tokens, gen_tokens)
+                                    phase = "answer"
+                                    continue
+                                # 保留可能是标记前缀的尾部（最长 8 字符 = len("</think>")）
+                                keep = len(THINK_CLOSE) - 1
+                                if len(buf) > keep:
+                                    emit(buf[:-keep], "reasoning", prompt_tokens, gen_tokens)
+                                    buf = buf[-keep:]
+                                break
+                            else:  # answer：直接透传
+                                if buf:
+                                    emit(buf, "content", prompt_tokens, gen_tokens)
+                                    buf = ""
+                                break
+                    # 收尾：缓冲区剩余按当前 phase 推送。
+                    # 注意：think 阶段逐帧已把正文提前推出（保留 8 字符缓冲），此处剩余是标记碎片；
+                    # 若从未出现 </think>（被 max_tokens 截断），整段其实都是思考，仍按 reasoning 推。
+                    if buf:
+                        emit(buf, "reasoning" if phase == "think" else "content",
+                             prompt_tokens, gen_tokens)
             except Exception as e:  # noqa: BLE001
                 queue.put_nowait({"_error": str(e)})
             finally:

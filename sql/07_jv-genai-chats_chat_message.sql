@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS tb_chat_message (
   session_id BIGINT NOT NULL,
   role VARCHAR(16) NOT NULL COMMENT 'user / assistant',
   content TEXT NOT NULL,
+  reasoning_content MEDIUMTEXT NULL COMMENT '推理模型思考过程（reasoning_content）',
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   KEY idx_session (session_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='消息';

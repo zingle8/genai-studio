@@ -11,6 +11,22 @@ from app.common.exceptions import ModelNotLoadedError
 from app.config import settings
 from app.model_registry import ModelSpec, model_dir
 
+THINK_OPEN = "<think>"
+THINK_CLOSE = "</think>"
+
+
+def split_reasoning(text: str) -> tuple:
+    """把模型输出拆成 (reasoning_content, content)。
+
+    GLM-4.7 的 chat template 隐含开头 <think>，模型只输出「思考...</think>答案」：
+    结尾标记之前是思考，之后是答案；没有标记时全部按正文（兼容普通模型）。
+    """
+    if THINK_CLOSE in text:
+        reasoning, answer = text.split(THINK_CLOSE, 1)
+        reasoning = reasoning[len(THINK_OPEN):] if reasoning.startswith(THINK_OPEN) else reasoning
+        return reasoning.strip(), answer.strip()
+    return "", text.strip()
+
 
 class MlxTextEngine(BaseModelEngine):
     """纯文本 MLX 引擎（GLM-4.7 / Qwen3.8 / gemma-e4b）"""
@@ -62,8 +78,10 @@ class MlxTextEngine(BaseModelEngine):
                                 max_tokens=max_tokens or settings.max_new_tokens,
                                 sampler=make_sampler(temp=temperature or settings.temperature),
                                 verbose=False)
+        # 分离思考过程与最终答案（GLM-4.7 输出「思考...</think>答案」）
+        reasoning, answer = split_reasoning(text)
         # MLX 不返回精确 token 数，用字符数粗估（网关按 usage 计费；本地模型 tier=免费）
-        return {"content": text.strip(),
+        return {"content": answer, "reasoning_content": reasoning,
                 "usage": {"prompt_tokens": len(prompt) // 3,
                           "completion_tokens": len(text) // 3,
                           "total_tokens": (len(prompt) + len(text)) // 3}}

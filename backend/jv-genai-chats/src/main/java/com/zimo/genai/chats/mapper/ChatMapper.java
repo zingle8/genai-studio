@@ -25,18 +25,18 @@ public interface ChatMapper {
     @Delete("DELETE FROM tb_chat_session WHERE id=#{id}")
     int deleteSession(@Param("id") Long id);
 
-    @Select("SELECT id, session_id AS sessionId, role, content, model, trace_id AS traceId, "
+    @Select("SELECT id, session_id AS sessionId, role, content, reasoning_content AS reasoningContent, model, trace_id AS traceId, "
             + "prompt_tokens AS promptTokens, completion_tokens AS completionTokens, duration_ms AS durationMs, cost, created_at AS createdAt "
             + "FROM tb_chat_message WHERE session_id=#{sessionId} ORDER BY id ASC")
     List<ChatMessage> listMessages(@Param("sessionId") Long sessionId);
 
-    @Select("SELECT id, session_id AS sessionId, role, content, model, trace_id AS traceId, "
+    @Select("SELECT id, session_id AS sessionId, role, content, reasoning_content AS reasoningContent, model, trace_id AS traceId, "
             + "prompt_tokens AS promptTokens, completion_tokens AS completionTokens, duration_ms AS durationMs, cost, created_at AS createdAt "
             + "FROM tb_chat_message WHERE session_id=#{sessionId} AND trace_id=#{traceId} ORDER BY id ASC")
     List<ChatMessage> listMessagesByTrace(@Param("sessionId") Long sessionId, @Param("traceId") String traceId);
 
-    @Insert("INSERT INTO tb_chat_message(session_id, role, content, model, trace_id, prompt_tokens, completion_tokens, duration_ms, cost) "
-            + "VALUES(#{sessionId}, #{role}, #{content}, #{model}, #{traceId}, #{promptTokens}, #{completionTokens}, #{durationMs}, #{cost})")
+    @Insert("INSERT INTO tb_chat_message(session_id, role, content, reasoning_content, model, trace_id, prompt_tokens, completion_tokens, duration_ms, cost) "
+            + "VALUES(#{sessionId}, #{role}, #{content}, #{reasoningContent}, #{model}, #{traceId}, #{promptTokens}, #{completionTokens}, #{durationMs}, #{cost})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     int insertMessage(ChatMessage m);
 }

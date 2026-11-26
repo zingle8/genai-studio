@@ -9,6 +9,7 @@ public class ChatMessage {
     private Long sessionId;
     private String role;              // user / assistant
     private String content;
+    private String reasoningContent;  // 推理模型的思考过程（user 消息为空）
     private String model;             // 产生该回复的模型（user 消息为空）
     private String traceId;           // 轮次关联 ID（一次提问 + N 个模型回复同 trace）
     private Integer promptTokens = 0;
@@ -25,6 +26,8 @@ public class ChatMessage {
     public void setRole(String role) { this.role = role; }
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
+    public String getReasoningContent() { return reasoningContent; }
+    public void setReasoningContent(String reasoningContent) { this.reasoningContent = reasoningContent; }
     public String getModel() { return model; }
     public void setModel(String model) { this.model = model; }
     public String getTraceId() { return traceId; }

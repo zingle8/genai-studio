@@ -101,6 +101,9 @@ public class ChatController {
             Object content = m.get("content");
             if (content == null || String.valueOf(content).isBlank()) continue;
             msg.setContent(String.valueOf(content));
+            Object reasoning = m.get("reasoningContent");
+            msg.setReasoningContent(reasoning == null || String.valueOf(reasoning).isBlank()
+                    ? null : String.valueOf(reasoning));
             msg.setModel(m.get("model") == null ? "" : String.valueOf(m.get("model")));
             msg.setTraceId(m.get("traceId") == null ? "" : String.valueOf(m.get("traceId")));
             msg.setPromptTokens(m.get("promptTokens") instanceof Number n ? n.intValue() : 0);

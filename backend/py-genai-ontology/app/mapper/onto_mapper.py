@@ -192,6 +192,9 @@ DIM_ITEMS = [
     ("temporal", "valid_after",     "后于生效", "对象在另一对象生效之后有效",     "A→B", 1, ""),
     ("temporal", "supersedes_time", "时效取代", "新有效期覆盖旧有效期（同实体）", "新→旧", 1, ""),
     ("temporal", "overlaps_valid",  "有效期重叠", "两对象有效期存在交叉（检查告警）", "双向", 1, ""),
+    ("temporal", "starts_at",       "开始时间", "对象/事件的起始时刻（对应 valid_from / start_time 字段）", "对象→时间点", 1, ""),
+    ("temporal", "ends_at",         "结束时间", "对象/事件的终止时刻（对应 valid_to / end_time 字段）", "对象→时间点", 1, ""),
+    ("temporal", "between",         "介于…之间", "时间点/对象落在指定的起止时间之间（需配置上下界）", "对象→[起,止]", 1, ""),
     # status_relation（状态关系：迁移/依赖/互斥）
     ("status_relation", "transitions_to",    "迁移至",     "状态A可转移到状态B",             "A→B", 1, ""),
     ("status_relation", "requires_state",    "状态前提",   "对象生效要求另一对象处于某状态", "对象→对象状态", 1, ""),

@@ -66,6 +66,9 @@ DIM_DOMAINS = [
     ("cardinality",     "基数",       "关系两端允许的实例数量，保存于 tb_onto_rel.cardinality", "tb_onto_rel.cardinality"),
     ("version_relation", "版本谱系关系", "本体版本之间的分支/取代/兼容关系", "tb_onto_version_link.rel_kind"),
     ("status",          "生命周期状态", "本体及各对象的发布状态", "各对象 status"),
+    ("scope",           "归属范围",   "本体归属领域或个人", "tb_ontology.scope"),
+    ("authority",       "权威等级",   "跨本体合并冲突时的优先级", "tb_ontology.authority"),
+    ("datasource_type", "数据源类型", "本体绑定的物理数据来源类型", "tb_data_source.type"),
 ]
 
 DIM_ITEMS = [
@@ -207,6 +210,17 @@ DIM_ITEMS = [
     ("status", "archived",   "归档",     "历史保留，不参与查询",         "—", 1, ""),
     ("status", "disabled",   "停用",     "规则保留定义但不执行",         "—", 1, ""),
     ("status", "broken",     "失效",     "映射指向的物理对象已不存在",   "—", 1, ""),
+    # scope
+    ("scope", "domain",   "领域本体", "领域级共享本体，对全空间可见", "—", 1, "存量值"),
+    ("scope", "personal", "个人本体", "个人私有本体，仅创建者可见",   "—", 1, ""),
+    # authority
+    ("authority", "normal", "普通",   "默认权威等级",                       "—", 1, "存量值"),
+    ("authority", "high",   "高权威", "跨本体合并冲突时优先采用该本体定义", "—", 1, "存量值"),
+    # datasource_type
+    ("datasource_type", "builtin-demo", "内置示例", "内置演示数据（非真实图谱）", "—", 1, "存量值"),
+    ("datasource_type", "graph-ref",    "图谱引用", "引用知识图谱实例（按被引用图谱 db_type 决定 SQL/N4）", "—", 1, "存量值"),
+    ("datasource_type", "neo4j",        "Neo4j",    "直连 Neo4j 图数据库", "—", 1, ""),
+    ("datasource_type", "sql",          "SQL",      "直连关系数据库",       "—", 1, ""),
 ]
 
 

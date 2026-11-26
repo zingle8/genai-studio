@@ -6,7 +6,10 @@
 """
 import json
 import os
-import sqlite3
+import sys
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../py-genai-pg')))
+from adapter import pg_dsn, connect as pg_connect, to_pg
+GRAPH_DSN = pg_dsn('genai_graph')
 
 from fastapi import HTTPException
 
@@ -259,20 +262,13 @@ def check(oid: int) -> list:
 
 
 # ========== 数据源与图数据 ==========
-def _graph_db_path():
-    return os.path.join(os.path.dirname(__file__), "..", "..", "..", "py-genai-graph", "graph.db")
-
-
 def graph_spaces() -> list:
     """图谱模块的空间列表：本体模块创建图谱时选择归属空间用"""
-    path = _graph_db_path()
-    if not os.path.exists(path):
-        return []
-    con = sqlite3.connect(path); con.row_factory = sqlite3.Row
-    try:
-        return [dict(r) for r in con.execute("SELECT id, name, description FROM tb_graph_space ORDER BY id")]
-    finally:
-        con.close()
+    from psycopg2.extras import RealDictCursor
+    with pg_connect(GRAPH_DSN) as con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT id, name, description FROM tb_graph_space ORDER BY id")
+            return [dict(r) for r in cur.fetchall()]
 
 
 def graph_create(body: dict) -> dict:
@@ -281,52 +277,48 @@ def graph_create(body: dict) -> dict:
     name = (body.get("name") or "").strip()
     if not name:
         raise HTTPException(400, "图谱名不能为空")
-    path = _graph_db_path()
-    con = sqlite3.connect(path); con.row_factory = sqlite3.Row
-    try:
-        if con.execute("SELECT id FROM tb_graph WHERE name=?", (name,)).fetchone():
-            raise HTTPException(400, "图谱名已存在")
-        sid = body.get("space_id") or 0
-        if not con.execute("SELECT id FROM tb_graph_space WHERE id=?", (sid,)).fetchone():
-            row = con.execute("SELECT id FROM tb_graph_space ORDER BY id LIMIT 1").fetchone()
-            sid = row["id"] if row else 0
-        cur = con.execute(
-            "INSERT INTO tb_graph(name, space_id, db_type, db_config, description, source_module) VALUES(?,?,?,?,?,?)",
-            (name, sid, body.get("db_type") or "sqlite", body.get("db_config") or "",
-             body.get("description") or "", "ontology"))
-        gid = cur.lastrowid
-        last = con.execute("SELECT MAX(version_no) m FROM tb_graph_version WHERE graph_id=?", (gid,)).fetchone()["m"] or 0
-        con.execute("INSERT INTO tb_graph_version(graph_id, version_no, op, note, snapshot) VALUES(?,?,?,?,?)",
-                    (gid, last + 1, "create_graph", "本体图谱模块创建",
-                     json.dumps({"entities": [], "nodes": [], "edges": []}, ensure_ascii=False)))
-        con.commit()
-        db.audit("graph", gid, name, "create_graph", "本体模块创建图谱（图谱模块 graph.db，来源 ontology）")
-        return {"id": gid, "name": name, "space_id": sid, "source_module": "ontology"}
-    finally:
-        con.close()
+    from psycopg2.extras import RealDictCursor
+    with pg_connect(GRAPH_DSN) as con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT id FROM tb_graph WHERE name=%s", (name,))
+            if cur.fetchone():
+                raise HTTPException(400, "图谱名已存在")
+            sid = body.get("space_id") or 0
+            cur.execute("SELECT id FROM tb_graph_space WHERE id=%s", (sid,))
+            if not cur.fetchone():
+                cur.execute("SELECT id FROM tb_graph_space ORDER BY id LIMIT 1")
+                row = cur.fetchone()
+                sid = row["id"] if row else 0
+            cur.execute(
+                "INSERT INTO tb_graph(name, space_id, db_type, db_config, description, source_module) VALUES(%s,%s,%s,%s,%s,%s) RETURNING id",
+                (name, sid, body.get("db_type") or "postgresql", body.get("db_config") or "",
+                 body.get("description") or "", "ontology"))
+            gid = cur.fetchone()["id"]
+            cur.execute("SELECT MAX(version_no) m FROM tb_graph_version WHERE graph_id=%s", (gid,))
+            last = cur.fetchone()["m"] or 0
+            cur.execute("INSERT INTO tb_graph_version(graph_id, version_no, op, note, snapshot) VALUES(%s,%s,%s,%s,%s)",
+                        (gid, last + 1, "create_graph", "本体图谱模块创建",
+                         json.dumps({"entities": [], "nodes": [], "edges": []}, ensure_ascii=False)))
+            con.commit()
+    db.audit("graph", gid, name, "create_graph", "本体模块创建图谱（图谱模块 PG，来源 ontology）")
+    return {"id": gid, "name": name, "space_id": sid, "source_module": "ontology"}
 
 
 def _graph_ref_data(cfg: dict) -> dict:
-    """type=graph-ref 数据源：从图谱模块 SQLite 读取指定图谱的节点/边，按实体名与关系类型映射"""
+    """type=graph-ref 数据源：从图谱模块 PG 读取指定图谱的节点/边，按实体名与关系类型映射"""
     gid = cfg.get("graphId") or cfg.get("graph_id")
     if not gid:
         return {"nodes": [], "edges": []}
-    path = _graph_db_path()
-    if not os.path.exists(path):
-        return {"nodes": [], "edges": [], "message": "图谱数据文件不存在"}
-    con = sqlite3.connect(path)
-    con.row_factory = sqlite3.Row
-    try:
-        ents = {r["id"]: r["name"] for r in con.execute("SELECT id, name FROM tb_graph_entity WHERE graph_id=?", (gid,))}
-        nodes = []
-        for r in con.execute("SELECT id, entity_id, name, props FROM tb_graph_node WHERE graph_id=?", (gid,)):
-            d = dict(r); d["type"] = ents.get(d.get("entity_id"), "人物"); nodes.append(d)
-        edges = []
-        for r in con.execute("SELECT id, source_id, target_id, rel_type, props FROM tb_graph_edge WHERE graph_id=?", (gid,)):
-            d = dict(r); d["type"] = d.get("rel_type", ""); edges.append(d)
-        return {"nodes": nodes, "edges": edges}
-    finally:
-        con.close()
+    from psycopg2.extras import RealDictCursor
+    with pg_connect(GRAPH_DSN) as con:
+        with con.cursor(cursor_factory=RealDictCursor) as cur:
+            cur.execute("SELECT id, name FROM tb_graph_entity WHERE graph_id=%s", (gid,))
+            ents = {r["id"]: r["name"] for r in cur.fetchall()}
+            cur.execute("SELECT id, entity_id, name, props FROM tb_graph_node WHERE graph_id=%s", (gid,))
+            nodes = [dict(r, type=ents.get(r.get("entity_id"), "人物")) for r in cur.fetchall()]
+            cur.execute("SELECT id, source_id, target_id, rel_type, props FROM tb_graph_edge WHERE graph_id=%s", (gid,))
+            edges = [dict(r, type=r.get("rel_type", "")) for r in cur.fetchall()]
+            return {"nodes": nodes, "edges": edges}
 
 
 def datasources() -> list:

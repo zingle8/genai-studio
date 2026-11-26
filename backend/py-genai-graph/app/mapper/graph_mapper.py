@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 """知识图谱服务存储层
-- 元数据/版本快照：SQLite
-- 图数据（节点/关系）：按图谱配置存 Neo4j（HTTP API）或内置 SQLite
+- 元数据/版本快照：PostgreSQL（共享 adapter）
+- 图数据（节点/关系）：按图谱配置存 Neo4j（HTTP API）或 PostgreSQL
 - 版本：每次写操作自动快照（自动递增），可查看/恢复指定版本
 """
 import base64
-import sqlite3, os, json, requests
+import os, json, sys, requests
 from contextvars import ContextVar
 
 from app.config.settings import settings
 
-DB_PATH = settings.db_path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../py-genai-pg')))
+from adapter import pg_dsn, to_pg, rows as pg_rows, one as pg_one, run as pg_run, execute_script
+
+DSN = pg_dsn('genai_graph')
 
 # ===== 审计上下文：从请求头 Authorization(JWT) 解析操作人，供写操作埋点记录 =====
 _operator_ctx = ContextVar("graph_operator", default="system")
@@ -51,73 +54,63 @@ class AuditContextMiddleware:
 
 
 def conn():
-    c = sqlite3.connect(DB_PATH)
-    c.row_factory = sqlite3.Row
+    """兼容旧接口：返回一个 PG 连接（调用方需自行 cursor/close）"""
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    c = psycopg2.connect(DSN)
+    c.cursor_factory = RealDictCursor
     return c
 
 
 def init_db():
-    with conn() as c:
-        c.executescript("""
+    execute_script(DSN, """
         CREATE TABLE IF NOT EXISTS tb_graph_space(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
-          description TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
+          id SERIAL PRIMARY KEY, name TEXT NOT NULL,
+          description TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_graph(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE,
-          db_type TEXT DEFAULT 'sqlite',           -- sqlite | neo4j | postgresql
-          db_config TEXT DEFAULT '',               -- {"uri":"bolt://localhost:7687","user":"neo4j","password":"..."} 等
+          id SERIAL PRIMARY KEY, name TEXT NOT NULL UNIQUE,
+          db_type TEXT DEFAULT 'postgresql',
+          db_config TEXT DEFAULT '',
           description TEXT DEFAULT '',
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          space_id INTEGER DEFAULT 0,
+          source_module TEXT DEFAULT 'graph',
+          version TEXT DEFAULT 'v1',
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_graph_entity(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, graph_id INTEGER NOT NULL,
-          name TEXT NOT NULL,                      -- 实体类型名（如 部门/员工）
-          props_schema TEXT DEFAULT '[]',          -- [{"name":"标题","type":"string"},...]
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          id SERIAL PRIMARY KEY, graph_id INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          props_schema TEXT DEFAULT '[]',
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_graph_node(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, graph_id INTEGER NOT NULL,
-          entity_id INTEGER DEFAULT 0,             -- 实体类型
+          id SERIAL PRIMARY KEY, graph_id INTEGER NOT NULL,
+          entity_id INTEGER DEFAULT 0,
           name TEXT NOT NULL, props TEXT DEFAULT '{}',
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_graph_edge(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, graph_id INTEGER NOT NULL,
+          id SERIAL PRIMARY KEY, graph_id INTEGER NOT NULL,
           source_id INTEGER NOT NULL, target_id INTEGER NOT NULL, rel_type TEXT NOT NULL,
           props TEXT DEFAULT '{}',
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_graph_version(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, graph_id INTEGER NOT NULL,
+          id SERIAL PRIMARY KEY, graph_id INTEGER NOT NULL,
           version_no INTEGER NOT NULL, op TEXT DEFAULT '', note TEXT DEFAULT '',
           snapshot TEXT DEFAULT '{}',
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_audit_log(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          module TEXT NOT NULL DEFAULT 'graph',        -- graph | ontology
-          target_type TEXT NOT NULL,                   -- graph/space/entity/node/edge/version
+          id SERIAL PRIMARY KEY,
+          module TEXT NOT NULL DEFAULT 'graph',
+          target_type TEXT NOT NULL,
           target_id INTEGER DEFAULT 0,
           target_name TEXT DEFAULT '',
-          op TEXT NOT NULL,                            -- create/update/delete/restore
+          op TEXT NOT NULL,
           detail TEXT DEFAULT '',
           operator TEXT DEFAULT 'system',
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE INDEX IF NOT EXISTS idx_audit_target ON tb_audit_log(module, target_id, id DESC);
+        CREATE INDEX IF NOT EXISTS idx_node_graph ON tb_graph_node(graph_id);
+        CREATE INDEX IF NOT EXISTS idx_edge_graph ON tb_graph_edge(graph_id);
+        CREATE INDEX IF NOT EXISTS idx_version_graph ON tb_graph_version(graph_id, version_no);
         """)
-        # 图谱归属空间（对齐知识库 space 模型）
-        try:
-            c.execute("ALTER TABLE tb_graph ADD COLUMN space_id INTEGER DEFAULT 0")
-            c.commit()
-        except Exception:
-            pass
-        # 图谱来源模块：graph=知识图谱模块创建（可编辑）；ontology=本体图谱模块创建（知识图谱侧只读）
-        try:
-            c.execute("ALTER TABLE tb_graph ADD COLUMN source_module TEXT DEFAULT 'graph'")
-            c.commit()
-        except Exception:
-            pass
-        # 图谱版本号（写操作递增 v1/v2/...）
-        try:
-            c.execute("ALTER TABLE tb_graph ADD COLUMN version TEXT DEFAULT 'v1'")
-            c.commit()
-        except Exception:
-            pass
 
 
 def migrate_source_module():
@@ -135,21 +128,15 @@ def migrate_ensure_space():
 
 
 def rows(sql, args=()):
-    with conn() as c:
-        return [dict(r) for r in c.execute(sql, args).fetchall()]
+    return pg_rows(DSN, sql, args)
 
 
 def run(sql, args=()):
-    with conn() as c:
-        cur = c.execute(sql, args)
-        c.commit()
-        return cur.lastrowid
+    return pg_run(DSN, sql, args)
 
 
 def one(sql, args=()):
-    with conn() as c:
-        r = c.execute(sql, args).fetchone()
-        return dict(r) if r else None
+    return pg_one(DSN, sql, args)
 
 
 # ===== Neo4j（HTTP API，免驱动） =====
@@ -226,7 +213,7 @@ def seed_demo():
     if one("SELECT id FROM tb_graph LIMIT 1"):
         return
     gid = run("INSERT INTO tb_graph(name, db_type, description) VALUES(?,?,?)",
-              ("公司组织图谱", "sqlite", "示例：部门/员工/项目"))
+              ("公司组织图谱", "postgresql", "示例：部门/员工/项目"))
     ents = {}
     for en in ["公司", "部门", "员工", "项目"]:
         ents[en] = run("INSERT INTO tb_graph_entity(graph_id, name) VALUES(?,?)", (gid, en))

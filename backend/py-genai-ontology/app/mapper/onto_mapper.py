@@ -1,14 +1,17 @@
 
 # -*- coding: utf-8 -*-
-"""本体知识服务存储层（SQLite：本体空间/本体/类/关系规则/映射/数据源）
+"""本体知识服务存储层（PostgreSQL：本体空间/本体/类/关系规则/映射/数据源）
 
 迁移自 app/storage.py；目录层级对齐 py-genai-rag-reranker 分层结构。
 """
 import base64
-import sqlite3, json, time, os
+import json, time, os, sys
 from contextvars import ContextVar
 
-DB_PATH = os.environ.get("ONTO_DB", os.path.join(os.path.dirname(__file__), "..", "..", "onto.db"))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../py-genai-pg')))
+from adapter import pg_dsn, to_pg, connect, rows as pg_rows, one as pg_one, run as pg_run, execute_script
+
+DSN = pg_dsn('genai_ontology')
 
 # ===== 审计上下文：从请求头 Authorization(JWT) 解析操作人 =====
 _operator_ctx = ContextVar("onto_operator", default="system")
@@ -49,8 +52,10 @@ class AuditContextMiddleware:
 
 
 def conn():
-    c = sqlite3.connect(DB_PATH)
-    c.row_factory = sqlite3.Row
+    import psycopg2
+    from psycopg2.extras import RealDictCursor
+    c = psycopg2.connect(DSN)
+    c.cursor_factory = RealDictCursor
     return c
 
 
@@ -304,7 +309,7 @@ DIM_ITEMS = [
     ("datasource_type", "graph-ref",    "图谱引用", "引用知识图谱实例（按被引用图谱 db_type 决定 SQL/N4）", "—", 1, "存量值"),
     ("datasource_type", "neo4j",        "Neo4j",    "直连 Neo4j 图数据库", "—", 1, ""),
     ("datasource_type", "sql",          "SQL",      "直连关系数据库",       "—", 1, ""),
-    ("datasource_type", "sqlite",       "SQLite",   "内置 SQLite 存储（知识图谱 db_type 的实际取值）", "—", 1, "alias:sql"),
+    ("datasource_type", "postgresql",   "PostgreSQL", "知识图谱 db_type 的实际取值（SQL 关系库）", "—", 1, "alias:sql"),
     # data_type（数据类型：标量 / 时间 / 复合 / 引用）
     ("data_type", "string",           "字符串",     "定长/变长文本",                   "—", 1, ""),
     ("data_type", "text",             "长文本",     "不限长度文本，如备注、正文",       "—", 1, ""),
@@ -352,85 +357,83 @@ DIM_ITEMS = [
 ]
 
 
-def _seed_dims(c):
-    """维度种子：INSERT OR IGNORE 保留用户改过的 label/description；sort_order 用 UPSERT 校准，避免新增项排到末尾"""
+def _seed_dims_pg():
+    """维度种子（PG）：UPSERT 保留用户改过的 label/description，仅校准 sort_order"""
     for i, (code, name, desc, applies) in enumerate(DIM_DOMAINS):
-        c.execute("INSERT INTO tb_dim_onto_domain(code,name,description,applies_to,sort_order) VALUES(?,?,?,?,?) "
-                  "ON CONFLICT(code) DO UPDATE SET sort_order=excluded.sort_order",
-                  (code, name, desc, applies, i))
+        pg_run(DSN, "INSERT INTO tb_dim_onto_domain(code,name,description,applies_to,sort_order) VALUES(?,?,?,?,?) "
+                    "ON CONFLICT(code) DO UPDATE SET sort_order=excluded.sort_order",
+               (code, name, desc, applies, i))
     for i, (domain, code, label, desc, direction, supported, extra) in enumerate(DIM_ITEMS):
-        c.execute("INSERT INTO tb_dim_onto_item(domain_code,code,label,description,direction,supported,extra,sort_order) "
-                  "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(domain_code,code) DO UPDATE SET sort_order=excluded.sort_order",
-                  (domain, code, label, desc, direction, supported, extra or '{}', i))
+        pg_run(DSN, "INSERT INTO tb_dim_onto_item(domain_code,code,label,description,direction,supported,extra,sort_order) "
+                    "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(domain_code,code) DO UPDATE SET sort_order=excluded.sort_order",
+               (domain, code, label, desc, direction, supported, extra or '{}', i))
+
+
+def _seed_dims(c):
+    """兼容旧签名"""
+    _seed_dims_pg()
 
 
 def init_db():
-    with conn() as c:
-        c.executescript("""
+    execute_script(DSN, """
         CREATE TABLE IF NOT EXISTS tb_onto_space(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
-          description TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
+          id SERIAL PRIMARY KEY, name TEXT NOT NULL,
+          description TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_ontology(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, scope TEXT DEFAULT 'domain',
+          id SERIAL PRIMARY KEY, name TEXT NOT NULL, scope TEXT DEFAULT 'domain',
           namespace TEXT DEFAULT '', authority TEXT DEFAULT 'normal', version TEXT DEFAULT 'v1',
-          status TEXT DEFAULT 'active', comment TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
+          status TEXT DEFAULT 'active', comment TEXT DEFAULT '', space_id INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_onto_class(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, ontology_id INTEGER NOT NULL,
+          id SERIAL PRIMARY KEY, ontology_id INTEGER NOT NULL,
           name TEXT NOT NULL, parent_name TEXT DEFAULT '', comment TEXT DEFAULT '');
         CREATE TABLE IF NOT EXISTS tb_onto_rel(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, ontology_id INTEGER NOT NULL,
+          id SERIAL PRIMARY KEY, ontology_id INTEGER NOT NULL,
           name TEXT NOT NULL, subj_class TEXT NOT NULL, obj_class TEXT NOT NULL,
-          cardinality TEXT DEFAULT 'many' CHECK(cardinality IN ('one','many')),
+          cardinality TEXT DEFAULT 'many',
           nullable INTEGER DEFAULT 1, inherits_from TEXT DEFAULT '', comment TEXT DEFAULT '');
         CREATE TABLE IF NOT EXISTS tb_onto_mapping(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, ontology_id INTEGER NOT NULL,
-          onto_type TEXT NOT NULL, physical_type TEXT NOT NULL, kind TEXT DEFAULT 'node' CHECK(kind IN ('node','edge')));
+          id SERIAL PRIMARY KEY, ontology_id INTEGER NOT NULL,
+          onto_type TEXT NOT NULL, physical_type TEXT NOT NULL, kind TEXT DEFAULT 'node');
         CREATE TABLE IF NOT EXISTS tb_data_source(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, type TEXT DEFAULT 'builtin-demo',
-          config TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
+          id SERIAL PRIMARY KEY, name TEXT NOT NULL, type TEXT DEFAULT 'builtin-demo',
+          config TEXT DEFAULT '', created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_onto_version(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, ontology_id INTEGER NOT NULL, version_no INTEGER NOT NULL,
+          id SERIAL PRIMARY KEY, ontology_id INTEGER NOT NULL, version_no INTEGER NOT NULL,
           op TEXT NOT NULL, note TEXT DEFAULT '', snapshot TEXT DEFAULT '{}',
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_audit_log(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          module TEXT NOT NULL DEFAULT 'ontology',       -- graph | ontology
-          target_type TEXT NOT NULL,                     -- ontology/space/class/rel/mapping/version/datasource/graph
+          id SERIAL PRIMARY KEY,
+          module TEXT NOT NULL DEFAULT 'ontology',
+          target_type TEXT NOT NULL,
           target_id INTEGER DEFAULT 0,
           target_name TEXT DEFAULT '',
           op TEXT NOT NULL,
           detail TEXT DEFAULT '',
           operator TEXT DEFAULT 'system',
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE INDEX IF NOT EXISTS idx_audit_target ON tb_audit_log(module, target_id, id DESC);
         CREATE TABLE IF NOT EXISTS tb_dim_onto_domain(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id SERIAL PRIMARY KEY,
           code TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
           description TEXT DEFAULT '', applies_to TEXT DEFAULT '',
           sort_order INTEGER DEFAULT 0, enabled INTEGER DEFAULT 1,
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_dim_onto_item(
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          id SERIAL PRIMARY KEY,
           domain_code TEXT NOT NULL, code TEXT NOT NULL, label TEXT NOT NULL,
           description TEXT DEFAULT '', direction TEXT DEFAULT '',
           supported INTEGER DEFAULT 1, extra TEXT DEFAULT '{}',
           sort_order INTEGER DEFAULT 0, enabled INTEGER DEFAULT 1,
-          created_at TEXT DEFAULT (datetime('now','localtime')),
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           UNIQUE(domain_code, code));
         CREATE INDEX IF NOT EXISTS idx_dim_onto_item_domain ON tb_dim_onto_item(domain_code, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_onto_class ON tb_onto_class(ontology_id);
+        CREATE INDEX IF NOT EXISTS idx_onto_rel ON tb_onto_rel(ontology_id);
+        CREATE INDEX IF NOT EXISTS idx_onto_version ON tb_onto_version(ontology_id, version_no);
         """)
-        _seed_dims(c)
-        try:
-            c.execute("ALTER TABLE tb_dim_onto_domain ADD COLUMN enabled INTEGER DEFAULT 1")
-            c.commit()
-        except Exception:
-            pass
-        # 本体归属空间（对齐知识库 space 模型）
-        try:
-            c.execute("ALTER TABLE tb_ontology ADD COLUMN space_id INTEGER DEFAULT 0")
-            c.commit()
-        except Exception:
-            pass
+    _seed_dims_pg()
+
 
 
 def migrate_ensure_space():
@@ -442,28 +445,23 @@ def migrate_ensure_space():
 
 
 def rows(sql, args=()):
-    with conn() as c:
-        return [dict(r) for r in c.execute(sql, args).fetchall()]
+    return pg_rows(DSN, sql, args)
 
 
 def run(sql, args=()):
-    with conn() as c:
-        cur = c.execute(sql, args)
-        c.commit()
-        return cur.lastrowid
+    return pg_run(DSN, sql, args)
 
 
 def one(sql, args=()):
-    with conn() as c:
-        r = c.execute(sql, args).fetchone()
-        return dict(r) if r else None
+    return pg_one(DSN, sql, args)
 
 
 def exec_many(sql_list):
-    with conn() as c:
-        for s, a in sql_list:
-            c.execute(s, a)
-        c.commit()
+    with connect(DSN) as c:
+        with c.cursor() as cur:
+            for s, a in sql_list:
+                cur.execute(to_pg(s), a)
+            c.commit()
 
 
 # ===== 版本快照（对齐图谱模块 tb_graph_version） =====

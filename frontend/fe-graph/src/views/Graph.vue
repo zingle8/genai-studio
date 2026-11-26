@@ -54,7 +54,7 @@
         <!-- 图视图 -->
         <div class="card graph-view-card" v-if="tab === 'view'"><div class="card-body graph-view-body">
           <div class="row-head" style="margin-bottom:8px;">
-            <b>{{ curGraph.name }}</b><span class="tag" style="font-size:11px;">{{ curGraph.version || 'v1' }}</span><span class="text-xs muted">{{ nodes.length }} 节点 · {{ edges.length }} 关系 · {{ curGraph.db_type === 'neo4j' ? 'Neo4j' : '内置存储' }} · 按关系聚簇（力导向布局）</span>
+            <b>{{ curGraph.name }}</b><span class="tag" style="font-size:11px;">{{ curGraph.version || 'v1' }}</span><span class="text-xs muted">{{ nodes.length }} 节点 · {{ edges.length }} 关系 · {{ curGraph.db_type === 'neo4j' ? 'Neo4j' : 'PostgreSQL' }} · 按关系聚簇（力导向布局）</span>
             <span v-if="isReadonly" class="tag" style="background:#fff7ed;color:#c2410c;" title="该图谱由本体图谱模块创建，知识图谱模块仅可查看">只读图谱 · 无编辑权限</span>
             <span style="flex:1"></span>
             <MultiNodeSelect v-model="focusIds" :options="allNodes.map(n => ({ value: n.id, label: n.name }))" placeholder="全图（可多选节点）" />
@@ -298,7 +298,7 @@
         <div class="form-row"><label class="form-label">图谱名</label><input class="form-input" v-model="graphForm.name" /></div>
         <div class="form-row"><label class="form-label">存储后端</label>
           <select class="form-input" v-model="graphForm.db_type" @change="onDbTypeChange">
-            <option value="sqlite">内置存储（SQLite）</option>
+            <option value="postgresql">PostgreSQL（关系库）</option>
             <option value="neo4j">Neo4j（图数据库）</option>
           </select></div>
         <template v-if="graphForm.db_type === 'neo4j'">
@@ -381,7 +381,7 @@ const focusIds = ref([]); const allNodes = ref([]); const depth = ref(1); const 
 const selNode = ref(null); const selEdge = ref(null)
 // 来源非知识图谱模块（如本体图谱模块创建）的图谱只读：前端隐藏写入口，后端强制校验
 const isReadonly = computed(() => !!curGraph.value && curGraph.value.editable === false)
-const graphOpen = ref(false); const graphForm = ref({ name: '', space_id: 0, db_type: 'sqlite', description: '' }); const n4cfg = ref({})
+const graphOpen = ref(false); const graphForm = ref({ name: '', space_id: 0, db_type: 'postgresql', description: '' }); const n4cfg = ref({})
 const entityOpen = ref(false); const entityForm = ref({ id: null, name: '', props_schema: '[]' })
 const nodeOpen = ref(false); const nodeForm = ref({ id: null, entity_id: 0, name: '', props: '{}' })
 const edgeOpen = ref(false); const edgeForm = ref({ id: null, source_id: '', rel_type: '', target_id: '' })
@@ -641,7 +641,7 @@ function openNewGraph() {
   const p = pub.value
   // 图谱必须归属空间：默认当前空间，否则取第一个空间
   const sid = selSpace.value || (spaces.value[0]?.id ?? 0)
-  graphForm.value = { name: '', space_id: sid, db_type: 'sqlite', description: '' }
+  graphForm.value = { name: '', space_id: sid, db_type: 'postgresql', description: '' }
   n4cfg.value = { uri: p['graph.neo4j.url'] || 'http://localhost:7474', user: p['graph.neo4j.user'] || 'neo4j', password: p['graph.neo4j.password'] || '' }
   graphOpen.value = true
 }

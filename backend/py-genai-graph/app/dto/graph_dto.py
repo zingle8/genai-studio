@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class GraphIn(BaseModel):
     name: str
     space_id: int = 0                # 归属图谱空间（必填，创建时校验）
-    db_type: str = "sqlite"          # sqlite | neo4j
+    db_type: str = "postgresql"      # postgresql | neo4j
     db_config: str = ""              # JSON：{"uri":"http://localhost:7474","user":"neo4j","password":"..."}
     description: str = ""
 

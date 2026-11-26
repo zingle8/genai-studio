@@ -270,11 +270,11 @@ DIM_ITEMS = [
 def _seed_dims(c):
     """维度种子：INSERT OR IGNORE 保留用户改过的 label/description；sort_order 用 UPSERT 校准，避免新增项排到末尾"""
     for i, (code, name, desc, applies) in enumerate(DIM_DOMAINS):
-        c.execute("INSERT INTO tb_dim_domain(code,name,description,applies_to,sort_order) VALUES(?,?,?,?,?) "
+        c.execute("INSERT INTO tb_dim_onto_domain(code,name,description,applies_to,sort_order) VALUES(?,?,?,?,?) "
                   "ON CONFLICT(code) DO UPDATE SET sort_order=excluded.sort_order",
                   (code, name, desc, applies, i))
     for i, (domain, code, label, desc, direction, supported, extra) in enumerate(DIM_ITEMS):
-        c.execute("INSERT INTO tb_dim_item(domain_code,code,label,description,direction,supported,extra,sort_order) "
+        c.execute("INSERT INTO tb_dim_onto_item(domain_code,code,label,description,direction,supported,extra,sort_order) "
                   "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(domain_code,code) DO UPDATE SET sort_order=excluded.sort_order",
                   (domain, code, label, desc, direction, supported, extra or '{}', i))
 
@@ -318,13 +318,13 @@ def init_db():
           operator TEXT DEFAULT 'system',
           created_at TEXT DEFAULT (datetime('now','localtime')));
         CREATE INDEX IF NOT EXISTS idx_audit_target ON tb_audit_log(module, target_id, id DESC);
-        CREATE TABLE IF NOT EXISTS tb_dim_domain(
+        CREATE TABLE IF NOT EXISTS tb_dim_onto_domain(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           code TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
           description TEXT DEFAULT '', applies_to TEXT DEFAULT '',
           sort_order INTEGER DEFAULT 0, enabled INTEGER DEFAULT 1,
           created_at TEXT DEFAULT (datetime('now','localtime')));
-        CREATE TABLE IF NOT EXISTS tb_dim_item(
+        CREATE TABLE IF NOT EXISTS tb_dim_onto_item(
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           domain_code TEXT NOT NULL, code TEXT NOT NULL, label TEXT NOT NULL,
           description TEXT DEFAULT '', direction TEXT DEFAULT '',
@@ -332,11 +332,11 @@ def init_db():
           sort_order INTEGER DEFAULT 0, enabled INTEGER DEFAULT 1,
           created_at TEXT DEFAULT (datetime('now','localtime')),
           UNIQUE(domain_code, code));
-        CREATE INDEX IF NOT EXISTS idx_dim_item_domain ON tb_dim_item(domain_code, sort_order);
+        CREATE INDEX IF NOT EXISTS idx_dim_onto_item_domain ON tb_dim_onto_item(domain_code, sort_order);
         """)
         _seed_dims(c)
         try:
-            c.execute("ALTER TABLE tb_dim_domain ADD COLUMN enabled INTEGER DEFAULT 1")
+            c.execute("ALTER TABLE tb_dim_onto_domain ADD COLUMN enabled INTEGER DEFAULT 1")
             c.commit()
         except Exception:
             pass

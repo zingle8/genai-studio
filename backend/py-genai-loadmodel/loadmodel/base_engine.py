@@ -26,10 +26,12 @@ class BaseModelEngine:
     model_id: str = "base"
     backend: str = "unknown"
 
-    def __init__(self, cfg=None, device: str = "auto"):
+    def __init__(self, cfg=None, device: str = "auto", max_concurrency: int = 1):
         self.settings = cfg
         self._model: Optional[Any] = None
-        self._lock = threading.RLock()
+        self._lock = threading.RLock()  # 仅保护加载生命周期
+        self._inference_sem = threading.BoundedSemaphore(max(1, max_concurrency))
+        self.max_concurrency = max(1, max_concurrency)
         self.device = pick_device(device)
         self.load_error: str = ""
         self.load_seconds: float = 0.0
@@ -55,9 +57,18 @@ class BaseModelEngine:
 
     @contextmanager
     def inference_lock(self):
-        """推理互斥锁：子类推理方法用 `with self.inference_lock():` 包住模型调用"""
-        with self._lock:
+        """推理并发控制：与加载锁分离，允许 N 个请求并发推理（N=max_concurrency）"""
+        with self._inference_sem:
             yield
+
+    def release(self) -> bool:
+        """释放模型内存（LRU 淘汰时调用）；释放后可再次 load()"""
+        with self._lock:
+            had = self._model is not None
+            self._model = None
+            self.load_error = ""
+            self.load_seconds = 0.0
+            return had
 
     # ---------- 状态 ----------
     @property

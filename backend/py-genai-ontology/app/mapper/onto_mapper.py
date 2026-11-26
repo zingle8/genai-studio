@@ -54,6 +54,98 @@ def conn():
     return c
 
 
+# ===== 维度表种子数据：领域分类 + 枚举值（UI 下拉与后端校验共用唯一数据源） =====
+DIM_DOMAINS = [
+    ("structural",      "结构关系",   "类与类之间的结构关系，保存于 tb_onto_rel.rel_kind", "tb_onto_rel.rel_kind"),
+    ("semantic",        "业务语义关系", "关系在业务上的语义分类，用于图展示与检索", "tb_onto_rel.semantic_kind"),
+    ("mapping",         "映射关系",   "本体到物理数据的映射类型，保存于 tb_onto_mapping.kind", "tb_onto_mapping.kind"),
+    ("event_flow",      "事件流关系", "事件类型之间的时序/因果/触发关系", "tb_onto_event_flow.rel_type"),
+    ("dependency",      "依赖与规则关系", "规则、版本、对象之间的依赖与约束关系", "tb_onto_link.rel_kind"),
+    ("cardinality",     "基数",       "关系两端允许的实例数量，保存于 tb_onto_rel.cardinality", "tb_onto_rel.cardinality"),
+    ("version_relation", "版本谱系关系", "本体版本之间的分支/取代/兼容关系", "tb_onto_version_link.rel_kind"),
+    ("status",          "生命周期状态", "本体及各对象的发布状态", "各对象 status"),
+]
+
+DIM_ITEMS = [
+    # structural
+    ("structural", "inheritance", "继承", "is-a，子类继承父类的属性与关系，对应存量 parent_name", "子类→父类", 1, ""),
+    ("structural", "association", "关联", "普通结构连接，无生命周期依赖", "双向/单向", 1, ""),
+    ("structural", "composition", "组合", "强拥有，部分随整体创建与销毁", "整体→部分", 1, ""),
+    ("structural", "aggregation", "聚合", "弱拥有，部分可独立存在", "整体→部分", 1, ""),
+    ("structural", "dependency",  "依赖", "源的变更会影响目标", "依赖方→被依赖方", 1, ""),
+    ("structural", "realization", "实现", "类实现接口或契约规则", "实现方→契约", 1, ""),
+    # semantic
+    ("semantic", "kinship",     "亲属",    "父子/配偶等亲属语义，如 father_of、spouse_of", "主体→客体", 1, ""),
+    ("semantic", "part_of",     "组成",    "部分属于整体", "部分→整体", 1, ""),
+    ("semantic", "ownership",   "归属",    "拥有者与被拥有物", "拥有者→物", 1, ""),
+    ("semantic", "membership",  "成员",    "个体属于组织或群体", "成员→组织", 1, ""),
+    ("semantic", "location",    "位置",    "对象或事件位于某地", "对象→地点", 1, ""),
+    ("semantic", "causal",      "因果",    "原因导致结果", "因→果", 1, ""),
+    ("semantic", "temporal",    "时序",    "时间先后关系", "先→后", 1, ""),
+    ("semantic", "provenance",  "来源派生", "结论派生自证据或数据", "派生→来源", 1, ""),
+    ("semantic", "reference",   "引用",    "弱语义引用，不蕴含生命周期依赖", "引用方→被引用方", 1, ""),
+    # mapping
+    ("mapping", "node",     "实体映射",  "本体类映射到物理表/图节点", "本体→物理", 1, "存量值"),
+    ("mapping", "edge",     "关系映射",  "关系映射到外键或边表", "本体→物理", 1, "存量值"),
+    ("mapping", "property", "属性映射",  "属性映射到字段", "本体→物理", 0, "待开放"),
+    ("mapping", "event",    "事件映射",  "事件类型映射到事件表", "本体→物理", 0, "待开放"),
+    ("mapping", "rule",     "规则映射",  "规则映射到校验逻辑或触发器", "本体→物理", 0, "待开放"),
+    ("mapping", "alias",    "别名映射",  "同名异义消歧", "本体→物理", 0, "待开放"),
+    # event_flow
+    ("event_flow", "before",    "早于",       "事件严格先于另一事件",    "前→后", 1, ""),
+    ("event_flow", "after",     "晚于",       "事件严格晚于另一事件",    "后→前", 1, ""),
+    ("event_flow", "overlaps",  "时间重叠",   "两事件区间部分交叉",      "双向", 1, ""),
+    ("event_flow", "during",    "期间",       "事件发生在另一事件期间",  "子→父", 1, ""),
+    ("event_flow", "contains",  "包含",       "事件包含另一事件",        "父→子", 1, ""),
+    ("event_flow", "meets",     "紧接",       "前事件结束即后事件开始",  "前→后", 1, ""),
+    ("event_flow", "causes",    "导致",       "因果驱动，前事件是原因",  "因→果", 1, ""),
+    ("event_flow", "triggers",  "触发",       "条件满足后触发事件",      "条件→事件", 1, ""),
+    ("event_flow", "enables",   "允许",       "前置事件使后置事件可执行", "允许方→被执行方", 1, ""),
+    ("event_flow", "prevents",  "阻止",       "前置事件阻止后置事件",    "阻止方→被阻止方", 1, ""),
+    ("event_flow", "part_of",   "子事件",     "组合事件中的子步骤",      "子→父", 1, ""),
+    # dependency
+    ("dependency", "depends_on",    "依赖于",   "当前对象生效依赖另一对象",   "依赖方→被依赖方", 1, ""),
+    ("dependency", "derives_from",  "派生自",   "结论或数据来源于另一对象",   "派生→来源", 1, ""),
+    ("dependency", "conflicts_with","冲突",    "两个对象语义互斥，不能同时生效", "双向", 1, ""),
+    ("dependency", "supersedes",    "取代",     "新版本覆盖旧版本",           "新→旧", 1, ""),
+    ("dependency", "replaces",      "替换",     "等价替换，语义不变",         "替代→原", 1, ""),
+    ("dependency", "validates",     "校验",     "规则校验某类或属性",         "规则→被校验对象", 1, ""),
+    ("dependency", "references",    "引用",     "弱依赖，仅引用不约束",       "引用方→被引用方", 1, ""),
+    ("dependency", "blocks",        "阻断",     "不满足则流程不能继续",       "阻断方→被阻断方", 1, ""),
+    ("dependency", "enables",       "启用",     "满足后启用另一对象",         "启用方→被启用方", 1, ""),
+    # cardinality
+    ("cardinality", "one",          "1..1",     "一对一，存量 one",             "—", 1, "存量值"),
+    ("cardinality", "many",         "1..N",     "一对多，存量 many",            "—", 1, "存量值"),
+    ("cardinality", "zero_or_one",  "0..1",     "零或一，等价于 one 且 nullable=1", "—", 0, "用 one+nullable 表达"),
+    ("cardinality", "zero_or_many", "0..N",     "零或多，等价于 many 且 nullable=1", "—", 0, "用 many+nullable 表达"),
+    # version_relation
+    ("version_relation", "based_on",        "基于",     "当前版本基于某版本创建",   "新→旧", 1, ""),
+    ("version_relation", "supersedes",      "取代",     "当前版本取代前一版本",     "新→旧", 1, ""),
+    ("version_relation", "forked_from",     "分叉自",   "从某版本分出独立分支",     "分支→主干", 1, ""),
+    ("version_relation", "merges",          "合并自",   "由多个分支合并而来",       "合并→分支", 1, ""),
+    ("version_relation", "compatible_with", "兼容",     "跨版本可互操作",           "双向", 1, ""),
+    # status
+    ("status", "draft",      "草稿",     "编辑中，不对外生效",           "—", 1, ""),
+    ("status", "active",     "生效",     "正常可用，默认状态",           "—", 1, "存量值"),
+    ("status", "frozen",     "冻结",     "只读锁定，不可编辑",           "—", 1, ""),
+    ("status", "deprecated", "废弃",     "不推荐新引用，检查时告警",     "—", 1, ""),
+    ("status", "archived",   "归档",     "历史保留，不参与查询",         "—", 1, ""),
+    ("status", "disabled",   "停用",     "规则保留定义但不执行",         "—", 1, ""),
+    ("status", "broken",     "失效",     "映射指向的物理对象已不存在",   "—", 1, ""),
+]
+
+
+def _seed_dims(c):
+    """维度种子：INSERT OR IGNORE，升级不覆盖用户改过的 label/description"""
+    for i, (code, name, desc, applies) in enumerate(DIM_DOMAINS):
+        c.execute("INSERT OR IGNORE INTO tb_dim_domain(code,name,description,applies_to,sort_order) VALUES(?,?,?,?,?)",
+                  (code, name, desc, applies, i))
+    for i, (domain, code, label, desc, direction, supported, extra) in enumerate(DIM_ITEMS):
+        c.execute("INSERT OR IGNORE INTO tb_dim_item(domain_code,code,label,description,direction,supported,extra,sort_order) "
+                  "VALUES(?,?,?,?,?,?,?,?)",
+                  (domain, code, label, desc, direction, supported, extra or '{}', i))
+
+
 def init_db():
     with conn() as c:
         c.executescript("""
@@ -93,7 +185,28 @@ def init_db():
           operator TEXT DEFAULT 'system',
           created_at TEXT DEFAULT (datetime('now','localtime')));
         CREATE INDEX IF NOT EXISTS idx_audit_target ON tb_audit_log(module, target_id, id DESC);
+        CREATE TABLE IF NOT EXISTS tb_dim_domain(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          code TEXT NOT NULL UNIQUE, name TEXT NOT NULL,
+          description TEXT DEFAULT '', applies_to TEXT DEFAULT '',
+          sort_order INTEGER DEFAULT 0, enabled INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT (datetime('now','localtime')));
+        CREATE TABLE IF NOT EXISTS tb_dim_item(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          domain_code TEXT NOT NULL, code TEXT NOT NULL, label TEXT NOT NULL,
+          description TEXT DEFAULT '', direction TEXT DEFAULT '',
+          supported INTEGER DEFAULT 1, extra TEXT DEFAULT '{}',
+          sort_order INTEGER DEFAULT 0, enabled INTEGER DEFAULT 1,
+          created_at TEXT DEFAULT (datetime('now','localtime')),
+          UNIQUE(domain_code, code));
+        CREATE INDEX IF NOT EXISTS idx_dim_item_domain ON tb_dim_item(domain_code, sort_order);
         """)
+        _seed_dims(c)
+        try:
+            c.execute("ALTER TABLE tb_dim_domain ADD COLUMN enabled INTEGER DEFAULT 1")
+            c.commit()
+        except Exception:
+            pass
         # 本体归属空间（对齐知识库 space 模型）
         try:
             c.execute("ALTER TABLE tb_ontology ADD COLUMN space_id INTEGER DEFAULT 0")

@@ -37,6 +37,25 @@ DEMO_DATA = {
 }
 
 
+# ========== 维度表（领域分类 / 枚举）：UI 下拉与后端校验共用 ==========
+def dim_list(enabled_only: bool = True) -> list:
+    """返回全部领域分类，每项内嵌其枚举值（UI 一次拉取即可渲染所有下拉）"""
+    where = "WHERE enabled=1" if enabled_only else ""
+    domains = db.rows(f"SELECT * FROM tb_dim_domain {where} ORDER BY sort_order, id")
+    for d in domains:
+        d["items"] = db.rows(
+            "SELECT code,label,description,direction,supported,sort_order FROM tb_dim_item "
+            "WHERE domain_code=? AND enabled=1 ORDER BY sort_order, id", (d["code"],))
+    return domains
+
+
+def dim_items(domain_code: str, enabled_only: bool = True) -> list:
+    """按领域分类取枚举值（UI 单个下拉懒加载时使用）"""
+    w = " AND enabled=1" if enabled_only else ""
+    return db.rows("SELECT code,label,description,direction,supported,sort_order FROM tb_dim_item "
+                   "WHERE domain_code=?" + w + " ORDER BY sort_order, id", (domain_code,))
+
+
 def _require_space(space_id):
     """本体必须归属本体空间"""
     if not (space_id and db.one("SELECT id FROM tb_onto_space WHERE id=?", (space_id,))):

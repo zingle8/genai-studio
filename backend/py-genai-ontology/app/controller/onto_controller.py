@@ -16,6 +16,15 @@ def create_routers(service) -> APIRouter:
     async def audit_list(oid: int = 0, limit: int = 200):
         return {"code": 0, "data": service.audit_list(oid or None, limit)}
 
+    # ========== 维度表（领域分类 / 枚举，先于 /api/onto/{oid} 模板注册） ==========
+    @router.get("/api/onto/dims")
+    async def list_dims(enabled_only: int = 1):
+        return {"code": 0, "data": service.dim_list(bool(enabled_only))}
+
+    @router.get("/api/onto/dims/{domain}")
+    async def list_dim_items(domain: str, enabled_only: int = 1):
+        return {"code": 0, "data": service.dim_items(domain, bool(enabled_only))}
+
     # ========== 本体空间（先于 /api/onto/{oid} 模板注册） ==========
     @router.get("/api/onto/spaces")
     async def list_space():

@@ -26,6 +26,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -47,13 +48,17 @@ public class RelayController {
     private static final Pattern P_COMPLETION = Pattern.compile("\"completion_tokens\"\\s*:\\s*(\\d+)");
     private static final int STREAM_CAPTURE_LIMIT = 2 * 1024 * 1024;
     private static final int LOG_TRUNC = 65536; // 请求/回复日志单侧截断 64KB
+    // base_url 支持逗号分隔的多实例地址，按请求原子轮询（round-robin）分发
+    private final AtomicInteger rrCounter = new AtomicInteger(0);
 
     private final RouterModelMapper modelMapper;
     private final RelayGuardService guard;
     private final RelayLogMapper relayLogMapper;
     private final ObjectMapper om = new ObjectMapper();
+    // 固定 HTTP/1.1：JDK 25 HttpClient 默认发送 Upgrade: h2c，Python uvicorn(h11) 会拒绝该请求（422/空 body）
     private final java.net.http.HttpClient client = java.net.http.HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(15))
+            .version(java.net.http.HttpClient.Version.HTTP_1_1)
             .build();
 
     private static final Set<String> HOP_HEADERS = Set.of(
@@ -112,7 +117,9 @@ public class RelayController {
         }
 
         // 4. 构造上游请求：baseUrl + path，model 替换为真实模型名
-        String upstreamUrl = joinUrl(m.getBaseUrl(), path);
+        //    base_url 可为逗号分隔的多实例地址，原子轮询分发以提升本地模型吞吐
+        String baseUrl = pickBaseUrl(m.getBaseUrl());
+        String upstreamUrl = joinUrl(baseUrl, path);
         String upstreamBody = replaceModel(body, m.getRealName());
         HttpRequest.Builder rb = HttpRequest.newBuilder(URI.create(upstreamUrl))
                 .timeout(Duration.ofMinutes(10))
@@ -343,6 +350,14 @@ public class RelayController {
         } catch (Exception e) {
             return body;
         }
+    }
+
+    /** 从逗号分隔的多实例地址中轮询选一个；单地址直接返回（向后兼容） */
+    private String pickBaseUrl(String baseUrlRaw) {
+        String[] parts = baseUrlRaw.split(",");
+        if (parts.length == 1) return parts[0].trim();
+        int idx = Math.floorMod(rrCounter.getAndIncrement(), parts.length);
+        return parts[idx].trim();
     }
 
     private String joinUrl(String baseUrl, String path) {

@@ -162,7 +162,7 @@ def neo4j_ping(cfg):
 
 # ===== 版本快照 =====
 def snapshot(gid):
-    """全量快照（SQLite 数据）"""
+    """全量快照（PostgreSQL 数据）"""
     return {
         "entities": rows("SELECT * FROM tb_graph_entity WHERE graph_id=?", (gid,)),
         "nodes": rows("SELECT * FROM tb_graph_node WHERE graph_id=?", (gid,)),

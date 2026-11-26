@@ -247,7 +247,7 @@ def insert_chunks(kb, kid, doc_id, doc_name, chunks):
     if t == "es":
         es_insert_chunks(kb, kid, doc_id, doc_name, chunks)
         return "es"
-    if t in ("pg", "sqlite"):   # 存量 sqlite 库自动走 pg；新库默认 pg
+    if t == "pg":
         pg_insert_chunks(kb, kid, doc_id, doc_name, chunks)
         return "pg"
     with connect(DSN) as c:
@@ -262,7 +262,7 @@ def search_chunks(kb, kid, q, top_k):
     t = kb.get("db_type", "pg")
     if t == "es":
         return es_search(kb, kid, q, top_k), "es"
-    if t in ("pg", "sqlite"):
+    if t == "pg":
         return pg_search(kb, kid, q, top_k), "pg"
     terms = _split_terms(q)
     where = " OR ".join(["content LIKE %s"] * len(terms))
@@ -301,7 +301,7 @@ def delete_doc_chunks(kb, kid, doc_id):
     t = kb.get("db_type", "pg")
     if t == "es":
         es_delete_doc(kb, kid, doc_id)
-    elif t in ("pg", "sqlite"):
+    elif t == "pg":
         pg_delete_doc(kb, kid, doc_id)
     else:
         run("DELETE FROM tb_kb_chunk WHERE kb_id=%s AND doc_id=%s", (kid, doc_id))

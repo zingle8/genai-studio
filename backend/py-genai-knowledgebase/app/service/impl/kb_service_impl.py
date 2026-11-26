@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""知识库业务实现（service/impl）：空间/库/文档/检索的编排与多存储后端路由（sqlite/es/pg）"""
+"""知识库业务实现（service/impl）：空间/库/文档/检索的编排与多存储后端路由（es/pg）"""
 from fastapi import HTTPException
 
 from app.config.settings import settings
@@ -99,9 +99,9 @@ class KbServiceImpl(KbService):
 
     @staticmethod
     def _require_db_type(b) -> None:
-        """内置 SQLite 存储已移除：新建仅支持 ES / PG（存量 sqlite 库可原样保留）"""
+        """存储仅支持 Elasticsearch / PostgreSQL"""
         if b.db_type not in ("es", "pg"):
-            raise HTTPException(400, "内置 SQLite 存储已移除，存储仅支持 Elasticsearch / PostgreSQL")
+            raise HTTPException(400, "存储仅支持 Elasticsearch / PostgreSQL")
 
     def kb_create(self, b) -> dict:
         if not b.name.strip():
@@ -221,7 +221,7 @@ class KbServiceImpl(KbService):
         """单库关键词检索（分词 OR + 命中词数排序），返回 (hits, backend)"""
         kid = kb["id"]
         t = kb.get("db_type", "pg")
-        if t in ("es", "pg", "sqlite"):
+        if t in ("es", "pg"):
             try:
                 return storage.search_chunks(kb, kid, q, top_k)
             except Exception as e:

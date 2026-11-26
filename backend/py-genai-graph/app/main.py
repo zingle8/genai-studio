@@ -3,7 +3,7 @@
 
 结构：controller(接口) / service+impl(业务) / mapper(数据) / dto / config / common
 v2：图谱(数据库概念) / 实体类型 / 节点&属性 / 关系 / 版本（自动快照+恢复）
-存储后端：sqlite（内置）或 neo4j（图谱配置连接信息，HTTP API 真实读写）
+存储后端：postgresql 或 neo4j（图谱配置连接信息，HTTP API 真实读写）
 接口与 0.2.0 完全兼容。
 """
 from contextlib import asynccontextmanager

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """共享 PostgreSQL 适配层
-- 用 psycopg2 替换 sqlite3，保持 conn()/rows()/run()/one() 接口不变
+- 基于 psycopg2，提供 conn()/rows()/run()/one() 统一接口
 - 自动把 SQL 中的 ? 占位符转成 psycopg2 的 %s（兼容现有大量 SQL，service 层无需逐个改）
 - 注意：SQL 中的 %% 为字面百分号，转换时跳过
 """
@@ -82,7 +82,7 @@ def one(dsn, sql, args=()):
 
 
 def run(dsn, sql, args=(), returning=False):
-    """执行写操作；INSERT 自动追加 RETURNING id，兼容 sqlite 的 lastrowid 语义"""
+    """执行写操作；INSERT 自动追加 RETURNING id 并作为自增 id 返回"""
     with connect(dsn) as c:
         with c.cursor() as cur:
             q = to_pg(sql)

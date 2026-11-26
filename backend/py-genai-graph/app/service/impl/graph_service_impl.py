@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""图谱业务实现（service/impl）：图谱/实体/节点/关系/版本的编排与双后端（SQLite/Neo4j）路由"""
+"""图谱业务实现（service/impl）：图谱/实体/节点/关系/版本的编排与双后端（PostgreSQL/Neo4j）路由"""
 import json
 
 from fastapi import HTTPException
@@ -48,7 +48,7 @@ class GraphServiceImpl(GraphService):
                 for i, row in enumerate(j["results"][0]["data"])]
 
     def _node_by_key(self, g, gid, nid):
-        """SQLite 后端按自增 id；Neo4j 后端按 Neo4j 内部 id"""
+        """PostgreSQL 后端按自增 id；Neo4j 后端按 Neo4j 内部 id"""
         if g["db_type"] == "neo4j":
             cfg = self._gcfg(g)
             storage.neo4j_exec(cfg, "MATCH (n:Graph_%d) WHERE id(n)=$id DETACH DELETE n" % gid, {"id": int(nid)})
@@ -258,7 +258,7 @@ class GraphServiceImpl(GraphService):
         storage.run("DELETE FROM tb_graph_edge WHERE id=? AND graph_id=?", (eid, gid))
         storage.save_version(gid, "delete_edge", "删除关系")
 
-    # ===== 邻域（多起点 + 1~7 级，sqlite/neo4j 统一本地 BFS） =====
+    # ===== 邻域（多起点 + 1~7 级，postgresql/neo4j 统一本地 BFS） =====
     def neighborhood(self, gid, nids, depth=1):
         g = self._get_graph(gid)
         depth = max(1, min(7, depth))
@@ -267,7 +267,7 @@ class GraphServiceImpl(GraphService):
         else:
             nodes_all = storage.rows("SELECT * FROM tb_graph_node WHERE graph_id=?", (gid,))
             edges_all = storage.rows("SELECT * FROM tb_graph_edge WHERE graph_id=?", (gid,))
-        # 统一按字符串比较，规避 sqlite(int) 与 neo4j(str) 主键类型差异
+        # 统一按字符串比较，规避 pg(int) 与 neo4j(str) 主键类型差异
         front, seen = {str(x) for x in nids}, {str(x) for x in nids}
         for _ in range(depth):
             nxt = set()

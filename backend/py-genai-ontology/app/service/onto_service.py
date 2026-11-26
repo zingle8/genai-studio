@@ -17,7 +17,7 @@ from app.common.onto_checker import check_ontology
 from app.common.onto_parser import parse_ttl, parse_yaml, to_ttl, to_yaml
 from app.mapper import onto_mapper as db
 
-# ========== 数据源与图数据（MVP：内置示例公司数据 + SQLite 物理表） ==========
+# ========== 数据源与图数据 ==========
 DEMO_DATA = {
     "nodes": [
         {"type": "c0", "id": "c0-1", "props": {"名称": "研发部", "编码": "C0-DEV"}},
@@ -272,7 +272,7 @@ def graph_spaces() -> list:
 
 
 def graph_create(body: dict) -> dict:
-    """本体图谱模块创建图谱：图谱数据落在图谱模块 SQLite，来源标记 ontology。
+    """本体图谱模块创建图谱：图谱数据落在图谱模块 PostgreSQL，来源标记 ontology。
     知识图谱模块可展示该图谱，但写操作会被 _require_editable 以『无编辑权限』拒绝。"""
     name = (body.get("name") or "").strip()
     if not name:

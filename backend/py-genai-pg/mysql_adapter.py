@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """共享 MySQL 适配层
-- 用 pymysql 替换 sqlite3，保持 conn()/rows()/run()/one() 接口不变
+- 基于 pymysql，提供 conn()/rows()/run()/one() 统一接口
 - 自动把 SQL 中的 ? 占位符转成 pymysql 的 %s
-- run() 返回 lastrowid（INSERT 语义），与 sqlite3 一致
+- run() 返回 lastrowid（INSERT 自增 id）
 """
 import os
 from contextlib import contextmanager

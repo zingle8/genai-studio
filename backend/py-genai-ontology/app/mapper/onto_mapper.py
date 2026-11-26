@@ -262,6 +262,7 @@ DIM_ITEMS = [
     ("datasource_type", "graph-ref",    "图谱引用", "引用知识图谱实例（按被引用图谱 db_type 决定 SQL/N4）", "—", 1, "存量值"),
     ("datasource_type", "neo4j",        "Neo4j",    "直连 Neo4j 图数据库", "—", 1, ""),
     ("datasource_type", "sql",          "SQL",      "直连关系数据库",       "—", 1, ""),
+    ("datasource_type", "sqlite",       "SQLite",   "内置 SQLite 存储（知识图谱 db_type 的实际取值）", "—", 1, "alias:sql"),
 ]
 
 

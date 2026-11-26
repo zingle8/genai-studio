@@ -112,7 +112,7 @@
               <input class="form-input" v-model="relForm.name" placeholder="关系名，如 belongs_to"/>
               <select class="form-select" v-model="relForm.subjClass"><option value="">主体类</option><option v-for="n in nodes" :key="n.id" :value="n.name">{{ n.name }}</option></select>
               <select class="form-select" v-model="relForm.objClass"><option value="">客体类</option><option v-for="n in nodes" :key="n.id" :value="n.name">{{ n.name }}</option></select>
-              <select class="form-select" v-model="relForm.cardinality"><option value="many">多对多 many</option><option value="one">一对一 one</option></select>
+              <select class="form-select" v-model="relForm.cardinality"><option v-for="c in dimOptions('cardinality')" :key="c.value" :value="c.value">{{ c.label }}</option></select>
               <label class="chk"><input type="checkbox" v-model="relForm.nullable"/> 允许为空</label>
               <input class="form-input" v-model="relForm.inheritsFrom" placeholder="继承关系名（可空）"/>
               <button class="btn btn-primary btn-sm full" @click="createRel">创建规则</button>
@@ -202,7 +202,7 @@
                   <td><input class="form-input" v-model="r.name" /></td>
                   <td><input class="form-input" v-model="r.subj_class" /></td>
                   <td><input class="form-input" v-model="r.obj_class" /></td>
-                  <td><select class="form-select" v-model="r.cardinality"><option value="many">many</option><option value="one">one</option></select></td>
+                  <td><select class="form-select" v-model="r.cardinality"><option v-for="c in dimOptions('cardinality')" :key="c.value" :value="c.value">{{ c.label }}</option></select></td>
                   <td><input type="checkbox" v-model="r.nullable" :true-value="1" :false-value="0" /></td>
                   <td><input class="form-input" v-model="r.comment" placeholder="可空" /></td>
                   <td style="white-space:nowrap;">
@@ -214,7 +214,7 @@
                   <td><input class="form-input" v-model="relForm.name" placeholder="新关系名" /></td>
                   <td><select class="form-select" v-model="relForm.subjClass"><option value="">主体类</option><option v-for="n in nodes" :key="n.id" :value="n.name">{{ n.name }}</option></select></td>
                   <td><select class="form-select" v-model="relForm.objClass"><option value="">客体类</option><option v-for="n in nodes" :key="n.id" :value="n.name">{{ n.name }}</option></select></td>
-                  <td><select class="form-select" v-model="relForm.cardinality"><option value="many">many</option><option value="one">one</option></select></td>
+                  <td><select class="form-select" v-model="relForm.cardinality"><option v-for="c in dimOptions('cardinality')" :key="c.value" :value="c.value">{{ c.label }}</option></select></td>
                   <td><input type="checkbox" v-model="relForm.nullable" /></td>
                   <td><input class="form-input" v-model="relForm.inheritsFrom" placeholder="继承（可空）" /></td>
                   <td><button class="btn btn-primary btn-sm" @click="createRel">＋ 新增</button></td>
@@ -252,7 +252,7 @@
               <div class="text-sm" style="margin:8px 0;">节点 {{ physNodes.length }} 个（{{ [...new Set(physNodes.map(n=>n.type))].join(', ') }}）<br/>边 {{ physEdges.length }} 条（{{ [...new Set(physEdges.map(e=>e.type))].join(', ') }}）</div>
               <div class="sec-t">新建映射</div>
               <div class="mini-form">
-                <select class="form-select" v-model="mapForm.kind"><option value="node">节点类</option><option value="edge">关系边</option></select>
+                <select class="form-select" v-model="mapForm.kind"><option v-for="c in dimOptions('mapping')" :key="c.value" :value="c.value">{{ c.label }}</option></select>
                 <select class="form-select" v-model="mapForm.ontoType"><option value="">本体类型</option><option v-for="n in nodes" :key="n.id" :value="n.name">{{ n.name }}</option></select>
                 <select class="form-select" v-model="mapForm.physicalType"><option value="">物理类型</option><option v-for="t in physTypes" :key="t" :value="t">{{ t }}</option></select>
                 <button class="btn btn-primary btn-sm full" @click="addMap">绑定映射</button>
@@ -421,7 +421,7 @@
             <div class="form-row"><label class="form-label">关系名</label><input class="form-input" v-model="editForm.name" /></div>
             <div class="form-row"><label class="form-label">主体类</label><input class="form-input" v-model="editForm.subjClass" /></div>
             <div class="form-row"><label class="form-label">客体类</label><input class="form-input" v-model="editForm.objClass" /></div>
-            <div class="form-row"><label class="form-label">基数</label><select class="form-select" v-model="editForm.cardinality"><option value="many">多对多 many</option><option value="one">一对一 one</option></select></div>
+            <div class="form-row"><label class="form-label">基数</label><select class="form-select" v-model="editForm.cardinality"><option v-for="c in dimOptions('cardinality')" :key="c.value" :value="c.value">{{ c.label }}</option></select></div>
             <div class="form-row"><label class="form-label">可空</label><input type="checkbox" v-model="editForm.nullable" /></div>
             <div class="form-row"><label class="form-label">继承</label><input class="form-input" v-model="editForm.inheritsFrom" placeholder="可空" /></div>
             <div class="form-row"><label class="form-label">说明</label><input class="form-input" v-model="editForm.comment" /></div>
@@ -449,8 +449,8 @@
               <option v-for="s in spaces" :key="s.id" :value="s.id">{{ s.name }}</option>
             </select></div>
           <div class="form-row"><label class="form-label">名称</label><input class="form-input" v-model="ontoForm.name" placeholder="如 o1-组织管理"/></div>
-          <div class="form-row"><label class="form-label">归属</label><select class="form-select" v-model="ontoForm.scope"><option value="domain">领域本体</option><option value="personal">个人本体</option></select></div>
-          <div class="form-row"><label class="form-label">权威等级</label><select class="form-select" v-model="ontoForm.authority"><option value="normal">普通</option><option value="high">高权威（合并冲突时优先）</option></select></div>
+          <div class="form-row"><label class="form-label">归属</label><select class="form-select" v-model="ontoForm.scope"><option v-for="c in dimOptions('scope')" :key="c.value" :value="c.value">{{ c.label }}</option></select></div>
+          <div class="form-row"><label class="form-label">权威等级</label><select class="form-select" v-model="ontoForm.authority"><option v-for="c in dimOptions('authority')" :key="c.value" :value="c.value">{{ c.label }}</option></select></div>
           <div class="form-row"><label class="form-label">说明</label><input class="form-input" v-model="ontoForm.comment" placeholder="用途说明（可空）"/></div>
         </div>
         <div class="modal-footer"><button class="btn btn-secondary" @click="newOpen=false">取消</button><button class="btn btn-primary" @click="createOnto">创建</button></div>
@@ -496,6 +496,21 @@ const ontos = ref([])
 const datasources = ref([])
 const dsId = ref(null)
 const kgGraphs = ref([])   // 知识图谱列表（用于解析 graph-ref 数据源的真实库类型）
+const dims = ref({})       // 维度表：domain_code -> items[]（UI 下拉统一数据源）
+
+/** 从维度表取下拉选项（只取后端已支持的项，保留 value=code / label=中文名）；未加载时返回空数组，由 :value 兜底当前值 */
+function dimOptions(domain) {
+  const items = dims.value[domain] || []
+  return items.filter(x => x.supported === 1).map(x => ({ value: x.code, label: x.label }))
+}
+async function loadDims() {
+  const r = await api('/api/onto/dims')
+  if (r.code === 0) {
+    const m = {}
+    for (const d of r.data) m[d.code] = d.items || []
+    dims.value = m
+  }
+}
 
 async function loadKgGraphs() {
   const r = await api('/api/graphs')
@@ -940,7 +955,7 @@ const dsSourceLabel = computed(() => {
 })
 
 onMounted(async () => {
-  loadSpaces(); loadOntos(); loadKgGraphs()
+  loadSpaces(); loadOntos(); loadKgGraphs(); loadDims()
   document.addEventListener('mousedown', onDocClick)
   const d = await api('/api/onto/datasources')
   if (d.code === 0) { datasources.value = d.data; dsId.value = d.data[0]?.id }

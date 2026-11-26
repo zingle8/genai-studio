@@ -1,51 +1,43 @@
 # -*- coding: utf-8 -*-
-"""OCR 数据访问层（mapper）：SQLite tb_ocr_task 读写（迁移自 storage.py）"""
-import sqlite3, os
+"""OCR 数据访问层（mapper）：MySQL tb_ocr_task 读写（迁移自 storage.py）"""
+import os, sys
 
-from app.config.settings import settings
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../py-genai-pg')))
+from mysql_adapter import mysql_dsn, connect, rows as my_rows, one as my_one, run as my_run, execute_script
+
+DSN = mysql_dsn('genai_ocr')
 
 
 def conn():
-    c = sqlite3.connect(settings.db_path)
-    c.row_factory = sqlite3.Row
-    return c
+    """兼容旧接口：返回 pymysql 连接"""
+    import pymysql
+    cfg = dict(DSN)
+    cfg['cursorclass'] = pymysql.cursors.DictCursor
+    return pymysql.connect(**cfg)
 
 
 def init_db():
-    with conn() as c:
-        c.executescript("""
+    execute_script(DSN, """
         CREATE TABLE IF NOT EXISTS tb_ocr_task(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
-          engine TEXT DEFAULT 'auto', size INTEGER DEFAULT 0,
-          status TEXT DEFAULT 'pending' CHECK(status IN ('pending','running','done','failed')),
-          text TEXT DEFAULT '', error TEXT DEFAULT '', cost_ms INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(512) NOT NULL,
+          engine VARCHAR(64) DEFAULT 'auto', size INT DEFAULT 0,
+          status VARCHAR(32) DEFAULT 'pending',
+          text TEXT, error TEXT, cost_ms INT DEFAULT 0,
+          prompt TEXT, image_path VARCHAR(1024),
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
         """)
-        for ddl in ["ALTER TABLE tb_ocr_task ADD COLUMN prompt TEXT DEFAULT ''",
-                    "ALTER TABLE tb_ocr_task ADD COLUMN image_path TEXT DEFAULT ''"]:
-            try:
-                c.execute(ddl)
-                c.commit()
-            except Exception:
-                pass
 
 
 def rows(sql, args=()):
-    with conn() as c:
-        return [dict(r) for r in c.execute(sql, args).fetchall()]
+    return my_rows(DSN, sql, args)
 
 
 def run(sql, args=()):
-    with conn() as c:
-        cur = c.execute(sql, args)
-        c.commit()
-        return cur.lastrowid
+    return my_run(DSN, sql, args)
 
 
 def one(sql, args=()):
-    with conn() as c:
-        r = c.execute(sql, args).fetchone()
-        return dict(r) if r else None
+    return my_one(DSN, sql, args)
 
 
 def delete(tid: int):

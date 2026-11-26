@@ -1,58 +1,45 @@
 # -*- coding: utf-8 -*-
-"""知识库服务存储层 v2
-- 知识空间 tb_kb_space → 知识库 tb_kb（存储类型 es/pg/sqlite、库类型、切分方式、embedding/reranker 模型）
-- 文档元数据存 SQLite；分块按 db_type 写入对应存储：
-  * sqlite：内置 tb_kb_chunk
+"""知识库服务存储层 v3
+- 知识空间 tb_kb_space → 知识库 tb_kb（存储类型 pg/es、库类型、切分方式、embedding/reranker 模型）
+- 元数据存 MySQL（genai_kb）；分块按 db_type 写入对应存储：
+  * pg：PostgreSQL 表 kb_{id}_chunks（psycopg2，pgvector 可选）
   * es：Elasticsearch 索引 kb_{id}（HTTP，支持认证）
-  * pg：PostgreSQL 表 kb_{id}_chunks（psycopg2）
 """
-import sqlite3, os, json, requests
+import os, sys, json, requests
 
-from app.config.settings import settings
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../py-genai-pg')))
+from mysql_adapter import mysql_dsn, connect, rows as my_rows, one as my_one, run as my_run, execute_script
 
-DB_PATH = settings.db_path
+DSN = mysql_dsn('genai_kb')
 
 
 def conn():
-    c = sqlite3.connect(DB_PATH)
-    c.row_factory = sqlite3.Row
-    return c
+    import pymysql
+    cfg = dict(DSN); cfg['cursorclass'] = pymysql.cursors.DictCursor
+    return pymysql.connect(**cfg)
 
 
 def init_db():
-    with conn() as c:
-        c.executescript("""
+    execute_script(DSN, """
         CREATE TABLE IF NOT EXISTS tb_kb_space(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
-          description TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
+          id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(512) NOT NULL,
+          description TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_kb(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
-          description TEXT DEFAULT '', created_at TEXT DEFAULT (datetime('now','localtime')));
+          id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(512) NOT NULL,
+          description TEXT, created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          space_id INT DEFAULT 0, db_type VARCHAR(32) DEFAULT 'pg',
+          db_config TEXT, kb_type VARCHAR(64) DEFAULT 'doc',
+          chunk_mode VARCHAR(64) DEFAULT 'paragraph', chunk_len INT DEFAULT 500,
+          embedding_model VARCHAR(128) DEFAULT '', reranker_model VARCHAR(128) DEFAULT '');
         CREATE TABLE IF NOT EXISTS tb_kb_doc(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, kb_id INTEGER NOT NULL,
-          name TEXT NOT NULL, source TEXT DEFAULT 'upload', size INTEGER DEFAULT 0,
-          chunk_size INTEGER DEFAULT 500, chunks INTEGER DEFAULT 0,
-          status TEXT DEFAULT 'ready', created_at TEXT DEFAULT (datetime('now','localtime')));
+          id INT AUTO_INCREMENT PRIMARY KEY, kb_id INT NOT NULL,
+          name VARCHAR(512) NOT NULL, source VARCHAR(64) DEFAULT 'upload', size INT DEFAULT 0,
+          chunk_size INT DEFAULT 500, chunks INT DEFAULT 0,
+          status VARCHAR(32) DEFAULT 'ready', created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_kb_chunk(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, doc_id INTEGER NOT NULL, kb_id INTEGER NOT NULL,
-          idx INTEGER DEFAULT 0, content TEXT NOT NULL);
+          id INT AUTO_INCREMENT PRIMARY KEY, doc_id INT NOT NULL, kb_id INT NOT NULL,
+          idx INT DEFAULT 0, content TEXT);
         """)
-        # v2 加列（已存在则忽略）
-        for ddl in [
-            "ALTER TABLE tb_kb ADD COLUMN space_id INTEGER DEFAULT 0",
-            "ALTER TABLE tb_kb ADD COLUMN db_type TEXT DEFAULT 'sqlite'",
-            "ALTER TABLE tb_kb ADD COLUMN db_config TEXT DEFAULT ''",
-            "ALTER TABLE tb_kb ADD COLUMN kb_type TEXT DEFAULT 'doc'",
-            "ALTER TABLE tb_kb ADD COLUMN chunk_mode TEXT DEFAULT 'paragraph'",
-            "ALTER TABLE tb_kb ADD COLUMN chunk_len INTEGER DEFAULT 500",
-            "ALTER TABLE tb_kb ADD COLUMN embedding_model TEXT DEFAULT ''",
-            "ALTER TABLE tb_kb ADD COLUMN reranker_model TEXT DEFAULT ''",
-        ]:
-            try:
-                c.execute(ddl)
-                c.commit()
-            except Exception:
-                pass
 
 
 def migrate_ensure_space():
@@ -64,21 +51,15 @@ def migrate_ensure_space():
 
 
 def rows(sql, args=()):
-    with conn() as c:
-        return [dict(r) for r in c.execute(sql, args).fetchall()]
+    return my_rows(DSN, sql, args)
 
 
 def run(sql, args=()):
-    with conn() as c:
-        cur = c.execute(sql, args)
-        c.commit()
-        return cur.lastrowid
+    return my_run(DSN, sql, args)
 
 
 def one(sql, args=()):
-    with conn() as c:
-        r = c.execute(sql, args).fetchone()
-        return dict(r) if r else None
+    return my_one(DSN, sql, args)
 
 
 def jload(s, default=None):
@@ -262,39 +243,40 @@ def pg_ping(cfg):
 
 
 def insert_chunks(kb, kid, doc_id, doc_name, chunks):
-    t = kb.get("db_type", "sqlite")
+    t = kb.get("db_type", "pg")
     if t == "es":
         es_insert_chunks(kb, kid, doc_id, doc_name, chunks)
         return "es"
-    if t == "pg":
+    if t in ("pg", "sqlite"):   # 存量 sqlite 库自动走 pg；新库默认 pg
         pg_insert_chunks(kb, kid, doc_id, doc_name, chunks)
         return "pg"
-    with conn() as c:
-        c.executemany("INSERT INTO tb_kb_chunk(doc_id, kb_id, idx, content) VALUES(?,?,?,?)",
-                      [(doc_id, kid, i, t2) for i, t2 in enumerate(chunks)])
+    with connect(DSN) as c:
+        with c.cursor() as cur:
+            cur.executemany("INSERT INTO tb_kb_chunk(doc_id,kb_id,idx,content) VALUES(%s,%s,%s,%s)",
+                            [(doc_id, kid, i, t2) for i, t2 in enumerate(chunks)])
         c.commit()
-    return "sqlite"
+    return "mysql"
 
 
 def search_chunks(kb, kid, q, top_k):
-    t = kb.get("db_type", "sqlite")
+    t = kb.get("db_type", "pg")
     if t == "es":
         return es_search(kb, kid, q, top_k), "es"
-    if t == "pg":
+    if t in ("pg", "sqlite"):
         return pg_search(kb, kid, q, top_k), "pg"
     terms = _split_terms(q)
-    where = " OR ".join(["content LIKE ?"] * len(terms))
-    hits = rows(f"SELECT id, doc_id, idx, content FROM tb_kb_chunk WHERE kb_id=? AND ({where}) LIMIT ?",
+    where = " OR ".join(["content LIKE %s"] * len(terms))
+    hits = rows(f"SELECT id, doc_id, idx, content FROM tb_kb_chunk WHERE kb_id=%s AND ({where}) LIMIT %s",
                 (kid, *[f"%{t}%" for t in terms], max(top_k * 5, 20)))
     hits.sort(key=lambda h: -sum(1 for t in terms if t.lower() in (h["content"] or "").lower()))
     return [{"chunkId": h["id"], "docId": h["doc_id"], "doc": "", "idx": h["idx"],
              "score": sum(1 for t in terms if t.lower() in (h["content"] or "").lower()), "content": h["content"]}
-            for h in hits[:top_k]], "sqlite"
+            for h in hits[:top_k]], "mysql"
 
 
 def all_chunks(kb, kid, limit=3000):
     """语义检索用：拉取知识库全部分块（三存储统一格式）"""
-    t = kb.get("db_type", "sqlite")
+    t = kb.get("db_type", "pg")
     if t == "es":
         idx = "kb_%d" % kid
         j = es_req(kb, "POST", f"/{idx}/_search",
@@ -312,17 +294,17 @@ def all_chunks(kb, kid, limit=3000):
             return [{"chunkId": r[1], "docId": r[0], "doc": r[2], "idx": r[1], "content": r[3]}
                     for r in cur.fetchall()]
     return [{"chunkId": h["id"], "docId": h["doc_id"], "doc": "", "idx": h["idx"], "content": h["content"]}
-            for h in rows("SELECT id, doc_id, idx, content FROM tb_kb_chunk WHERE kb_id=? LIMIT ?", (kid, limit))]
+            for h in rows("SELECT id, doc_id, idx, content FROM tb_kb_chunk WHERE kb_id=%s LIMIT %s", (kid, limit))]
 
 
 def delete_doc_chunks(kb, kid, doc_id):
-    t = kb.get("db_type", "sqlite")
+    t = kb.get("db_type", "pg")
     if t == "es":
         es_delete_doc(kb, kid, doc_id)
-    elif t == "pg":
+    elif t in ("pg", "sqlite"):
         pg_delete_doc(kb, kid, doc_id)
     else:
-        run("DELETE FROM tb_kb_chunk WHERE kb_id=? AND doc_id=?", (kid, doc_id))
+        run("DELETE FROM tb_kb_chunk WHERE kb_id=%s AND doc_id=%s", (kid, doc_id))
 
 
 init_db()

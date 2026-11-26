@@ -18,7 +18,7 @@ class KbIn(BaseModel):
     name: str
     description: str = ""
     space_id: int = 0
-    db_type: str = "sqlite"
+    db_type: str = "pg"
     db_config: str = ""              # ES: {"url","user","password"} / PG: {"host","port","user","password","dbname"}
     kb_type: str = "doc"             # golden_answer | qa | doc | faq
     chunk_mode: str = "paragraph"    # paragraph | sentence | fixed

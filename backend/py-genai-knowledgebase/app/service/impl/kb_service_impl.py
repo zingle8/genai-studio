@@ -129,12 +129,7 @@ class KbServiceImpl(KbService):
         if not old:
             raise HTTPException(404, "知识库不存在")
         self._require_space(b.space_id)
-        # 存量 sqlite 库允许原样保留；其余情况一律要求 es/pg
-        if b.db_type == "sqlite":
-            if old.get("db_type") != "sqlite":
-                raise HTTPException(400, "内置 SQLite 存储已移除，存储仅支持 Elasticsearch / PostgreSQL")
-        else:
-            self._require_db_type(b)
+        self._require_db_type(b)
         storage.run(
             "UPDATE tb_kb SET name=?, description=?, space_id=?, db_type=?, db_config=?, kb_type=?, chunk_mode=?, chunk_len=?, embedding_model=?, reranker_model=? WHERE id=?",
             (b.name.strip(), b.description, b.space_id, b.db_type, b.db_config, b.kb_type,
@@ -196,7 +191,7 @@ class KbServiceImpl(KbService):
 
     def chunk_list(self, kid: int, did: int) -> list:
         kb = storage.one("SELECT * FROM tb_kb WHERE id=?", (kid,))
-        t = kb.get("db_type", "sqlite") if kb else "sqlite"
+        t = kb.get("db_type", "pg") if kb else "pg"
         if t == "es":
             j = storage.es_req(kb, "POST", "/kb_%d/_search" % kid,
                                {"query": {"term": {"doc_id": did}}, "size": 200, "sort": [{"idx": "asc"}]})
@@ -225,8 +220,8 @@ class KbServiceImpl(KbService):
     def _search_kw_one(self, kb, q, top_k):
         """单库关键词检索（分词 OR + 命中词数排序），返回 (hits, backend)"""
         kid = kb["id"]
-        t = kb.get("db_type", "sqlite")
-        if t in ("es", "pg"):
+        t = kb.get("db_type", "pg")
+        if t in ("es", "pg", "sqlite"):
             try:
                 return storage.search_chunks(kb, kid, q, top_k)
             except Exception as e:
@@ -242,7 +237,7 @@ class KbServiceImpl(KbService):
                 scored.append({"chunkId": c["id"], "docId": c["doc_id"], "doc": doc["name"] if doc else "",
                                "idx": c["idx"], "score": score, "content": c["content"][:400]})
         scored.sort(key=lambda x: -x["score"])
-        return scored[:top_k], "sqlite"
+        return scored[:top_k], "mysql"
 
     def search_multi(self, space_id: int = 0, kb_id: int = 0, q: str = "", top_k: int = 5, mode: str = "kw") -> dict:
         """跨空间/跨库聚合检索，结果带空间/知识库字段"""

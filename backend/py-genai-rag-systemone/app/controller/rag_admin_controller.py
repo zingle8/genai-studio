@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """RAG 管理 API（38109 增量路由）：检索管道配置 / 索引统计 / 检索测试（联动 kb 38106 与 reranker 38104）"""
-import sqlite3, os, time, httpx
+import os, time, sys, httpx
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Optional
@@ -10,51 +10,48 @@ RR_BASE = os.environ.get("RR_BASE", "http://localhost:38104")
 EM_BASE = os.environ.get("EM_BASE", "http://localhost:38103")
 GRAPH_BASE = os.environ.get("GRAPH_BASE", "http://localhost:38137")
 ONTO_BASE = os.environ.get("ONTO_BASE", "http://localhost:38105")
-DB_PATH = os.environ.get("RAG_ADMIN_DB", os.path.join(os.path.dirname(__file__), "..", "..", "rag_admin.db"))
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../../py-genai-pg')))
+from mysql_adapter import mysql_dsn, connect, rows as my_rows, one as my_one, run as my_run, execute_script
+
+DSN = mysql_dsn('genai_rag')
 
 
 def _conn():
-    c = sqlite3.connect(DB_PATH)
-    c.row_factory = sqlite3.Row
-    return c
+    import pymysql
+    cfg = dict(DSN); cfg['cursorclass'] = pymysql.cursors.DictCursor
+    return pymysql.connect(**cfg)
 
 
 def init_db():
-    with _conn() as c:
-        c.executescript("""
+    execute_script(DSN, """
         CREATE TABLE IF NOT EXISTS tb_rag_pipeline(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL,
-          kb_id INTEGER DEFAULT 0, kb_name TEXT DEFAULT '',
-          strategy TEXT DEFAULT 'keyword' CHECK(strategy IN ('keyword','vector','hybrid')),
-          embed_model TEXT DEFAULT 'bge-m3', rerank_model TEXT DEFAULT 'bge-reranker-v2-m3',
-          rerank_on INTEGER DEFAULT 0, top_k INTEGER DEFAULT 5, chunk_size INTEGER DEFAULT 500,
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(512) NOT NULL,
+          kb_id INT DEFAULT 0, kb_name VARCHAR(512) DEFAULT '',
+          strategy VARCHAR(32) DEFAULT 'keyword',
+          embed_model VARCHAR(128) DEFAULT 'bge-m3', rerank_model VARCHAR(128) DEFAULT 'bge-reranker-v2-m3',
+          rerank_on INT DEFAULT 0, top_k INT DEFAULT 5, chunk_size INT DEFAULT 500,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
         CREATE TABLE IF NOT EXISTS tb_rag_eval(
-          id INTEGER PRIMARY KEY AUTOINCREMENT, run_id TEXT NOT NULL,
-          source_type TEXT DEFAULT 'kb', source_id INTEGER, source_name TEXT DEFAULT '',
-          q TEXT NOT NULL, expect TEXT DEFAULT '', top_k INTEGER DEFAULT 5,
-          hit INTEGER DEFAULT 0, rank INTEGER DEFAULT 0, score REAL DEFAULT 0,
-          latency_ms INTEGER DEFAULT 0,
-          created_at TEXT DEFAULT (datetime('now','localtime')));
+          id INT AUTO_INCREMENT PRIMARY KEY, run_id VARCHAR(128) NOT NULL,
+          source_type VARCHAR(32) DEFAULT 'kb', source_id INT, source_name VARCHAR(512) DEFAULT '',
+          q TEXT NOT NULL, expect TEXT, top_k INT DEFAULT 5,
+          hit INT DEFAULT 0, rank INT DEFAULT 0, score DOUBLE DEFAULT 0,
+          latency_ms INT DEFAULT 0,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP);
         """)
 
 
 def rows(sql, args=()):
-    with _conn() as c:
-        return [dict(r) for r in c.execute(sql, args).fetchall()]
+    return my_rows(DSN, sql, args)
 
 
 def run(sql, args=()):
-    with _conn() as c:
-        cur = c.execute(sql, args)
-        c.commit()
-        return cur.lastrowid
+    return my_run(DSN, sql, args)
 
 
 def one(sql, args=()):
-    with _conn() as c:
-        r = c.execute(sql, args).fetchone()
-        return dict(r) if r else None
+    return my_one(DSN, sql, args)
 
 
 init_db()

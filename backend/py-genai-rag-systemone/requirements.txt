@@ -12,3 +12,6 @@ httpx>=0.27
 # 两套依赖建议分别建 venv（bge-env / laya-env），暂不要求跑通故全部注释
 # 网关平台接入 SDK（暂不接网关）
 # -e ../py-genai-apigateway-client-sdk
+
+# MySQL 驱动
+pymysql>=1.1

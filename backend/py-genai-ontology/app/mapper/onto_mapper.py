@@ -244,6 +244,7 @@ DIM_ITEMS = [
     ("version_relation", "merges",          "合并自",   "由多个分支合并而来",       "合并→分支", 1, ""),
     ("version_relation", "compatible_with", "兼容",     "跨版本可互操作",           "双向", 1, ""),
     # status
+    ("status", "new",        "新建",     "刚创建，尚未正式提交或编辑",   "—", 1, ""),
     ("status", "draft",      "草稿",     "编辑中，不对外生效",           "—", 1, ""),
     ("status", "active",     "生效",     "正常可用，默认状态",           "—", 1, "存量值"),
     ("status", "frozen",     "冻结",     "只读锁定，不可编辑",           "—", 1, ""),
@@ -267,13 +268,14 @@ DIM_ITEMS = [
 
 
 def _seed_dims(c):
-    """维度种子：INSERT OR IGNORE，升级不覆盖用户改过的 label/description"""
+    """维度种子：INSERT OR IGNORE 保留用户改过的 label/description；sort_order 用 UPSERT 校准，避免新增项排到末尾"""
     for i, (code, name, desc, applies) in enumerate(DIM_DOMAINS):
-        c.execute("INSERT OR IGNORE INTO tb_dim_domain(code,name,description,applies_to,sort_order) VALUES(?,?,?,?,?)",
+        c.execute("INSERT INTO tb_dim_domain(code,name,description,applies_to,sort_order) VALUES(?,?,?,?,?) "
+                  "ON CONFLICT(code) DO UPDATE SET sort_order=excluded.sort_order",
                   (code, name, desc, applies, i))
     for i, (domain, code, label, desc, direction, supported, extra) in enumerate(DIM_ITEMS):
-        c.execute("INSERT OR IGNORE INTO tb_dim_item(domain_code,code,label,description,direction,supported,extra,sort_order) "
-                  "VALUES(?,?,?,?,?,?,?,?)",
+        c.execute("INSERT INTO tb_dim_item(domain_code,code,label,description,direction,supported,extra,sort_order) "
+                  "VALUES(?,?,?,?,?,?,?,?) ON CONFLICT(domain_code,code) DO UPDATE SET sort_order=excluded.sort_order",
                   (domain, code, label, desc, direction, supported, extra or '{}', i))
 
 

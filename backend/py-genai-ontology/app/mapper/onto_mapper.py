@@ -73,6 +73,10 @@ DIM_DOMAINS = [
     ("scope",           "归属范围",   "本体归属领域或个人", "tb_ontology.scope"),
     ("authority",       "权威等级",   "跨本体合并冲突时的优先级", "tb_ontology.authority"),
     ("datasource_type", "数据源类型", "本体绑定的物理数据来源类型", "tb_data_source.type"),
+    ("data_type",       "数据类型",     "属性/字段的数据类型，含日期/时间/日期时间等时间类型", "tb_onto_attr.data_type"),
+    ("nullability",     "空值约束",     "定义层：属性是否允许为空（必填/可空/不适用）", "tb_onto_attr.required"),
+    ("value_presence",  "值存在性",     "实例层：实际数据的值是否存在（有值/空串/null/默认值）", "实例数据校验"),
+    ("uniqueness",      "唯一性约束",   "属性值的唯一性规则（唯一/主键/外键/可重复）", "tb_onto_attr.unique"),
 ]
 
 DIM_ITEMS = [
@@ -301,6 +305,50 @@ DIM_ITEMS = [
     ("datasource_type", "neo4j",        "Neo4j",    "直连 Neo4j 图数据库", "—", 1, ""),
     ("datasource_type", "sql",          "SQL",      "直连关系数据库",       "—", 1, ""),
     ("datasource_type", "sqlite",       "SQLite",   "内置 SQLite 存储（知识图谱 db_type 的实际取值）", "—", 1, "alias:sql"),
+    # data_type（数据类型：标量 / 时间 / 复合 / 引用）
+    ("data_type", "string",           "字符串",     "定长/变长文本",                   "—", 1, ""),
+    ("data_type", "text",             "长文本",     "不限长度文本，如备注、正文",       "—", 1, ""),
+    ("data_type", "integer",          "整数",       "整数类型",                        "—", 1, ""),
+    ("data_type", "decimal",          "小数",       "定点小数，金额/精度敏感场景",     "—", 1, ""),
+    ("data_type", "float",            "浮点数",     "单精度浮点",                      "—", 1, ""),
+    ("data_type", "double",           "双精度",     "双精度浮点",                      "—", 1, ""),
+    ("data_type", "boolean",          "布尔",       "true/false",                      "—", 1, ""),
+    ("data_type", "date",             "日期",       "仅日期，ISO 8601 YYYY-MM-DD",     "—", 1, "ISO8601"),
+    ("data_type", "time",             "时间",       "仅时刻，ISO 8601 HH:mm:ss，无日期", "—", 1, "ISO8601"),
+    ("data_type", "datetime",         "日期时间",   "日期+时间，无时区，YYYY-MM-DD HH:mm:ss", "—", 1, "ISO8601"),
+    ("data_type", "timestamp",        "时间戳",     "日期+时间+时区，绝对时刻",        "—", 1, "ISO8601"),
+    ("data_type", "duration",         "时长",       "时间段，如 P1D / 3 小时",         "—", 1, "ISO8601"),
+    ("data_type", "year",             "年份",       "仅年份，如 2026",                "—", 1, ""),
+    ("data_type", "year_month",       "年月",       "YYYY-MM，如 2026-11",            "—", 1, ""),
+    ("data_type", "enum",             "枚举",       "从维度表/枚举集中取值",           "—", 1, ""),
+    ("data_type", "ref",              "引用",       "引用另一个类的实例（外键语义）",  "—", 1, ""),
+    ("data_type", "json",             "JSON",       "结构化 JSON 对象/数组",           "—", 1, ""),
+    ("data_type", "array",            "数组",       "同类型值列表",                    "—", 1, ""),
+    ("data_type", "blob",             "二进制",     "字节流/文件",                     "—", 1, ""),
+    ("data_type", "uuid",             "UUID",       "全局唯一标识符",                  "—", 1, ""),
+    # nullability（定义层空值约束）
+    ("nullability", "required",       "必填",       "不允许为空，必须提供值",          "—", 1, "nullable=0"),
+    ("nullability", "optional",       "可选",       "允许为空，但非空时必须合法",      "—", 1, "nullable=1"),
+    ("nullability", "not_null",       "非空",       "显式 NOT NULL 约束",             "—", 1, ""),
+    ("nullability", "nullable",       "可空",       "显式允许 NULL",                  "—", 1, ""),
+    ("nullability", "not_applicable", "不适用",     "该属性在特定上下文无意义",        "—", 1, ""),
+    ("nullability", "conditionally_required", "条件必填", "满足特定条件时必填",        "—", 1, ""),
+    # value_presence（实例层值存在性）
+    ("value_presence", "present",      "有值",       "字段存在且包含有效值",           "—", 1, ""),
+    ("value_presence", "absent",       "缺失",       "字段未出现在数据中",             "—", 1, ""),
+    ("value_presence", "null",         "空值NULL",   "字段存在但值为 NULL",            "—", 1, ""),
+    ("value_presence", "empty_string", "空字符串",   "字段存在但为空字符串",           "—", 1, ""),
+    ("value_presence", "empty_collection", "空集合", "字段存在但数组/集合为空",        "—", 1, ""),
+    ("value_presence", "defaulted",    "取默认值",   "未提供值，采用定义中的默认值",    "—", 1, ""),
+    ("value_presence", "unknown",      "未知",       "值来源不明或尚未采集",           "—", 1, ""),
+    # uniqueness（唯一性约束）
+    ("uniqueness", "unique",       "唯一",       "取值在范围内不重复",              "—", 1, ""),
+    ("uniqueness", "non_unique",   "可重复",     "允许重复值",                      "—", 1, ""),
+    ("uniqueness", "primary_key",  "主键",       "唯一且非空，标识实体",            "—", 1, ""),
+    ("uniqueness", "foreign_key",  "外键",       "引用另一实体的主键",              "—", 1, ""),
+    ("uniqueness", "business_key", "业务键",     "业务上唯一标识，可能非物理主键",   "—", 1, ""),
+    ("uniqueness", "scoped_unique","范围内唯一", "在特定范围（如父对象内）唯一",     "—", 1, ""),
+    ("uniqueness", "compound_unique", "联合唯一", "多属性组合唯一",                 "—", 1, ""),
 ]
 
 

@@ -142,6 +142,15 @@ DIM_ITEMS = [
     ("person_relation", "stepmother_of",     "继母",     "主体是客体的继母",             "继母→继子", 1, ""),
     ("person_relation", "adopted_child_of",  "养子女",   "主体是客体的养子女",           "养子女→养父母", 1, ""),
     ("person_relation", "twin_of",           "双胞胎",   "主体与客体为双胞胎",           "双向", 1, ""),
+    # 历史婚姻/关系（便捷枚举：直接可选；规范建模=spouse_of + valid_to 终止 + status_relation.terminates）
+    ("person_relation", "ex_spouse_of",      "前配偶",   "主体与客体曾为配偶，现已终止（泛化）", "双向", 1, "规范:spouse_of+ended"),
+    ("person_relation", "ex_wife_of",        "前妻",     "主体是客体的前妻",                 "前妻→前夫", 1, "规范:wife_of+ended"),
+    ("person_relation", "ex_husband_of",     "前夫",     "主体是客体的前夫",                 "前夫→前妻", 1, "规范:husband_of+ended"),
+    ("person_relation", "divorced_from",     "离婚",     "主体与客体已解除婚姻关系",         "双向", 1, ""),
+    ("person_relation", "separated_from",    "分居",     "主体与客体分居但婚姻未解除",       "双向", 1, ""),
+    ("person_relation", "remarried_with",    "再婚",     "主体与客体在各自前段婚姻结束后再婚", "双向", 1, ""),
+    ("person_relation", "ex_father_in_law_of","前岳父/公公", "主体曾是客体的岳父或公公",      "长辈→晚辈", 1, ""),
+    ("person_relation", "ex_mother_in_law_of","前岳母/婆婆", "主体曾是客体的岳母或婆婆",      "长辈→晚辈", 1, ""),
     # semantic
     ("semantic", "kinship",     "亲属",    "父子/配偶等亲属语义，如 father_of、spouse_of", "主体→客体", 1, ""),
     ("semantic", "part_of",     "组成",    "部分属于整体", "部分→整体", 1, ""),
@@ -210,6 +219,10 @@ DIM_ITEMS = [
     ("status_relation", "supersedes_state",  "状态取代",   "新状态覆盖旧状态定义",           "新→旧", 1, ""),
     ("status_relation", "inherits_state",    "状态继承",   "子类状态定义继承父类",           "子→父", 1, ""),
     ("status_relation", "conflicts_state",   "状态冲突",   "两状态定义存在语义冲突",         "双向", 1, ""),
+    ("status_relation", "terminates",        "终止",       "对象A的生效导致关系B终止，如离婚终止婚姻（配 valid_to）", "A→B", 1, ""),
+    ("status_relation", "terminated_by",     "被终止",     "关系B因对象A而终止（terminates 反向）", "B→A", 1, ""),
+    ("status_relation", "expires",           "到期",       "有效期届满后关系自动失效",       "对象→关系", 1, ""),
+    ("status_relation", "revokes",           "撤销",       "显式撤销先前生效的关系/授权",     "撤销方→被撤销", 1, ""),
     # dependency
     ("dependency", "depends_on",    "依赖于",   "当前对象生效依赖另一对象",   "依赖方→被依赖方", 1, ""),
     ("dependency", "derives_from",  "派生自",   "结论或数据来源于另一对象",   "派生→来源", 1, ""),
